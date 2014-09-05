@@ -226,13 +226,18 @@ static unsigned short checksum_ip(unsigned char *_addr, int count) {
 
 
 int check_host(const char *hostname) {
-        struct addrinfo hints;
+        struct addrinfo hints4;
+        struct addrinfo hints6;
         struct addrinfo *res;
         ASSERT(hostname);
-        memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_family = PF_INET; /* we support just IPv4 currently */
-        if(getaddrinfo(hostname, NULL, &hints, &res) != 0)
-                return FALSE;
+        memset(&hints4, 0, sizeof(struct addrinfo));
+        memset(&hints6, 0, sizeof(struct addrinfo));
+        hints4.ai_family = PF_INET;
+        hints6.ai_family = PF_INET6;
+        if ((getaddrinfo(hostname, NULL, &hints4, &res) != 0) &&
+            (getaddrinfo(hostname, NULL, &hints6, &res) != 0)) {
+          return FALSE;
+        };
         freeaddrinfo(res);
         return TRUE;
 }
@@ -266,27 +271,35 @@ int check_udp_socket(int socket) {
 
 int create_socket(const char *hostname, int port, int type, int timeout) {
         int s, status;
-        struct sockaddr_in sin;
+        struct sockaddr_storage sin;
         struct sockaddr_in *sa;
+        struct sockaddr_in6 *sa6;
         struct addrinfo hints;
         struct addrinfo *result;
         ASSERT(hostname);
         memset(&hints, 0, sizeof(struct addrinfo));
-        hints.ai_family = AF_INET;
+        //hints.ai_family = AF_INET;
 
         if((status = getaddrinfo(hostname, NULL, &hints, &result)) != 0) {
                 LogError("Cannot translate '%s' to IP address -- %s\n", hostname, status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
                 return -1;
         }
-        if((s = socket(AF_INET, type, 0)) < 0) {
+        if((s = socket(result->ai_family, type, 0)) < 0) {
                 LogError("Cannot create socket -- %s\n", STRERROR);
                 freeaddrinfo(result);
                 return -1;
         }
-        sa = (struct sockaddr_in *)result->ai_addr;
-        memcpy(&sin, sa, result->ai_addrlen);
-        sin.sin_family = AF_INET;
-        sin.sin_port = htons(port);
+        if (result->ai_family == AF_INET) {
+          sa = (struct sockaddr_in *)result->ai_addr;
+          memcpy(&sin, sa, result->ai_addrlen);
+          ((struct sockaddr_in*)&sin)->sin_family = AF_INET;
+          ((struct sockaddr_in*)&sin)->sin_port = htons(port);
+        } else {
+          sa6 = (struct sockaddr_in6 *)result->ai_addr;
+          memcpy(&sin, sa6, result->ai_addrlen);
+          ((struct sockaddr_in6*)&sin)->sin6_family = AF_INET6;
+          ((struct sockaddr_in6*)&sin)->sin6_port = htons(port);
+        }
         freeaddrinfo(result);
         if(! Net_setNonBlocking(s)) {
                 LogError("Cannot set nonblocking socket -- %s\n", STRERROR);
