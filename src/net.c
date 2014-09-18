@@ -278,7 +278,6 @@ int create_socket(const char *hostname, int port, int type, int timeout) {
         struct addrinfo *result;
         ASSERT(hostname);
         memset(&hints, 0, sizeof(struct addrinfo));
-        //hints.ai_family = AF_INET;
 
         if((status = getaddrinfo(hostname, NULL, &hints, &result)) != 0) {
                 LogError("Cannot translate '%s' to IP address -- %s\n", hostname, status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
@@ -295,6 +294,8 @@ int create_socket(const char *hostname, int port, int type, int timeout) {
           ((struct sockaddr_in*)&sin)->sin_family = AF_INET;
           ((struct sockaddr_in*)&sin)->sin_port = htons(port);
         } else {
+          // We know that the host must be either IPv4 or IPv6, or it
+          // wouldn't have got past the check_host function.
           sa6 = (struct sockaddr_in6 *)result->ai_addr;
           memcpy(&sin, sa6, result->ai_addrlen);
           ((struct sockaddr_in6*)&sin)->sin6_family = AF_INET6;
@@ -352,7 +353,7 @@ int create_server_socket(int port, int backlog, const char *bindAddr) {
                 struct sockaddr_in *sa;
                 struct addrinfo hints;
                 struct addrinfo *result;
-                
+
                 memset(&hints, 0, sizeof(struct addrinfo));
                 hints.ai_family = AF_INET;
                 if((status = getaddrinfo(bindAddr, NULL, &hints, &result)) != 0) {
