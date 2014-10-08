@@ -1,0 +1,8 @@
+monit (1:5.3.1-2) unstable; urgency=low
+
+  Since version 1:5.3.1-2 of the package monit binary has been
+  installed to /usr/bin/ (instead of /usr/sbin/).  This is an upstream
+  default and common for the monit packaging in other systems (e.g.
+  FreeBSD, Gentoo, ALTlinux) as well.
+
+ -- Sergey B Kirpichev <skirpichev@gmail.com>  Mon, 19 Dec 2011 13:41:51 +0400

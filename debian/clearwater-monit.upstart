@@ -1,0 +1,30 @@
+# clearwater-monit - Monit service manager
+#
+# Monit is a small Open Source utility for managing and monitoring Unix systems.
+# It conducts automatic maintenance and repair and can execute meaningful causal
+# actions in error situations.
+
+description "Monit service manager"
+
+start on runlevel [2345]
+stop on runlevel [!2345]
+
+expect daemon
+respawn
+
+limit core unlimited unlimited
+
+script
+    MONIT_OPTS=
+
+    [ -x /usr/bin/monit ] || { stop; exit 0; }
+    [ -f /etc/monit/monitrc ] || { stop; exit 0; }
+    [ -f /etc/default/clearwater-monit ] || { stop; exit 0; }
+
+    . /etc/default/clearwater-monit
+    [ "$START" = "yes" ] || { stop; exit 0; }
+
+    exec /usr/bin/monit -c /etc/monit/monitrc $MONIT_OPTS    
+end script
+
+pre-stop exec /usr/bin/monit -c /etc/monit/monitrc quit
