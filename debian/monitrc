@@ -17,7 +17,11 @@
 ## Start Monit in the background (run as a daemon):
 #
   set daemon 10             # check services at 10 second intervals
+<<<<<<< HEAD
     with start delay 30     # delay the first check by 30 seconds (default 
+=======
+#    with start delay 30     # delay the first check by 30 seconds (default 
+>>>>>>> origin/snmp-alarms
 #                           # is to check immediately after Monit starts)
 #
 #
