@@ -19,6 +19,8 @@ case "$1" in
       fi
     fi
 
+    service monit stop > /dev/null 2>&1 || true
+
     if [ -f /etc/default/monit ]
     then
        rm /etc/default/monit
