@@ -1,0 +1,11 @@
+For some slow-to-start processes monit can, especially at bootup,
+start to monitor a process before it is fully initialised.  This can
+cause monit to erroneously attempt a restart.
+
+To avoid this, you should set the "start delay" option in monitrc.  A
+typical example looks like this:
+
+ --8<--
+  set daemon 120
+    with start delay 240
+ --8<--

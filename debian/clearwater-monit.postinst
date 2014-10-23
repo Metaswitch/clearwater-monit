@@ -1,0 +1,59 @@
+#!/bin/sh
+
+set -e
+
+case "$1" in
+  configure)
+    # Setup logfile permissions:
+    touch /var/log/monit.log
+    chmod 640 /var/log/monit.log
+    chown root:adm /var/log/monit.log
+
+    # Add monit to /etc/aliases:
+    if [ -f /etc/aliases ] || [ -L /etc/aliases ]
+    then
+      if ! grep -qi '^monit[[:space:]]*:' /etc/aliases
+      then
+        echo "monit: root" >> /etc/aliases
+        test -x /usr/bin/newaliases && newaliases || :
+      fi
+    fi
+
+    # Ensure monit is stopped before starting it under upstart control (work-around
+    # for package script race conditions when upgrading monit -> clearwater-monit).
+    service monit stop &> /dev/null || true
+
+    # Remove all monit configuration files that are left behind when apt uninstalls
+    # the old monit during an upgrade to clearwater-monit.
+    if [ -f /etc/default/monit ]
+    then
+       rm /etc/default/monit
+    fi
+
+    if [ -f /etc/init.d/monit ]
+    then
+       rm /etc/init.d/monit
+       update-rc.d monit remove
+    fi
+
+    if [ -f /etc/logrotate.d/monit ]
+    then 
+      rm /etc/logrotate.d/monit
+    fi
+
+    if [ -f /etc/pam.d/monit ]
+    then
+      rm /etc/pam.d/monit
+    fi
+    ;;
+  abort-upgrade|abort-remove|abort-deconfigure)
+    ;;
+  *)
+    echo "postinst called with unknown argument \`$1'" >&2
+    exit 1
+    ;;
+esac
+
+#DEBHELPER#
+
+exit 0

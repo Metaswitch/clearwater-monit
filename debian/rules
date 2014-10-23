@@ -1,0 +1,20 @@
+#!/usr/bin/make -f
+
+DEB_HOST_MULTIARCH=$(shell dpkg-architecture -qDEB_HOST_MULTIARCH)
+
+%:
+	dh $@
+
+override_dh_auto_configure:
+	dh_auto_configure -- \
+		--sysconfdir=/etc/monit \
+		--with-ssl-lib-dir=/usr/lib/$(DEB_HOST_MULTIARCH)
+
+override_dh_installinit:
+	dh_installinit 
+
+override_dh_fixperms:
+	dh_fixperms
+	chmod 600 debian/clearwater-monit/etc/monit/monitrc
+	chmod 0700 debian/clearwater-monit/var/lib/monit/events
+
