@@ -1,6 +1,6 @@
-DEB_COMPONENT := monit
+DEB_COMPONENT := clearwater-monit
 DEB_MAJOR_VERSION := 5.9${DEB_VERSION_QUALIFIER}
-DEB_NAMES := monit
+DEB_NAMES := clearwater-monit
 
 include build-infra/cw-deb.mk
 
