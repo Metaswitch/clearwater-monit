@@ -1,13 +1,14 @@
 Source: clearwater-monit
 Section: admin
 Priority: optional
-Maintainer: Sergey B Kirpichev <skirpichev@gmail.com>
+# This field must stay as 'Project Clearwater Maintainers', as
+# clearwater-infrastructure explicitly checks for packages of this name when
+# updating
+Maintainer: Project Clearwater Maintainers <maintainers@projectclearwater.org>
 DM-Upload-Allowed: yes
 Build-Depends: debhelper (>= 7.0.50), libssl-dev, libpam-dev, libkvm-dev [kfreebsd-any]
 Standards-Version: 3.9.2
-Homepage: http://mmonit.com/monit/
-Vcs-Git: git://git.debian.org/git/collab-maint/monit.git
-Vcs-Browser: http://git.debian.org/?p=collab-maint/monit.git;a=summary
+Homepage: http://projectclearwater.org/
 
 Package: clearwater-monit
 Architecture: any
@@ -39,11 +40,11 @@ Description: utility for monitoring and managing daemons or similar programs
   * Check a file or directory timestamp
   * Alert, stop or restart a process based on its characteristics
   * MD5 checksum for programs started and stopped by monit
-  * Alert notification for program timeout, restart, checksum, stop 
+  * Alert notification for program timeout, restart, checksum, stop
     resource and timestamp error
   * Flexible and customizable email alert messages
-  * Protocol verification. HTTP, FTP, SMTP, POP, IMAP, NNTP, SSH, DWP, 
+  * Protocol verification. HTTP, FTP, SMTP, POP, IMAP, NNTP, SSH, DWP,
     LDAPv2 and LDAPv3
-  * An http interface with optional SSL support to make monit 
+  * An http interface with optional SSL support to make monit
     accessible from a webbrowser
 
