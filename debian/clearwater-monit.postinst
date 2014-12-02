@@ -21,7 +21,23 @@ case "$1" in
 
     # Ensure monit is stopped before starting it under upstart control (work-around
     # for package script race conditions when upgrading monit -> clearwater-monit).
-    service monit stop &> /dev/null || true
+    if (ps -C monit > /dev/null); then
+      monit quit || true
+
+      printf "Waiting for Monit to stop\n"
+      cnt=0
+      while (ps -C monit > /dev/null); do
+        sleep 1
+        printf "."
+        cnt=`expr $cnt + 1`
+        if [ $cnt -gt 120 ]; then
+	  printf "*** ERROR: unable to stop Monit\n"
+	  exit 1
+        fi
+      done
+
+      service clearwater-monit start || true
+    fi
 
     # Remove all monit configuration files that are left behind when apt uninstalls
     # the old monit during an upgrade to clearwater-monit.
