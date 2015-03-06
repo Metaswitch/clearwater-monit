@@ -1,3 +1,8 @@
+*.o
+*.lo
+*.debhelper
+*.dirstamp
+
 # OS X
 .DS_Store
 
@@ -8,3 +13,25 @@
 build/
 project.xcworkspace/
 xcuserdata/
+
+Makefile
+Makefile.in
+aclocal.m4
+autom4te.cache/
+config.log
+config.status
+config/
+configure
+libtool
+m4/
+monit
+monit.1
+src/config.h
+src/config.h.in
+src/lex.yy.c
+src/stamp-h1
+src/tokens.h
+src/y.output
+src/y.tab.c
+system/startup/monit.service
+system/startup/monit.upstart

@@ -1,0 +1,8 @@
+.libs/
+libmonit.la
+libtool
+m4/
+src/stamp-h1
+src/xconfig.h
+src/xconfig.h.in
+test/*Test

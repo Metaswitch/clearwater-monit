@@ -706,6 +706,12 @@ static void handle_action(Event_T E, Action_T A) {
     if (s->mode == MODE_PASSIVE && (A->id == ACTION_START || A->id == ACTION_STOP  || A->id == ACTION_RESTART))
       return;
 
+    if ((A->id == ACTION_START) || (A->id == ACTION_STOP) || (A->id == ACTION_RESTART)) {
+      // About to restart this service, so reset all its values.
+      E->state_map = 0;
+      E->state = STATE_INIT;
+    }
+
     control_service(s->name, A->id);
   }
 }
