@@ -1,0 +1,6 @@
+*.debhelper
+*.debhelper.log
+*.substvars
+/changelog
+/files
+/clearwater-monit/
