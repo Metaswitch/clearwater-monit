@@ -241,8 +241,8 @@ static void do_unmonitor(Service_T s, int flag) {
  * This is an in-fix recursive function called before s is started to
  * stop every service that depends on s, in reverse order *or* after s
  * was started to start again every service that depends on s. The
- * action parametere controls if this function should start or stop
- * the procceses that depends on s.
+ * action parameter controls if this function should start or stop
+ * the processes that depends on s.
  * @param s A Service_T object
  * @param action An action to do on the dependant services
  * @param flag A Custom flag
@@ -409,15 +409,18 @@ int control_service(const char *S, int A) {
 
                 case ACTION_RESTART:
                         LogInfo("'%s' trying to restart\n", s->name);
+                        do_depend(s, ACTION_UNMONITOR, FALSE);
                         do_depend(s, ACTION_STOP, FALSE);
                         if (s->restart) {
                                 do_restart(s);
                                 do_depend(s, ACTION_START, 0);
+                                do_depend(s, ACTION_MONITOR, 0);
                         } else {
                                 if (do_stop(s, FALSE)) {
                                         /* Only start if stop succeeded */
                                         do_start(s);
                                         do_depend(s, ACTION_START, 0);
+                                        do_depend(s, ACTION_MONITOR, 0);
                                 } else {
                                         /* enable monitoring of this service again to allow the restart retry in the next cycle up to timeout limit */
                                         Util_monitorSet(s);
