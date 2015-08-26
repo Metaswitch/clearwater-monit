@@ -124,7 +124,7 @@
 
 #define START_DELAY        0
 #define EXEC_TIMEOUT       30
-#define PROGRAM_TIMEOUT    600
+#define PROGRAM_TIMEOUT    60
 
 #define START_HTTP         1
 #define STOP_HTTP          2
