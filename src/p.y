@@ -4239,8 +4239,6 @@ static void check_depend() {
 
         for (s = depend_list; s; s = s->next_depend)
                 s->next = s->next_depend;
-
-        reset_depend();
 }
 
 

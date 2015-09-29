@@ -1168,7 +1168,7 @@ Example:
 Services are checked in regular intervals by the C<set daemon n>
 statement. Checks are performed in the same order as they are written
 in the C<.monitrc> file, except if dependencies are setup between
-services.
+services, where pre-requisite services are tested first.
 
 It is possible to modify a service check schedule by using the C<every>
 statement.
@@ -1382,14 +1382,19 @@ You may add more than one service name of any type or use more
 than one depend statement in an entry.
 
 Services specified in a I<depend> statement will be checked
-during stop/start/monitor/unmonitor operations. If a service is
-stopped or unmonitored it will stop/unmonitor any services that
-depends on itself. Likewise, if a service is started, it will
-first stop any services that depends on itself and after it is
-started, start all depending services again. If the service is to
-be monitored (enable monitoring), all services which this service
-depends on will be monitored before enabling monitoring of this
-service.
+during stop/start/monitor/unmonitor operations.
+
+If a service is stopped or unmonitored it will stop/unmonitor any
+services that depends on itself.
+
+If the service is started, all services which this service depends on
+will be started before starting this service. if start of some service
+failed, the service with prerequisites will NOT be started and the, but
+will remember that it should start and will retry next cycle.
+
+If a service is restarted, it will first stop any active services that
+depend on it and after it is started, start all depending services that
+were active before the restart again.
 
 Here is an example where we set up an apache service entry to
 depend on the underlying apache binary. If the binary should
@@ -1397,26 +1402,23 @@ change an alert is sent and apache is not monitored anymore. The
 rationale is security and that Monit should not execute a
 possibly cracked apache binary.
 
- (1) check process apache
- (2)    with pidfile "/usr/local/apache/logs/httpd.pid"
+ (1) check process apache with pidfile "/var/run/httpd.pid"
+ (2)    depends on httpd
  (3)    ...
- (4)    depends on httpd
- (5)
- (6) check file httpd with path /usr/local/apache/bin/httpd
- (7)    if failed checksum then unmonitor
+ (4)
+ (5) check file httpd with path /usr/bin/httpd
+ (6)    if failed checksum then stop
 
-The first entry is the process entry for apache (abbreviated for
-clarity). The fourth line sets up a dependency between this entry and
-the service entry named httpd in line 6. A dependency tree works as
-follows, if an action is conducted in a lower branch it will propagate
-upward in the tree and for every dependent entry execute the same
-action. In this case, if the checksum should fail in line 7 then an
-unmonitor action is executed and the apache binary is not checked
+The first entry is the process entry for apache. The second line sets
+up a dependency between this entry and the service entry named httpd in
+line 5. A dependency tree works as follows, if an action is conducted in
+a lower branch it will propagate upward in the tree and for every dependent
+entry execute the same action. In this case, if the checksum should fail in
+line 6 then an stop action is executed and apache binary is not checked
 anymore. But since the apache process entry depends on the httpd entry
-this entry will also execute the unmonitor action. In short, if the
+this entry will also execute the stop action. In short, if the
 checksum test for the httpd binary file should fail, both the check
-file httpd entry and the check process apache entry is set in
-un-monitoring mode.
+file httpd and the check process apache entry are stopped.
 
 A dependency tree is a general construct and can be used between all
 types of service entries and span many levels and propagate any
@@ -1432,7 +1434,7 @@ server setup:
 You can set dependencies so that the web-server depends on the
 application server to run before the web-server starts and the
 application server depends on the database server and the
-database depends on the file-system to be mounted before it
+database depends on the filesystem to be mounted before it
 starts. See also the example section below for examples using the
 depend statement.
 
@@ -1441,36 +1443,36 @@ dependencies:
 
 =over 4
 
-=item If no servers are running
+=item If no services are running
 
 Monit will start the servers in the following order: I<d>, I<c>,
 I<b>, I<a>
 
 =item If all servers are running
 
-When you run 'Monit stop all' this is the stop order: I<a>, I<b>,
+When you run 'monit stop all' this is the stop order: I<a>, I<b>,
 I<c>, I<d>. If you run 'Monit stop d' then I<a>, I<b> and I<c>
 are also stopped because they depend on I<d> and finally I<d> is
 stopped.
 
 =item If I<a> does not run
 
-When Monit runs it will start I<a>
+Monit will start I<a>
 
 =item If I<b> does not run
 
-When Monit runs it will first stop I<a> then start I<b> and
-finally start I<a> again.
+Monit will first stop I<a> then start I<b> and finally start I<a> if
+I<b> is up again.
 
 =item If I<c> does not run
 
-When Monit runs it will first stop I<a> and I<b> then start I<c>
-and finally start I<b> then I<a>.
+Monit will first stop I<a> and I<b> then start I<c> and finally start
+I<b> then I<a>.
 
 =item If I<d> does not run
 
-When Monit runs it will first stop I<a>, I<b> and I<c> then start
-I<d> and finally start I<c>, I<b> then I<a>.
+Monit will first stop I<a>, I<b> and I<c> then start I<d> and finally
+start I<c>, I<b> then I<a>.
 
 =item If the control file contains a depend loop.
 

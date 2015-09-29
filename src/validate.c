@@ -1,3 +1,4 @@
+
 /*
  * Copyright (C) Tildeslash Ltd. All rights reserved.
  *
@@ -922,10 +923,6 @@ static boolean_t _incron(Service_T s, time_t now) {
  */
 static boolean_t check_skip(Service_T s) {
         ASSERT(s);
-        if (s->visited) {
-                DEBUG("'%s' check skipped -- service already handled in a dependency chain\n", s->name);
-                return true;
-        }
         time_t now = Time_now();
         if (s->every.type == Every_SkipCycles) {
                 s->every.spec.cycle.counter++;
@@ -954,11 +951,10 @@ static boolean_t check_skip(Service_T s) {
  */
 static boolean_t do_scheduled_action(Service_T s) {
         int rv = false;
-        if (s->doaction != Action_Ignored) {
-                // FIXME: let the event engine do the action directly? (just replace s->action_ACTION with s->doaction and drop control_service call)
-                rv = control_service(s->name, s->doaction);
-                Event_post(s, Event_Action, State_Changed, s->action_ACTION, "%s action %s", actionnames[s->doaction], rv ? "done" : "failed");
-                s->doaction = Action_Ignored;
+        Action_Type action = s->doaction;
+        if (action != Action_Ignored) {
+                rv = control_service(s->name, action);
+                Event_post(s, Event_Action, State_Changed, s->action_ACTION, "%s action %s", actionnames[action], rv ? "done" : "failed");
                 FREE(s->token);
         }
         return rv;
@@ -1008,8 +1004,6 @@ int validate() {
                         gettimeofday(&s->collected, NULL);
                 }
         }
-
-        reset_depend();
 
         return errors;
 }

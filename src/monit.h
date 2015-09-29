@@ -966,8 +966,7 @@ typedef struct myservice {
         /** Common parameters */
         char *name;                                  /**< Service descriptive name */
         boolean_t (*check)(struct myservice *); /**< Service verification function */
-        boolean_t visited;      /**< Service visited flag, set if dependencies are used */
-        boolean_t depend_visited;/**< Depend visited flag, set if dependencies are used */
+        boolean_t visited; /**< Service visited flag, set if dependencies are used */
         Service_Type type;                             /**< Monitored service type */
         Monitor_State monitor;                             /**< Monitor state flag */
         Monitor_Mode mode;                    /**< Monitoring mode for the service */
@@ -1181,7 +1180,6 @@ boolean_t parse(char *);
 boolean_t control_service(const char *, Action_Type);
 boolean_t control_service_string(const char *, const char *);
 boolean_t control_service_daemon(const char *, const char *);
-void  reset_depend();
 void  spawn(Service_T, command_t, Event_T);
 boolean_t status(const char *, const char *, const char *);
 boolean_t log_init();

@@ -34,6 +34,9 @@ Fixed: Issue #226: Monit hung during ping test.
 Fixed: Issue #248: Don't cascade start action to dependant services if only parent start was
 requested.
 
+Fixed: Issue #249: Implement hard dependency between services. If the service depends on
+some other service, it will not start until parent service check returns no errors.
+
 Fixed: Compilation with SSL when SSLv3 is disabled in the SSL library.
 
 Fixed: Don't log error if SSL SNI is not supported by server.

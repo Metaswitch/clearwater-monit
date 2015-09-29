@@ -177,6 +177,27 @@ static Process_Status _waitProcessStop(int pid, long *timeout) {
 }
 
 
+static boolean_t _check(Service_T s) {
+        ASSERT(s);
+        boolean_t rv = true;
+        // The check is performed in passive mode - we want to just check, nested start/stop/restart action is unwanted (alerts are allowed so the user will get feedback what's wrong)
+        Monitor_Mode original = s->mode;
+        s->mode = Monitor_Passive;
+        rv = s->check(s);
+        if (s->type == Service_Program) {
+                // check program executes the program and needs to be called again to collect the exit value and evaluate the status
+                long timeout = s->program->timeout * 1000000;
+                do {
+                        Time_usleep(RETRY_INTERVAL);
+                        timeout -= RETRY_INTERVAL;
+                } while (Process_exitStatus(s->program->P) < 0 && timeout > 0 && ! (Run.flags & Run_Stopped));
+                rv = s->check(s);
+        }
+        s->mode = original;
+        return rv;
+}
+
+
 /*
  * This is a post-fix recursive function for starting every service
  * that s depends on before starting s.
@@ -186,15 +207,18 @@ static Process_Status _waitProcessStop(int pid, long *timeout) {
 static boolean_t _doStart(Service_T s) {
         ASSERT(s);
         boolean_t rv = true;
-        if (! s->visited) {
-                s->visited = true;
-                if (s->dependantlist) {
-                        for (Dependant_T d = s->dependantlist; d; d = d->next ) {
-                                Service_T parent = Util_getService(d->dependant);
-                                ASSERT(parent);
-                                _doStart(parent);
+        StringBuffer_T sb = StringBuffer_create(64);
+        if (s->dependantlist) {
+                for (Dependant_T d = s->dependantlist; d; d = d->next ) {
+                        Service_T parent = Util_getService(d->dependant);
+                        ASSERT(parent);
+                        if ((parent->monitor != Monitor_Yes || parent->error) && (! _doStart(parent) || ! _check(parent))) {
+                                rv = false;
+                                StringBuffer_append(sb, "%s%s", StringBuffer_length(sb) ? ", " : "", parent->name);
                         }
                 }
+        }
+        if (rv) {
                 if (s->start) {
                         if (s->type != Service_Process || ! Util_isProcessRunning(s, false)) {
                                 LogInfo("'%s' start: %s\n", s->name, s->start->arg[0]);
@@ -212,7 +236,11 @@ static boolean_t _doStart(Service_T s) {
                         LogDebug("'%s' start skipped -- method not defined\n", s->name);
                 }
                 Util_monitorSet(s);
+        } else {
+                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "start skipped -- prerequisite services (%s) have error, will retry next cycle", StringBuffer_toString(sb));
+                s->doaction = Action_Start;
         }
+        StringBuffer_free(&sb);
         return rv;
 }
 
@@ -240,9 +268,8 @@ static void _evaluateStop(Service_T s, boolean_t succeeded, int exitStatus, char
 static boolean_t _doStop(Service_T s, boolean_t unmonitor) {
         ASSERT(s);
         boolean_t rv = true;
-        if (! s->depend_visited) {
-                s->depend_visited = true;
-                if (s->stop) {
+        if (s->stop) {
+                if (s->monitor != Monitor_Not) {
                         int exitStatus;
                         char msg[STRLEN];
                         long timeout = s->stop->timeout * USEC_PER_SEC;
@@ -258,14 +285,14 @@ static boolean_t _doStop(Service_T s, boolean_t unmonitor) {
                                 rv = exitStatus >= 0 ? true : false;
                                 _evaluateStop(s, rv, exitStatus, msg);
                         }
-                } else {
-                        LogDebug("'%s' stop skipped -- method not defined\n", s->name);
                 }
-                if (unmonitor)
-                        Util_monitorUnset(s);
-                else
-                        Util_resetInfo(s);
+        } else {
+                LogDebug("'%s' stop skipped -- method not defined\n", s->name);
         }
+        if (unmonitor)
+                Util_monitorUnset(s);
+        else
+                Util_resetInfo(s);
         return rv;
 }
 
@@ -304,17 +331,14 @@ static boolean_t _doRestart(Service_T s) {
  */
 static void _doMonitor(Service_T s) {
         ASSERT(s);
-        if (! s->visited) {
-                s->visited = true;
-                if (s->dependantlist) {
-                        for (Dependant_T d = s->dependantlist; d; d = d->next ) {
-                                Service_T parent = Util_getService(d->dependant);
-                                ASSERT(parent);
-                                _doMonitor(parent);
-                        }
+        if (s->dependantlist) {
+                for (Dependant_T d = s->dependantlist; d; d = d->next ) {
+                        Service_T parent = Util_getService(d->dependant);
+                        ASSERT(parent);
+                        _doMonitor(parent);
                 }
-                Util_monitorSet(s);
         }
+        Util_monitorSet(s);
 }
 
 
@@ -324,10 +348,7 @@ static void _doMonitor(Service_T s) {
  */
 static void _doUnmonitor(Service_T s) {
         ASSERT(s);
-        if (! s->depend_visited) {
-                s->depend_visited = true;
-                Util_monitorUnset(s);
-        }
+        Util_monitorUnset(s);
 }
 
 
@@ -336,26 +357,40 @@ static void _doUnmonitor(Service_T s) {
  * @param s A Service_T object
  * @param action An action for the dependant services
  * @param unmonitor Disable service monitoring: used for stop action only to differentiate hard/soft stop - see _doStop()
+ * @return true if all depending services were started/stopped otherwise false
  */
-static void _doDepend(Service_T s, Action_Type action, boolean_t unmonitor) {
+static boolean_t _doDepend(Service_T s, Action_Type action, boolean_t unmonitor) {
         ASSERT(s);
+        boolean_t rv = true;
         for (Service_T child = servicelist; child; child = child->next) {
                 for (Dependant_T d = child->dependantlist; d; d = d->next) {
                         if (IS(d->dependant, s->name)) {
-                                if (action == Action_Start && child->monitor != Monitor_Not)
-                                        // Start the child only if its monitoring is allowed (parent restart first stops all children and then starts them again, but ony those which were active before parent's restart
-                                        _doStart(child);
-                                else if (action == Action_Monitor)
+                                if (action == Action_Start) {
+                                        // (re)start children only if it's monitoring is enabled (we keep monitoring flag during restart, allowing to restore original pre-restart configuration)
+                                        if (child->monitor != Monitor_Not && ! _doStart(child))
+                                                rv = false;
+                                } else if (action == Action_Monitor) {
                                         _doMonitor(child);
-                                _doDepend(child, action, unmonitor);
-                                if (action == Action_Stop)
-                                        _doStop(child, unmonitor);
-                                else if (action == Action_Unmonitor)
-                                        _doUnmonitor(child);
+                                }
+                                // We can start children of current child (2nd+ dependency level) only if the child itself started
+                                if (rv) {
+                                        if (! _doDepend(child, action, unmonitor)) {
+                                                rv = false;
+                                        } else {
+                                                // Stop this service only if all children stopped
+                                                if (action == Action_Stop && child->monitor != Monitor_Not) {
+                                                        if (! _doStop(child, unmonitor))
+                                                                rv = false;
+                                                } else if (action == Action_Unmonitor) {
+                                                        _doUnmonitor(child);
+                                                }
+                                        }
+                                }
                                 break;
                         }
                 }
         }
+        return rv;
 }
 
 
@@ -479,38 +514,41 @@ boolean_t control_service_string(const char *S, const char *A) {
  */
 boolean_t control_service(const char *S, Action_Type A) {
         Service_T s = NULL;
-        boolean_t rv = true;
+        boolean_t rv = false;
         ASSERT(S);
         if (! (s = Util_getService(S))) {
                 LogError("Service '%s' -- doesn't exist\n", S);
-                return false;
+                return rv;
+        }
+        if (s->doaction == A) {
+                s->doaction = Action_Ignored;
         }
         switch (A) {
                 case Action_Start:
-                        /* We only start this service and all prerequisite services. Chain of services which depends on this service keeps its state */
                         rv = _doStart(s);
                         break;
 
                 case Action_Stop:
-                        _doDepend(s, Action_Stop, true);
-                        rv = _doStop(s, true);
+                        // Stop this service only if all children which depend on it were stopped
+                        if (_doDepend(s, Action_Stop, true))
+                                rv = _doStop(s, true);
                         break;
 
                 case Action_Restart:
                         LogInfo("'%s' trying to restart\n", s->name);
-                        _doDepend(s, Action_Stop, false);
-                        if (s->restart) {
-                                rv = _doRestart(s);
-                                _doDepend(s, Action_Start, false);
-                        } else {
-                                if (_doStop(s, false)) {
-                                        /* Only start if stop succeeded */
-                                        rv = _doStart(s);
-                                        _doDepend(s, Action_Start, false);
+                        // Restart this service only if all children that depend on it were stopped
+                        if (_doDepend(s, Action_Stop, false)) {
+                                if (s->restart) {
+                                        if ((rv = _doRestart(s)))
+                                                _doDepend(s, Action_Start, false); // Start children only if we successfully restarted
                                 } else {
-                                        rv = false;
-                                        /* enable monitoring of this service again to allow the restart retry in the next cycle up to timeout limit */
-                                        Util_monitorSet(s);
+                                        if (_doStop(s, false)) {
+                                                if ((rv = _doStart(s))) // Only start if we successfully stopped
+                                                        _doDepend(s, Action_Start, false); // Start children only if we successfully started
+                                        } else {
+                                                /* enable monitoring of this service again to allow the restart retry in the next cycle up to timeout limit */
+                                                Util_monitorSet(s);
+                                        }
                                 }
                         }
                         break;
@@ -533,11 +571,3 @@ boolean_t control_service(const char *S, Action_Type A) {
         return rv;
 }
 
-
-/*
- * Reset the visited flags used when handling dependencies
- */
-void reset_depend() {
-        for (Service_T s = servicelist; s; s = s->next)
-                s->visited = s->depend_visited = false;
-}
