@@ -213,6 +213,15 @@ static void check_request(Socket_T socket, Port_T P) {
                                 THROW(IOException, "HTTP error: Illegal Content-Length response header '%s'", buf);
                 }
         }
+        /* FIXME:
+         * we read the data from the socket inside do_regex() and also check_request_checksum() independently => these two cannot be used together - only one wil read the data. Refactor the spaghetti code and consolidate the read
+         * function, so data are ready before we test the content (read once, allow to apply different tests / many times) */
+        /* FIXME:
+         * We don't support chuncked transfer encoding and rely on Content-Length only ... this has two problems:
+         * 1.) we read chunk headers to buffer as part of data and apply checksum test and regex test to it => technically wrong, as the pattern we're looking for may be split in different chunks and won't match, checksum completyly wrong
+         * 2.) the read of chunked data is slowed downed by read delay (https://bitbucket.org/tildeslash/monit/issues/254/hosts-check-is-too-long)
+         * I.e. implement support for Chunked encoding (see above FIXME comment - we should have one read function, which can be used to read data and reuse it for all tests)
+         */
         if (P->url_request && P->url_request->regex)
                 do_regex(socket, content_length, P->url_request);
         if (P->parameters.http.checksum)
