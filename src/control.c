@@ -186,11 +186,11 @@ static boolean_t _check(Service_T s) {
         rv = s->check(s);
         if (s->type == Service_Program) {
                 // check program executes the program and needs to be called again to collect the exit value and evaluate the status
-                long timeout = s->program->timeout * 1000000;
+                int64_t timeout = s->program->timeout * 1000000;
                 do {
                         Time_usleep(RETRY_INTERVAL);
                         timeout -= RETRY_INTERVAL;
-                } while (Process_exitStatus(s->program->P) < 0 && timeout > 0 && ! (Run.flags & Run_Stopped));
+                } while (Process_exitStatus(s->program->P) < 0 && timeout > 0LL && ! (Run.flags & Run_Stopped));
                 rv = s->check(s);
         }
         s->mode = original;
@@ -212,9 +212,11 @@ static boolean_t _doStart(Service_T s) {
                 for (Dependant_T d = s->dependantlist; d; d = d->next ) {
                         Service_T parent = Util_getService(d->dependant);
                         ASSERT(parent);
-                        if ((parent->monitor != Monitor_Yes || parent->error) && (! _doStart(parent) || ! _check(parent))) {
-                                rv = false;
-                                StringBuffer_append(sb, "%s%s", StringBuffer_length(sb) ? ", " : "", parent->name);
+                        if (parent->monitor != Monitor_Yes || parent->error) {
+                                if (! _doStart(parent) || ! _check(parent)) {
+                                        rv = false;
+                                        StringBuffer_append(sb, "%s%s", StringBuffer_length(sb) ? ", " : "", parent->name);
+                                }
                         }
                 }
         }
@@ -233,11 +235,11 @@ static boolean_t _doStart(Service_T s) {
                                 }
                         }
                 } else {
-                        LogDebug("'%s' start skipped -- method not defined\n", s->name);
+                        LogDebug("'%s' start ignored -- method not defined\n", s->name);
                 }
                 Util_monitorSet(s);
         } else {
-                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "start skipped -- prerequisite services (%s) have error, will retry next cycle", StringBuffer_toString(sb));
+                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "'%s' failed to start -- could not start required services: '%s' (services %s depends on)", s->name, StringBuffer_toString(sb), s->name);
                 s->doaction = Action_Start;
         }
         StringBuffer_free(&sb);
