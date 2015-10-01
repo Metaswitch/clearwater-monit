@@ -126,6 +126,7 @@ struct T {
         boolean_t accepted;
         boolean_t allowSelfSignedCertificates;
         Ssl_Version version;
+        Hash_Type checksumType;
         int socket;
         int minimumValidDays;
         SSL *handler;
@@ -221,23 +222,36 @@ static int _checkExpiration(T C, X509_STORE_CTX *ctx, X509 *certificate) {
 
 static int _checkChecksum(T C, X509_STORE_CTX *ctx, X509 *certificate) {
         if (X509_STORE_CTX_get_error_depth(ctx) == 0 && *C->checksum) {
-                if (! (Run.flags & Run_FipsEnabled)) {
-                        unsigned int len, i = 0;
-                        unsigned char md5[EVP_MAX_MD_SIZE];
-                        X509_digest(certificate, EVP_md5(), md5, &len);
-                        while ((i < len) && (C->checksum[2 * i] != '\0') && (C->checksum[2 * i + 1] != '\0')) {
-                                unsigned char c = (C->checksum[2 * i] > 57 ? C->checksum[2 * i] - 87 : C->checksum[2 * i] - 48) * 0x10 + (C->checksum[2 * i + 1] > 57 ? C->checksum[2 * i + 1] - 87 : C->checksum[2 * i + 1] - 48);
-                                if (c != md5[i]) {
+                unsigned int len, i = 0;
+                unsigned char checksum[EVP_MAX_MD_SIZE];
+                const EVP_MD *hash = NULL;
+                switch (C->checksumType) {
+                        case Hash_Md5:
+                                if (Run.flags & Run_FipsEnabled) {
                                         X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
-                                        snprintf(C->error, sizeof(C->error), "SSL server certificate checksum failed");
+                                        snprintf(C->error, sizeof(C->error), "SSL certificate MD5 checksum is not supported in FIPS mode, please use SHA1");
                                         return 0;
+                                } else {
+                                        hash = EVP_md5();
                                 }
-                                i++;
+                                break;
+                        case Hash_Sha1:
+                                hash = EVP_sha1();
+                                break;
+                        default:
+                                X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
+                                snprintf(C->error, sizeof(C->error), "Invalid SSL certificate checksum type (0x%x)", C->checksumType);
+                                return 0;
+                }
+                X509_digest(certificate, hash, checksum, &len);
+                while ((i < len) && (C->checksum[2 * i] != '\0') && (C->checksum[2 * i + 1] != '\0')) {
+                        unsigned char c = (C->checksum[2 * i] > 57 ? C->checksum[2 * i] - 87 : C->checksum[2 * i] - 48) * 0x10 + (C->checksum[2 * i + 1] > 57 ? C->checksum[2 * i + 1] - 87 : C->checksum[2 * i + 1] - 48);
+                        if (c != checksum[i]) {
+                                X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
+                                snprintf(C->error, sizeof(C->error), "SSL server certificate checksum failed");
+                                return 0;
                         }
-                } else {
-                        X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
-                        snprintf(C->error, sizeof(C->error), "SSL certificate checksum skipped -- MD5 not supported in FIPS mode");
-                        return 0;
+                        i++;
                 }
         }
         return 1;
@@ -389,7 +403,7 @@ void Ssl_setFipsMode(boolean_t enabled) {
 }
 
 
-T Ssl_new(Ssl_Version version, const char *clientpem) {
+T Ssl_new(Ssl_Version version, const char *CACertificatePath, const char *clientpem) {
         T C;
         NEW(C);
         C->version = version;
@@ -445,10 +459,16 @@ T Ssl_new(Ssl_Version version, const char *clientpem) {
                 LogError("SSL: client context initialization failed -- %s\n", SSLERROR);
                 goto sslerror;
         }
+        if (CACertificatePath) {
+                if (! SSL_CTX_load_verify_locations(C->ctx, NULL, CACertificatePath)) {
+                        LogError("SSL: CA certificates path %s loading failed -- %s\n", CACertificatePath, SSLERROR);
+                        goto sslerror;
+                }
+        } else {
+                SSL_CTX_set_default_verify_paths(C->ctx);
+        }
         if (clientpem && ! _setClientCertificate(C, clientpem))
                 goto sslerror;
-        SSL_CTX_set_default_verify_paths(C->ctx);
-        SSL_CTX_set_verify(C->ctx, SSL_VERIFY_PEER, _verifyServerCertificates);
         if (version == SSL_Auto)
                 SSL_CTX_set_options(C->ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
 #ifdef SSL_OP_NO_COMPRESSION
@@ -607,6 +627,13 @@ int Ssl_read(T C, void *b, int size, int timeout) {
 }
 
 
+void Ssl_setVerifyCertificates(T C, boolean_t verify) {
+        ASSERT(C);
+        if (verify)
+                SSL_set_verify(C->handler, SSL_VERIFY_PEER, _verifyServerCertificates);
+}
+
+
 void Ssl_setAllowSelfSignedCertificates(T C, boolean_t allow) {
         ASSERT(C);
         C->allowSelfSignedCertificates = allow;
@@ -619,12 +646,40 @@ void Ssl_setCertificateMinimumValidDays(T C, int days) {
 }
 
 
-void Ssl_setCertificateChecksum(T C, const char *checksum) {
+void Ssl_setCertificateChecksum(T C, short type, const char *checksum) {
         ASSERT(C);
-        if (checksum)
+        if (checksum) {
+                C->checksumType = type;
                 snprintf(C->checksum, sizeof(C->checksum), "%s", checksum);
-        else
+        } else {
+                C->checksumType = Hash_Unknown;
                 *C->checksum = 0;
+        }
+}
+
+
+char *Ssl_printOptions(SslOptions_T *options, char *b, int size) {
+        ASSERT(b);
+        ASSERT(size > 0);
+        *b = 0;
+        if (options->use_ssl) {
+                int count = 0;
+                if (options->version != -1)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sversion %s", count++ ? ", " : "", sslnames[options->version]);
+                if (options->verify == true)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sverify certificates", count++ ? ", " : "");
+                if (options->allowSelfSigned == true)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sallow self signed certificates", count++ ? ", " : "");
+                if (options->minimumValidDays != -1)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%swarn %d days before expiry", count++ ? ", " : "", options->minimumValidDays);
+                if (options->checksum)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%scertificate checksum %s(%s)", count++ ? ", " : "", checksumnames[options->checksumType], options->checksum);
+                if (options->clientpemfile)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sclient certificate path %s", count ++ ? ", " : "", options->clientpemfile);
+                if (options->CACertificatePath)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sCA certificates directory path %s", count ++ ? ", " : "", options->CACertificatePath);
+        }
+        return b;
 }
 
 

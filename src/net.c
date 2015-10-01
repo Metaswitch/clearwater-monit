@@ -383,7 +383,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                 default:
                         break;
         }
-        while (Net_canRead(socket, read_timeout)) {
+        while (Net_canRead(socket, read_timeout) && ! (Run.flags & Run_Stopped)) {
                 long long stopped = Time_milli();
                 struct sockaddr_storage in_addr;
                 socklen_t addrlen = sizeof(in_addr);

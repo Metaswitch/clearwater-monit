@@ -158,6 +158,13 @@ void gc_event(Event_T *e) {
 /* ----------------------------------------------------------------- Private */
 
 
+static void _gcssloptions(SslOptions_T *o) {
+        FREE(o->checksum);
+        FREE(o->clientpemfile);
+        FREE(o->CACertificatePath);
+}
+
+
 static void _gc_service_list(Service_T *s) {
         ASSERT(s&&*s);
         if ((*s)->next)
@@ -311,11 +318,10 @@ static void _gc_mail_server(MailServer_T *s) {
                 return;
         if ((*s)->next)
                 _gc_mail_server(&(*s)->next);
+        _gcssloptions(&((*s)->ssl));
         FREE((*s)->host);
         FREE((*s)->username);
         FREE((*s)->password);
-        FREE((*s)->ssl.certmd5);
-        FREE((*s)->ssl.clientpemfile);
         FREE(*s);
 }
 
@@ -344,12 +350,10 @@ static void _gcportlist(Port_T *p) {
                 _gc_eventaction(&(*p)->action);
         if ((*p)->url_request)
                 _gc_request(&(*p)->url_request);
-        if ((*p)->family == Socket_Unix) {
+        if ((*p)->family == Socket_Unix)
                 FREE((*p)->target.unix.pathname);
-        } else {
-                FREE((*p)->target.net.SSL.certmd5);
-                FREE((*p)->target.net.SSL.clientpemfile);
-        }
+        else
+                _gcssloptions(&((*p)->target.net.ssl));
         FREE((*p)->hostname);
         if ((*p)->protocol->check == check_http) {
                 FREE((*p)->parameters.http.request);
@@ -618,8 +622,7 @@ static void _gc_mmonit(Mmonit_T *recv) {
         if ((*recv)->next)
                 _gc_mmonit(&(*recv)->next);
         _gc_url(&(*recv)->url);
-        FREE((*recv)->ssl.certmd5);
-        FREE((*recv)->ssl.clientpemfile);
+        _gcssloptions(&((*recv)->ssl));
         FREE(*recv);
 }
 

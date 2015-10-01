@@ -546,7 +546,7 @@ static void _testIp(Port_T p) {
                         volatile T S = NULL;
                         TRY
                         {
-                                S = _createIpSocket(p->hostname, r->ai_addr, r->ai_addrlen, r->ai_family, r->ai_socktype, r->ai_protocol, p->target.net.SSL, p->timeout);
+                                S = _createIpSocket(p->hostname, r->ai_addr, r->ai_addrlen, r->ai_family, r->ai_socktype, r->ai_protocol, p->target.net.ssl, p->timeout);
                                 S->Port = p;
                                 p->protocol->check(S);
                                 is_available = true;
@@ -610,16 +610,34 @@ void Socket_test(void *P) {
 void Socket_enableSsl(T S, SslOptions_T ssl, const char *name)  {
         assert(S);
 #ifdef HAVE_OPENSSL
-        if ((S->ssl = Ssl_new(ssl.version, ssl.clientpemfile))) {
-                if (ssl.allowSelfCertification)
-                        Ssl_setAllowSelfSignedCertificates(S->ssl, true);
+        if ((S->ssl = Ssl_new(ssl.version != -1 ? ssl.version : Run.ssl.version != -1 ? Run.ssl.version : SSL_Auto, ssl.CACertificatePath ? ssl.CACertificatePath : Run.ssl.CACertificatePath ? Run.ssl.CACertificatePath : NULL, ssl.clientpemfile))) {
+                // Set SSL options with fallback to global SSL options
+
+                if (ssl.minimumValidDays > 0 || ssl.checksum)
+                        Ssl_setVerifyCertificates(S->ssl, true);
+                else if (ssl.verify != -1)
+                        Ssl_setVerifyCertificates(S->ssl, ssl.verify);
+                else if (Run.ssl.minimumValidDays > 0 || Run.ssl.checksum)
+                        Ssl_setVerifyCertificates(S->ssl, true);
+                else if (Run.ssl.verify != -1)
+                        Ssl_setVerifyCertificates(S->ssl, Run.ssl.verify);
+
+                if (ssl.allowSelfSigned != -1)
+                        Ssl_setAllowSelfSignedCertificates(S->ssl, ssl.allowSelfSigned);
+                else if (Run.ssl.allowSelfSigned != -1)
+                        Ssl_setAllowSelfSignedCertificates(S->ssl, Run.ssl.allowSelfSigned);
+
                 if (ssl.minimumValidDays > 0)
                         Ssl_setCertificateMinimumValidDays(S->ssl, ssl.minimumValidDays);
-                if (ssl.certmd5)
-                        Ssl_setCertificateChecksum(S->ssl, ssl.certmd5);
+                else if (Run.ssl.minimumValidDays > 0)
+                        Ssl_setCertificateMinimumValidDays(S->ssl, Run.ssl.minimumValidDays);
+
+                if (ssl.checksum)
+                        Ssl_setCertificateChecksum(S->ssl, ssl.checksumType, ssl.checksum);
+                else if (Run.ssl.checksum)
+                        Ssl_setCertificateChecksum(S->ssl, Run.ssl.checksumType, Run.ssl.checksum);
+
                 Ssl_connect(S->ssl, S->socket, S->timeout, name);
-        } else {
-                THROW(AssertException, "Cannot create a SSL object");
         }
 #endif
 }

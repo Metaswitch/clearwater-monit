@@ -139,7 +139,6 @@ gigabyte    ("gigabyte"|"gigabytes"|"gb")("/s")?
 
 is                {/* EMPTY */}
 as                {/* EMPTY */}
-at                {/* EMPTY */}
 are               {/* EMPTY */}
 for               {/* EMPTY */}
 on(ly)?           {/* EMPTY */}
@@ -162,7 +161,6 @@ per               {/* EMPTY */}
 in                {/* EMPTY */}
 last              {/* EMPTY */}
 capacity          {/* EMPTY */}
-valid             {/* EMPTY */}
 certificate       {/* EMPTY */}
 
 {startarg}        { BEGIN(ARGUMENT_COND); return START; }
@@ -183,9 +181,12 @@ if                { return IF; }
 or                { return OR; }
 then              { return THEN; }
 failed            { return FAILED; }
-ssl               { return HTTPDSSL; }
+ssl               { return SSL; }
 enable            { return ENABLE; }
 disable           { return DISABLE; }
+verify            { return VERIFY; }
+expire            { return EXPIRE; }
+cacertificatepath { return CACERTIFICATEPATH; }
 set               { return SET; }
 daemon            { return DAEMON; }
 delay             { return DELAY; }
@@ -208,6 +209,7 @@ speed             { return SPEED; }
 total             { return TOTAL; }
 clientpemfile     { return CLIENTPEMFILE; }
 allowselfcertification  { return ALLOWSELFCERTIFICATION; }
+allowselfsigned   { return ALLOWSELFSIGNED; }
 certmd5           { return CERTMD5; }
 pemfile           { return PEMFILE; }
 init              { return INIT; }
@@ -279,7 +281,6 @@ radius            { return RADIUS; }
 memcache          { return MEMCACHE; }
 target            { return TARGET; }
 maxforward        { return MAXFORWARD; }
-minimum           { return MINIMUM; }
 mode              { return MODE; }
 active            { return ACTIVE; }
 passive           { return PASSIVE; }
@@ -317,6 +318,7 @@ sslv3             { return SSLV3; }
 tlsv1             { return TLSV1; }
 tlsv11            { return TLSV11; }
 tlsv12            { return TLSV12; }
+auto              { return AUTO; }
 sslauto           { return SSLAUTO; }
 inode(s)?         { return INODE; }
 space             { return SPACE; }

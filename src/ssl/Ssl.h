@@ -78,9 +78,11 @@ void Ssl_setFipsMode(boolean_t enabled);
 /**
  * Create a new SSL connection object
  * @param version An SSL version to use
+ * @param CACertificatePath Optional path to CA certificates directory
+ * @param clientpem Optional path to client certificate PEM file
  * @return a new SSL connection object or NULL if failed
  */
-T Ssl_new(Ssl_Version version);
+T Ssl_new(Ssl_Version version, const char *CACertificatePath, const char *clientpem);
 
 
 /**
@@ -132,12 +134,11 @@ int Ssl_read(T C, void *b, int size, int timeout);
 
 
 /**
- * Set client certificate.
+ * Set whether SSL server certificates should be verified.
  * @param C An SSL connection object
- * @param file Path to client PEM file
- * @exception AssertException if failed
+ * @param verify Boolean flag (true = verify, false = don't verify)
  */
-void Ssl_setClientCertificate(T C, char *file);
+void Ssl_setVerifyCertificates(T C, boolean_t verify);
 
 
 /**
@@ -157,11 +158,22 @@ void Ssl_setCertificateMinimumValidDays(T C, int days);
 
 
 /**
- * Check a peer certificate with a given MD5 checksum
+ * Check a peer certificate with a given checksum
  * @param C An SSL connection object
- * @param checksum Expected MD5 checksum in string format
+ * @param checksum Expected checksum in string format
+ * @param type Checksum type
  */
-void Ssl_setCertificateChecksum(T C, const char *checksum);
+void Ssl_setCertificateChecksum(T C, short type, const char *checksum);
+
+
+/**
+ * Print SSL options string representation to the given buffer.
+ * @param options SSL options object
+ * @param b A string buffer
+ * @param size The size of the buffer b
+ * @return Buffer with string represantation of SSL options
+ */
+char *Ssl_printOptions(SslOptions_T *options, char *b, int size);
 
 
 #undef T

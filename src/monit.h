@@ -110,8 +110,8 @@ typedef enum {
 #endif
 
 
-#include "Ssl.h"
 #include "SslOptions.h"
+#include "Ssl.h"
 
 
 // libmonit
@@ -566,7 +566,7 @@ typedef struct myport {
                         char *pathname;                  /**< Unix socket pathname */
                 } unix;
                 struct {
-                        SslOptions_T SSL;                      /**< SSL definition */
+                        SslOptions_T ssl;                      /**< SSL definition */
                         int port;                                 /**< Port number */
                 } net;
         } target;
@@ -1086,6 +1086,7 @@ struct myrun {
         } files;
         char *mygroup;                              /**< Group Name of the Service */
         MD_T id;                                              /**< Unique monit id */
+        SslOptions_T ssl;                                 /**< Default SSL options */
         int  polltime;        /**< In deamon mode, the sleeptime (sec) between run */
         int  startdelay;                    /**< the sleeptime (sec) after startup */
         int  facility;              /** The facility to use when running openlog() */
