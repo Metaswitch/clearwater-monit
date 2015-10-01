@@ -158,7 +158,8 @@ void spawn(Service_T S, command_t C, Event_T E) {
         pid = fork();
         if (pid < 0) {
                 LogError("Cannot fork a new process -- %s\n", STRERROR);
-                exit(1);
+                pthread_sigmask(SIG_SETMASK, &save, NULL);
+                return;
         }
 
         if (pid == 0) {
