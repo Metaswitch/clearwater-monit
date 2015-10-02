@@ -37,6 +37,9 @@ requested.
 Fixed: Issue #249: Implement hard dependency between services. If the service depends on
 some other service, it will not start until parent service check returns no errors.
 
+Fixed: Issue #254: The HTTP protocol test pauses monit for few seconds when content match
+is used and the server sends response using chunked encoding.
+
 Fixed: Issue #255: monit exited when program execution failed.
 
 Fixed: Compilation with SSL when SSLv3 is disabled in the SSL library.

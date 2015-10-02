@@ -271,6 +271,7 @@ void check_http(Socket_T socket) {
         StringBuffer_append(sb,
                             "GET %s HTTP/1.1\r\n"
                             "Accept: */*\r\n"
+                            "Connection: close\r\n"
                             "%s",
                             P->parameters.http.request ? P->parameters.http.request : "/",
                             get_auth_header(P, (char[STRLEN]){0}, STRLEN));
