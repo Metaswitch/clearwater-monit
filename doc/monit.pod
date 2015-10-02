@@ -2842,7 +2842,8 @@ Syntax:
 
 I<USERNAME> MySQL username (maximum 16 characters).
 
-I<PASSWORD> MySQL password.
+I<PASSWORD> MySQL password (special characters can be used, but for non-alphanumerics
+the password has to be quoted).
 
 The credentials are B<optional>. If no credentials are set, Monit will perform
 the test using anonymous login. That may cause authentication error to be logged
@@ -2862,7 +2863,7 @@ For example:
      stop program = "/sbin/stop mysql"
      if failed
         port 3306
-        protocol mysql username foo password bar
+        protocol mysql username "foo" password "bar"
      then alert
 
 or with unix-socket and OS X start/stop commands
@@ -2872,7 +2873,7 @@ or with unix-socket and OS X start/stop commands
      stop program = "/usr/local/mysql/support-files/mysql.server stop"
      if failed
         unixsocket /tmp/mysql.sock
-        protocol mysql username foo password bar
+        protocol mysql username "foo" password "bar"
      then alert
 
 
