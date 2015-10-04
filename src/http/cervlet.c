@@ -654,10 +654,6 @@ static void handle_action(HttpRequest req, HttpResponse res) {
                         send_error(req, res, SC_BAD_REQUEST, "Invalid action \"%s\"", action);
                         return;
                 }
-                if (s->doaction != Action_Ignored) {
-                        send_error(req, res, SC_SERVICE_UNAVAILABLE, "Other action already in progress -- please try again later");
-                        return;
-                }
                 s->doaction = doaction;
                 const char *token = get_parameter(req, "token");
                 if (token) {

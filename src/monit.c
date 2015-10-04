@@ -418,8 +418,6 @@ static void do_action(char **args) {
                                 }
                         } else if (IS(service, "all")) {
                                 for (Service_T s = servicelist; s; s = s->next) {
-                                        if (s->visited)
-                                                continue;
                                         if (! _control_service(s->name, action))
                                                 errors++;
                                 }
