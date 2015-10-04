@@ -239,7 +239,7 @@ static boolean_t _doStart(Service_T s) {
                 }
                 Util_monitorSet(s);
         } else {
-                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "'%s' failed to start -- could not start required services: '%s' (services %s depends on)", s->name, StringBuffer_toString(sb), s->name);
+                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s' (services %s depends on)", StringBuffer_toString(sb), s->name);
                 s->doaction = Action_Start;
         }
         StringBuffer_free(&sb);

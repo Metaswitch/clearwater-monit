@@ -1328,7 +1328,7 @@ State_Type check_program(Service_T s) {
                 rv = State_Failed;
                 Event_post(s, Event_Status, State_Failed, s->action_EXEC, "failed to execute '%s' -- %s", s->path, STRERROR);
         } else {
-                Event_post(s, Event_Status, State_Succeeded, s->action_EXEC, "'%s' program started", s->name);
+                Event_post(s, Event_Status, State_Succeeded, s->action_EXEC, "program started");
                 s->program->started = now;
         }
         return rv;
