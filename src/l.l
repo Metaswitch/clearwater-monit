@@ -209,11 +209,12 @@ speed             { return SPEED; }
 total             { return TOTAL; }
 clientpemfile     { return CLIENTPEMFILE; }
 allowselfcertification  { return ALLOWSELFCERTIFICATION; }
-allowselfsigned   { return ALLOWSELFSIGNED; }
+selfsigned        { return SELFSIGNED; }
 certmd5           { return CERTMD5; }
 pemfile           { return PEMFILE; }
 init              { return INIT; }
 allow             { return ALLOW; }
+reject            { return REJECTOPT; }
 read[-]?only      { return READONLY; }
 pidfile           { return PIDFILE; }
 idfile            { return IDFILE; }

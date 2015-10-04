@@ -209,7 +209,7 @@ static Digest_Type digesttype = Digest_Cleartext;
 static void  preparse();
 static void  postparse();
 static void  addmail(char *, Mail_T, Mail_T *);
-static Service_T createservice(Service_Type, char *, char *, boolean_t (*)(Service_T));
+static Service_T createservice(Service_Type, char *, char *, State_Type (*)(Service_T));
 static void  addservice(Service_T);
 static void  adddependant(char *);
 static void  addservicegroup(char *);
@@ -301,9 +301,9 @@ static int verifyMaxForward(int);
 }
 
 %token IF ELSE THEN OR FAILED
-%token SET LOGFILE FACILITY DAEMON SYSLOG MAILSERVER HTTPD ALLOW ADDRESS INIT
+%token SET LOGFILE FACILITY DAEMON SYSLOG MAILSERVER HTTPD ALLOW REJECTOPT ADDRESS INIT
 %token READONLY CLEARTEXT MD5HASH SHA1HASH CRYPT DELAY
-%token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION ALLOWSELFSIGNED VERIFY CACERTIFICATEPATH EXPIRE
+%token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CACERTIFICATEPATH EXPIRE
 %token INTERFACE LINK PACKET BYTEIN BYTEOUT PACKETIN PACKETOUT SPEED SATURATION UPLOAD DOWNLOAD TOTAL
 %token IDFILE STATEFILE SEND EXPECT EXPECTBUFFER CYCLE COUNT REMINDER
 %token PIDFILE START STOP PATHTOK
@@ -680,17 +680,17 @@ ssloptionlist   : /* EMPTY */
                 | ssloptionlist ssloption
                 ;
 
-ssloption       : VERIFY {
-                        sslset.verify = true;
-                  }
-                | VERIFY ENABLE {
+ssloption       : VERIFY ENABLE {
                         sslset.verify = true;
                   }
                 | VERIFY DISABLE {
                         sslset.verify = false;
                   }
-                | ALLOWSELFSIGNED {
+                | SELFSIGNED ALLOW {
                         sslset.allowSelfSigned = true;
+                  }
+                | SELFSIGNED REJECTOPT {
+                        sslset.allowSelfSigned = false;
                   }
                 | VERSIONOPT sslversion {
                         sslset.version = $<number>2;
@@ -2601,7 +2601,7 @@ static void postparse() {
  * Create a new service object and add any current objects to the
  * service list.
  */
-static Service_T createservice(Service_Type type, char *name, char *value, boolean_t (*check)(Service_T s)) {
+static Service_T createservice(Service_Type type, char *name, char *value, State_Type (*check)(Service_T s)) {
         ASSERT(name);
         ASSERT(value);
 

@@ -965,7 +965,7 @@ typedef struct myservice {
 
         /** Common parameters */
         char *name;                                  /**< Service descriptive name */
-        boolean_t (*check)(struct myservice *); /**< Service verification function */
+        State_Type (*check)(struct myservice *);/**< Service verification function */
         boolean_t visited; /**< Service visited flag, set if dependencies are used */
         Service_Type type;                             /**< Monitored service type */
         Monitor_State monitor;                             /**< Monitor state flag */
@@ -1213,15 +1213,15 @@ void  init_env();
 void  monit_http(Httpd_Action);
 boolean_t can_http();
 void set_signal_block(sigset_t *, sigset_t *);
-boolean_t check_process(Service_T);
-boolean_t check_filesystem(Service_T);
-boolean_t check_file(Service_T);
-boolean_t check_directory(Service_T);
-boolean_t check_remote_host(Service_T);
-boolean_t check_system(Service_T);
-boolean_t check_fifo(Service_T);
-boolean_t check_program(Service_T);
-boolean_t check_net(Service_T);
+State_Type check_process(Service_T);
+State_Type check_filesystem(Service_T);
+State_Type check_file(Service_T);
+State_Type check_directory(Service_T);
+State_Type check_remote_host(Service_T);
+State_Type check_system(Service_T);
+State_Type check_fifo(Service_T);
+State_Type check_program(Service_T);
+State_Type check_net(Service_T);
 int  check_URL(Service_T s);
 void status_xml(StringBuffer_T, Event_T, Level_Type, int, const char *);
 Handler_Type handle_mmonit(Event_T);

@@ -177,9 +177,9 @@ static Process_Status _waitProcessStop(int pid, long *timeout) {
 }
 
 
-static boolean_t _check(Service_T s) {
+static State_Type _check(Service_T s) {
         ASSERT(s);
-        boolean_t rv = true;
+        State_Type rv = State_Succeeded;
         // The check is performed in passive mode - we want to just check, nested start/stop/restart action is unwanted (alerts are allowed so the user will get feedback what's wrong)
         Monitor_Mode original = s->mode;
         s->mode = Monitor_Passive;
@@ -213,7 +213,7 @@ static boolean_t _doStart(Service_T s) {
                         Service_T parent = Util_getService(d->dependant);
                         ASSERT(parent);
                         if (parent->monitor != Monitor_Yes || parent->error) {
-                                if (! _doStart(parent) || ! _check(parent)) {
+                                if (! _doStart(parent) || _check(parent) == State_Failed) {
                                         rv = false;
                                         StringBuffer_append(sb, "%s%s", StringBuffer_length(sb) ? ", " : "", parent->name);
                                 }
