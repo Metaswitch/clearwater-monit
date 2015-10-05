@@ -690,10 +690,6 @@ static void handle_do_action(HttpRequest req, HttpResponse res) {
                                         send_error(req, res, SC_BAD_REQUEST, "There is no service named \"%s\"", p->value ? p->value : "");
                                         return;
                                 }
-                                if (s->doaction != Action_Ignored) {
-                                        send_error(req, res, SC_SERVICE_UNAVAILABLE, "Other action already in progress -- please try again later");
-                                        return;
-                                }
                                 s->doaction = doaction;
                                 LogInfo("'%s' %s on user request\n", s->name, action);
                         }

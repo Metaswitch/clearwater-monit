@@ -402,28 +402,25 @@ static void do_action(char **args) {
                    IS(action, "unmonitor") ||
                    IS(action, "restart")) {
                 if (Run.mygroup || service) {
-                        int errors = 0;
-                        boolean_t (*_control_service)(const char *, const char *) = exist_daemon() ? control_service_daemon : control_service_string;
-
+                        List_T services = List_new();
                         if (Run.mygroup) {
                                 for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                                         if (IS(Run.mygroup, sg->name)) {
                                                 for (list_t m = sg->members->head; m; m = m->next) {
                                                         Service_T s = m->e;
-                                                        if (! _control_service(s->name, action))
-                                                                errors++;
+                                                        List_append(services, s->name);
                                                 }
                                                 break;
                                         }
                                 }
                         } else if (IS(service, "all")) {
-                                for (Service_T s = servicelist; s; s = s->next) {
-                                        if (! _control_service(s->name, action))
-                                                errors++;
-                                }
+                                for (Service_T s = servicelist; s; s = s->next)
+                                        List_append(services, s->name);
                         } else {
-                                errors = _control_service(service, action) ? 0 : 1;
+                                List_append(services, service);
                         }
+                        int errors = exist_daemon() ? control_service_daemon(services, action) : control_service_string(services, action);
+                        List_free(&services);
                         if (errors)
                                 exit(1);
                 } else {

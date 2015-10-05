@@ -402,20 +402,19 @@ static boolean_t _doDepend(Service_T s, Action_Type action, boolean_t unmonitor)
 
 
 /**
- * Pass on to methods in http/cervlet.c to start/stop services
- * @param S A service name as stated in the config file
+ * Pass the action for given services list to a monit daemon via HTTP interface
+ * @param services A services list
  * @param action A string describing the action to execute
- * @return false for error, otherwise true
+ * @return number of errors
  */
-boolean_t control_service_daemon(const char *S, const char *action) {
-        ASSERT(S);
+boolean_t control_service_daemon(List_T services, const char *action) {
+        ASSERT(services);
         ASSERT(action);
         if (Util_getAction(action) == Action_Ignored) {
-                LogError("Cannot %s service '%s' -- invalid action %s\n", action, S, action);
-                return false;
+                LogError("Invalid action %s\n", action);
+                return 1;
         }
         Socket_T socket = NULL;
-        boolean_t rv = false;
         if (Run.httpd.flags & Httpd_Net)
                 // FIXME: Monit HTTP support IPv4 only currently ... when IPv6 is implemented change the family to Socket_Ip
                 socket = Socket_create(Run.httpd.socket.net.address ? Run.httpd.socket.net.address : "localhost", Run.httpd.socket.net.port, Socket_Tcp, Socket_Ip4, (SslOptions_T){.use_ssl = Run.httpd.flags & Httpd_Ssl, .clientpemfile = Run.httpd.socket.net.ssl.clientpem, .allowSelfSigned = Run.httpd.flags & Httpd_AllowSelfSignedCertificates}, NET_TIMEOUT);
@@ -424,87 +423,96 @@ boolean_t control_service_daemon(const char *S, const char *action) {
         else
                 LogError("Action %s not possible - monit http interface is not enabled, please add the 'set httpd' statement\n", action);
         if (! socket)
-                return false;
+                return 1;
+
+        /* Prepare request */
+        StringBuffer_T sb = StringBuffer_create(64);
+        StringBuffer_append(sb, "action=%s", action);
+        for (list_t s = services->head; s; s = s->next)
+                StringBuffer_append(sb, "&service=%s", s->e);
 
         /* Send request */
+        int errors = 0;
         char *auth = Util_getBasicAuthHeaderMonit();
         if (Socket_print(socket,
-                         "POST /%s HTTP/1.0\r\n"
+                         "POST /_doaction HTTP/1.0\r\n"
                          "Content-Type: application/x-www-form-urlencoded\r\n"
-                         "Content-Length: %lu\r\n"
+                         "Content-Length: %d\r\n"
                          "%s"
                          "\r\n"
-                         "action=%s",
-                         S,
-                         (unsigned long)(strlen("action=") + strlen(action)),
+                         "%s",
+                         StringBuffer_length(sb),
                          auth ? auth : "",
-                         action) < 0)
+                         StringBuffer_toString(sb)) < 0)
         {
+                errors++;
                 LogError("Cannot send the command '%s' to the monit daemon -- %s\n", action ? action : "null", STRERROR);
-                goto err1;
+                goto err;
         }
 
         /* Process response */
         char buf[STRLEN];
         if (! Socket_readLine(socket, buf, STRLEN)) {
+                errors++;
                 LogError("Error receiving data -- %s\n", STRERROR);
-                goto err1;
+                goto err;
         }
         Str_chomp(buf);
         int status;
         if (! sscanf(buf, "%*s %d", &status)) {
+                errors++;
                 LogError("Cannot parse status in response: %s\n", buf);
-                goto err1;
+                goto err;
         }
         if (status >= 300) {
-                char *message = NULL;
+                errors++;
                 int content_length = 0;
-
-                /* Skip headers */
                 while (Socket_readLine(socket, buf, STRLEN)) {
                         if (! strncmp(buf, "\r\n", sizeof(buf)))
                                 break;
                         if (Str_startsWith(buf, "Content-Length") && ! sscanf(buf, "%*s%*[: ]%d", &content_length))
-                                goto err1;
+                                goto err;
                 }
+                char *message = NULL;
                 if (content_length > 0 && content_length < 1024 && Socket_readLine(socket, buf, STRLEN)) {
                         char token[] = "</h2>";
-                        char *p = strstr(buf, token);
-                        if (strlen(p) <= strlen(token))
-                                goto err2;
-                        p += strlen(token);
-                        message = CALLOC(1, content_length + 1);
-                        snprintf(message, content_length + 1, "%s", p);
-                        if ((p = strstr(message, "<p>")) || (p = strstr(message, "<hr>")))
-                                *p = 0;
+                        message = strstr(buf, token);
+                        if (strlen(message) > strlen(token)) {
+                                message += strlen(token);
+                                char *footer = NULL;
+                                if ((footer = strstr(message, "<p>")) || (footer = strstr(message, "<hr>")))
+                                        *footer = 0;
+                        }
                 }
-        err2:
                 LogError("Action failed -- %s\n", message ? message : "unable to parse response");
-                FREE(message);
-        } else
-                rv = true;
-err1:
+        }
+err:
         FREE(auth);
+        StringBuffer_free(&sb);
         Socket_free(&socket);
-        return rv;
+        return errors;
 }
 
 
 /**
- * Check to see if we should try to start/stop service
- * @param S A service name as stated in the config file
- * @param A A string describing the action to execute
- * @return false for error, otherwise true
+ * Apply given action to the services list.
+ * @param services A services list
+ * @param action A string describing the action to execute
+ * @return number of errors
  */
-boolean_t control_service_string(const char *S, const char *A) {
-        Action_Type a;
-        ASSERT(S);
-        ASSERT(A);
-        if ((a = Util_getAction(A)) == Action_Ignored) {
-                LogError("Service '%s' -- invalid action %s\n", S, A);
-                return false;
+boolean_t control_service_string(List_T services, const char *action) {
+        ASSERT(services);
+        ASSERT(action);
+        Action_Type a = Util_getAction(action);
+        if (a == Action_Ignored) {
+                LogError("invalid action %s\n", action);
+                return 1;
         }
-        return control_service(S, a);
+        int errors = 0;
+        for (list_t s = services->head; s; s = s->next)
+                if (control_service(s->e, a) == false)
+                        errors++;
+        return errors;
 }
 
 

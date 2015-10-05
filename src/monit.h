@@ -1179,8 +1179,8 @@ extern char *sslnames[];
 
 boolean_t parse(char *);
 boolean_t control_service(const char *, Action_Type);
-boolean_t control_service_string(const char *, const char *);
-boolean_t control_service_daemon(const char *, const char *);
+boolean_t control_service_string(List_T, const char *);
+boolean_t control_service_daemon(List_T, const char *);
 void  spawn(Service_T, command_t, Event_T);
 boolean_t status(const char *, const char *, const char *);
 boolean_t log_init();
