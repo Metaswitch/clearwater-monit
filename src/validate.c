@@ -251,7 +251,7 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                                 } else {
                                         cpu = s->inf->priv.process.cpu_percent;
                                 }
-                                if (s->monitor & Monitor_Init || cpu < 0) {
+                                if (cpu < 0) {
                                         DEBUG("'%s' cpu usage check skipped (initializing)\n", s->name);
                                         return State_Init;
                                 } else if (Util_evalQExpression(r->operator, cpu, r->limit)) {
@@ -264,7 +264,7 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_CpuPercentTotal:
-                        if (s->monitor & Monitor_Init || s->inf->priv.process.total_cpu_percent < 0) {
+                        if (s->inf->priv.process.total_cpu_percent < 0) {
                                 DEBUG("'%s' total cpu usage check skipped (initializing)\n", s->name);
                                 return State_Init;
                         } else if (Util_evalQExpression(r->operator, s->inf->priv.process.total_cpu_percent, r->limit)) {
@@ -276,7 +276,7 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_CpuUser:
-                        if (s->monitor & Monitor_Init || systeminfo.total_cpu_user_percent < 0) {
+                        if (systeminfo.total_cpu_user_percent < 0) {
                                 DEBUG("'%s' cpu user usage check skipped (initializing)\n", s->name);
                                 return State_Init;
                         } else if (Util_evalQExpression(r->operator, systeminfo.total_cpu_user_percent, r->limit)) {
@@ -288,7 +288,7 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_CpuSystem:
-                        if (s->monitor & Monitor_Init || systeminfo.total_cpu_syst_percent < 0) {
+                        if (systeminfo.total_cpu_syst_percent < 0) {
                                 DEBUG("'%s' cpu system usage check skipped (initializing)\n", s->name);
                                 return State_Init;
                         } else if (Util_evalQExpression(r->operator, systeminfo.total_cpu_syst_percent, r->limit)) {
@@ -300,7 +300,7 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_CpuWait:
-                        if (s->monitor & Monitor_Init || systeminfo.total_cpu_wait_percent < 0) {
+                        if (systeminfo.total_cpu_wait_percent < 0) {
                                 DEBUG("'%s' cpu wait usage check skipped (initializing)\n", s->name);
                                 return State_Init;
                         } else if (Util_evalQExpression(r->operator, systeminfo.total_cpu_wait_percent, r->limit)) {
@@ -955,9 +955,7 @@ static boolean_t _incron(Service_T s, time_t now) {
 
 
 /**
- * Returns true if validation should be skiped for
- * this service in this cycle, otherwise false. Handle
- * every statement
+ * Returns true if validation should be skiped for this service in this cycle, otherwise false. Handle every statement
  */
 static boolean_t _checkSkip(Service_T s) {
         ASSERT(s);
@@ -980,6 +978,12 @@ static boolean_t _checkSkip(Service_T s) {
                 return true;
         }
         s->monitor &= ~Monitor_Waiting;
+        // Skip if parent is not initialized
+        for (Dependant_T d = s->dependantlist; d; d = d->next ) {
+                Service_T parent = Util_getService(d->dependant);
+                if (parent->monitor != Monitor_Yes)
+                        return true;
+        }
         return false;
 }
 
@@ -1030,11 +1034,11 @@ int validate() {
                 if (! _doScheduledAction(s) && s->monitor && ! _checkSkip(s)) {
                         _checkTimeout(s); // Can disable monitoring => need to check s->monitor again
                         if (s->monitor) {
-                                if (s->check(s) == State_Failed)
-                                        errors++;
-                                /* The monitoring may be disabled by some matching rule in s->check so we have to check again before setting to Monitor_Yes */
-                                if (s->monitor != Monitor_Not)
+                                State_Type state = s->check(s);
+                                if (state != State_Init && s->monitor != Monitor_Not) // The monitoring can be disabled by some matching rule in s->check so we have to check again before setting to Monitor_Yes
                                         s->monitor = Monitor_Yes;
+                                if (state == State_Failed)
+                                        errors++;
                         }
                         gettimeofday(&s->collected, NULL);
                 }
@@ -1321,6 +1325,8 @@ State_Type check_program(Service_T s) {
                         }
                 }
                 Process_free(&s->program->P);
+        } else {
+                rv = State_Init;
         }
         // Start program
         s->program->P = Command_execute(s->program->C);

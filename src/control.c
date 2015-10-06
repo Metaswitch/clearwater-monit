@@ -202,22 +202,23 @@ static State_Type _check(Service_T s) {
  * This is a post-fix recursive function for starting every service
  * that s depends on before starting s.
  * @param s A Service_T object
- * @return true if the service was stopped otherwise false
+ * @return true if the service was started otherwise false
  */
 static boolean_t _doStart(Service_T s) {
         ASSERT(s);
         boolean_t rv = true;
         StringBuffer_T sb = StringBuffer_create(64);
-        if (s->dependantlist) {
-                for (Dependant_T d = s->dependantlist; d; d = d->next ) {
-                        Service_T parent = Util_getService(d->dependant);
-                        ASSERT(parent);
-                        if (parent->monitor != Monitor_Yes || parent->error) {
-                                if (! _doStart(parent) || _check(parent) == State_Failed) {
-                                        rv = false;
-                                        StringBuffer_append(sb, "%s%s", StringBuffer_length(sb) ? ", " : "", parent->name);
-                                }
+        for (Dependant_T d = s->dependantlist; d; d = d->next ) {
+                Service_T parent = Util_getService(d->dependant);
+                ASSERT(parent);
+                if (parent->monitor != Monitor_Yes || parent->error) {
+                        if (_doStart(parent)) {
+                                State_Type state = _check(parent);
+                                if (state != State_Failed && state != State_Init)
+                                        continue;
                         }
+                        rv = false;
+                        StringBuffer_append(sb, "%s%s", StringBuffer_length(sb) ? ", " : "", parent->name);
                 }
         }
         if (rv) {
@@ -237,11 +238,11 @@ static boolean_t _doStart(Service_T s) {
                 } else {
                         LogDebug("'%s' start ignored -- method not defined\n", s->name);
                 }
-                Util_monitorSet(s);
         } else {
                 Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s' (services %s depends on)", StringBuffer_toString(sb), s->name);
-                s->doaction = Action_Start;
+                s->doaction = Action_Start; // Retry the start next cycle
         }
+        Util_monitorSet(s);
         StringBuffer_free(&sb);
         return rv;
 }
@@ -333,12 +334,10 @@ static boolean_t _doRestart(Service_T s) {
  */
 static void _doMonitor(Service_T s) {
         ASSERT(s);
-        if (s->dependantlist) {
-                for (Dependant_T d = s->dependantlist; d; d = d->next ) {
-                        Service_T parent = Util_getService(d->dependant);
-                        ASSERT(parent);
-                        _doMonitor(parent);
-                }
+        for (Dependant_T d = s->dependantlist; d; d = d->next ) {
+                Service_T parent = Util_getService(d->dependant);
+                ASSERT(parent);
+                _doMonitor(parent);
         }
         Util_monitorSet(s);
 }
@@ -367,6 +366,7 @@ static boolean_t _doDepend(Service_T s, Action_Type action, boolean_t unmonitor)
         for (Service_T child = servicelist; child; child = child->next) {
                 for (Dependant_T d = child->dependantlist; d; d = d->next) {
                         if (IS(d->dependant, s->name)) {
+                                child->doaction = Action_Ignored;
                                 if (action == Action_Start) {
                                         // (re)start children only if it's monitoring is enabled (we keep monitoring flag during restart, allowing to restore original pre-restart configuration)
                                         if (child->monitor != Monitor_Not && ! _doStart(child))
@@ -530,9 +530,7 @@ boolean_t control_service(const char *S, Action_Type A) {
                 LogError("Service '%s' -- doesn't exist\n", S);
                 return rv;
         }
-        if (s->doaction == A) {
-                s->doaction = Action_Ignored;
-        }
+        s->doaction = Action_Ignored;
         switch (A) {
                 case Action_Start:
                         rv = _doStart(s);
