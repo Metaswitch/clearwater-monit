@@ -1,8 +1,8 @@
-                     CHANGES version 5.15
+                     CHANGES version 5.15-beta
 
            This file summarizes changes made since 5.0
 
-Version 5.15
+Version 5.15-beta
 
 New: Added support for optional SSL certificates verification(trust and validity).
 As it was not enabled in previous monit versions, it is not enabled by default to not
