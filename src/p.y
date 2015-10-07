@@ -389,6 +389,7 @@ optproc         : start
                 | gid
                 | uptime
                 | connection
+                | connectionurl
                 | connectionunix
                 | actionrate
                 | alert
@@ -471,6 +472,7 @@ opthost         : start
                 | stop
                 | restart
                 | connection
+                | connectionurl
                 | icmp
                 | actionrate
                 | alert
@@ -647,11 +649,22 @@ mmonitlist      : mmonit credentials
                 | mmonitlist mmonit credentials
                 ;
 
-mmonit          : URLOBJECT nettimeout ssloptionlist { //FIXME: SSL
+mmonit          : URLOBJECT mmonitoptlist {
                         mmonitset.url = $<url>1;
-                        mmonitset.timeout = $<number>2;
                         addmmonit(&mmonitset);
                   }
+                ;
+
+mmonitoptlist : /* EMPTY */
+                | mmonitoptlist mmonitopt
+                ;
+
+mmonitopt       : TIMEOUT NUMBER SECOND {
+                        mmonitset.timeout = $<number>2 * 1000; // net timeout is in milliseconds internally
+                  }
+                | ssl
+                | sslversion
+                | certmd5
                 ;
 
 credentials     : /* EMPTY */
@@ -676,32 +689,41 @@ setssl          : SET SSL '{' ssloptionlist '}' {
                   }
                 ;
 
+ssl             : SSL {
+                        sslset.use_ssl = true;
+                  }
+                | SSL '{' ssloptionlist '}'
+                ;
+
 ssloptionlist   : /* EMPTY */
                 | ssloptionlist ssloption
                 ;
 
 ssloption       : VERIFY ENABLE {
+                        sslset.use_ssl = true;
                         sslset.verify = true;
                   }
                 | VERIFY DISABLE {
+                        sslset.use_ssl = true;
                         sslset.verify = false;
                   }
                 | SELFSIGNED ALLOW {
+                        sslset.use_ssl = true;
                         sslset.allowSelfSigned = true;
                   }
                 | SELFSIGNED REJECTOPT {
+                        sslset.use_ssl = true;
                         sslset.allowSelfSigned = false;
                   }
                 | VERSIONOPT sslversion {
-                        sslset.version = $<number>2;
-                  }
-                | sslversion { // Backward compatibility
-                        sslset.version = $<number>1;
+                        sslset.use_ssl = true;
                   }
                 | EXPIRE NUMBER DAY {
+                        sslset.use_ssl = true;
                         sslset.minimumValidDays = $<number>2;
                   }
                 | CHECKSUM STRING {
+                        sslset.use_ssl = true;
                         sslset.checksum = $<string>2;
                         switch (cleanup_hash_string(sslset.checksum)) {
                                 case 32:
@@ -715,62 +737,75 @@ ssloption       : VERIFY ENABLE {
                         }
                   }
                 | CHECKSUM MD5HASH STRING {
+                        sslset.use_ssl = true;
                         sslset.checksum = $<string>3;
                         if (cleanup_hash_string(sslset.checksum) != 32)
                                 yyerror2("Unknown checksum type: [%s] is not MD5", sslset.checksum);
                         sslset.checksumType = Hash_Md5;
                   }
                 | CHECKSUM SHA1HASH STRING {
+                        sslset.use_ssl = true;
                         sslset.checksum = $<string>3;
                         if (cleanup_hash_string(sslset.checksum) != 40)
                                 yyerror2("Unknown checksum type: [%s] is not SHA1", sslset.checksum);
                         sslset.checksumType = Hash_Sha1;
                   }
-                | CERTMD5 STRING { // Backward compatibility
-                        sslset.checksum = $<string>2;
-                        if (cleanup_hash_string(sslset.checksum) != 32)
-                                yyerror2("Checksum [%s] is not MD5", sslset.checksum);
-                        sslset.checksumType = Hash_Md5;
-                  }
                 | CACERTIFICATEPATH PATH {
+                        sslset.use_ssl = true;
                         sslset.CACertificatePath = $2;
                   }
                 ;
 
 sslversion      : SSLV2 {
-                        $<number>$ = SSL_V2;
+                        sslset.use_ssl = true;
+                        sslset.version = SSL_V2;
                   }
                 | SSLV3 {
-                        $<number>$ = SSL_V3;
+                        sslset.use_ssl = true;
+                        sslset.version = SSL_V3;
                   }
                 | TLSV1 {
-                        $<number>$ = SSL_TLSV1;
+                        sslset.use_ssl = true;
+                        sslset.version = SSL_TLSV1;
                   }
                 | TLSV11
                 {
 #ifndef HAVE_TLSV1_1
                         yyerror("Your SSL Library does not support TLS version 1.1");
 #endif
-                        $<number>$ = SSL_TLSV11;
+                        sslset.use_ssl = true;
+                        sslset.version = SSL_TLSV11;
                 }
                 | TLSV12
                 {
 #ifndef HAVE_TLSV1_2
                         yyerror("Your SSL Library does not support TLS version 1.2");
 #endif
-                        $<number>$ = SSL_TLSV12;
+                        sslset.use_ssl = true;
+                        sslset.version = SSL_TLSV12;
                 }
                 | SSLAUTO {
-                        $<number>$ = SSL_Auto;
+                        sslset.use_ssl = true;
+                        sslset.version = SSL_Auto;
                   }
                 | AUTO {
-                        $<number>$ = SSL_Auto;
+                        sslset.use_ssl = true;
+                        sslset.version = SSL_Auto;
+                  }
+                ;
+
+certmd5         : CERTMD5 STRING { // Backward compatibility
+                        sslset.use_ssl = true;
+                        sslset.checksum = $<string>2;
+                        if (cleanup_hash_string(sslset.checksum) != 32)
+                                yyerror2("Unknown checksum type: [%s] is not MD5", sslset.checksum);
+                        sslset.checksumType = Hash_Md5;
                   }
                 ;
 
 setmailservers  : SET MAILSERVER mailserverlist nettimeout hostname {
                    if (($<number>4) > SMTP_TIMEOUT)
-                     Run.mailserver_timeout = $<number>4;
+                        Run.mailserver_timeout = $<number>4;
                    Run.mail_hostname = $<string>5;
                   }
                 ;
@@ -788,7 +823,7 @@ mailserverlist  : mailserver
                 | mailserverlist mailserver
                 ;
 
-mailserver      : STRING mailserveroptlist ssloptionlist { //FIXME: ssl
+mailserver      : STRING mailserveroptlist {
                         /* Restore the current text overriden by lookahead */
                         FREE(argyytext);
                         argyytext = Str_dup($1);
@@ -797,7 +832,7 @@ mailserver      : STRING mailserveroptlist ssloptionlist { //FIXME: ssl
                         mailserverset.port = PORT_SMTP;
                         addmailserver(&mailserverset);
                   }
-                | STRING PORT NUMBER mailserveroptlist ssloptionlist { //FIXME: ssl
+                | STRING PORT NUMBER mailserveroptlist {
                         /* Restore the current text overriden by lookahead */
                         FREE(argyytext);
                         argyytext = Str_dup($1);
@@ -818,6 +853,9 @@ mailserveropt   : username {
                 | password {
                         mailserverset.password = $<string>1;
                   }
+                | ssl
+                | sslversion
+                | certmd5
                 ;
 
 sethttpd        : SET HTTPD PORT NUMBER httpdnetlist {
@@ -834,7 +872,7 @@ httpdnetlist    : /* EMPTY */
                 | httpdnetlist httpdnetoption
                 ;
 
-httpdnetoption  : ssl
+httpdnetoption  : sslserver
                 | signature
                 | bindaddress
                 | allow
@@ -848,7 +886,7 @@ httpdunixoption : signature
                 | allow
                 ;
 
-ssl             : ssldisable optssllist {
+sslserver       : ssldisable optssllist {
                         Run.httpd.flags &= ~Httpd_Ssl;
                   }
                 | sslenable optssllist {
@@ -1165,30 +1203,59 @@ hostname        : /* EMPTY */     {
                   }
                 ;
 
-connection      : IF FAILED host port ip type ssloptionlist protocol urloption nettimeout retry rate1 THEN action1 recovery { //FIXME: handle ssloptionlist and make it position independent
-                    portset.timeout = $<number>10;
-                    portset.retry = $<number>11;
+connection      : IF FAILED host port connectionoptlist rate1 THEN action1 recovery {
                     /* This is a workaround to support content match without having to create an URL object. 'urloption' creates the Request_T object we need minus the URL object, but with enough information to perform content test.
                      TODO: Parser is in need of refactoring */
                     portset.url_request = urlrequest;
-                    addeventaction(&(portset).action, $<number>14, $<number>15);
-                    addport(&(current->portlist), &portset);
-                  }
-                | IF FAILED URL URLOBJECT urloption ssloptionlist nettimeout retry rate1 THEN action1 recovery { //FIXME: handle ssloptionlist and make it position independent
-                    prepare_urlrequest($<url>4);
-                    portset.timeout = $<number>7;
-                    portset.retry = $<number>8;
-                    addeventaction(&(portset).action, $<number>11, $<number>12);
+                    addeventaction(&(portset).action, $<number>8, $<number>9);
                     addport(&(current->portlist), &portset);
                   }
                 ;
 
-connectionunix  : IF FAILED unixsocket type protocol nettimeout retry rate1 THEN action1 recovery {
-                        portset.timeout = $<number>6;
-                        portset.retry = $<number>7;
-                        addeventaction(&(portset).action, $<number>10, $<number>11);
+connectionoptlist : /* EMPTY */
+                | connectionoptlist connectionopt
+                ;
+
+connectionopt   : ip
+                | type
+                | protocol
+                | urloption
+                | connectiontimeout
+                | retry
+                | ssl
+                ;
+
+connectionurl   : IF FAILED URL URLOBJECT connectionurloptlist rate1 THEN action1 recovery {
+                    prepare_urlrequest($<url>4);
+                    addeventaction(&(portset).action, $<number>8, $<number>9);
+                    addport(&(current->portlist), &portset);
+                  }
+                ;
+
+connectionurloptlist : /* EMPTY */
+                | connectionurloptlist connectionurlopt
+                ;
+
+connectionurlopt : urloption
+                 | connectiontimeout
+                 | retry
+                 | ssl
+                 ;
+
+connectionunix  : IF FAILED unixsocket connectionuxoptlist rate1 THEN action1 recovery {
+                        addeventaction(&(portset).action, $<number>7, $<number>8);
                         addport(&(current->socketlist), &portset);
                   }
+                ;
+
+connectionuxoptlist : /* EMPTY */
+                | connectionuxoptlist connectionuxopt
+                ;
+
+connectionuxopt : type
+                | protocol
+                | connectiontimeout
+                | retry
                 ;
 
 icmp            : IF FAILED ICMP icmptype icmpcount nettimeout rate1 THEN action1 recovery {
@@ -1244,10 +1311,7 @@ unixsocket      : UNIXSOCKET PATH {
                   }
                 ;
 
-ip              : /* EMPTY */ {
-                    portset.family = Socket_Ip;
-                  }
-                | IPV4 {
+ip              : IPV4 {
                     portset.family = Socket_Ip4;
                   }
                 | IPV6 {
@@ -1255,25 +1319,27 @@ ip              : /* EMPTY */ {
                   }
                 ;
 
-type            : /* EMPTY */ {
+type            : TYPE TCP {
                     portset.type = Socket_Tcp;
                   }
-                | TYPE TCP {
+                | TYPE TCPSSL typeoptlist { // The typelist is kept for backward compatibility (replaced by ssloptionlist)
                     portset.type = Socket_Tcp;
-                  }
-                | TYPE TCPSSL {
-                    portset.type = Socket_Tcp;
-                    portset.target.net.ssl.use_ssl = true;
+                    sslset.use_ssl = true;
                   }
                 | TYPE UDP {
                     portset.type = Socket_Udp;
                   }
                 ;
 
-protocol        : /* EMPTY */  {
-                        portset.protocol = Protocol_get(Protocol_DEFAULT);
-                  }
-                | PROTOCOL APACHESTATUS apache_stat_list {
+typeoptlist     : /* EMPTY */
+                | typeoptlist typeopt
+                ;
+
+typeopt         : sslversion
+                | certmd5
+                ;
+
+protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_APACHESTATUS);
                   }
                 | PROTOCOL DEFAULT {
@@ -1619,10 +1685,12 @@ nettimeout      : /* EMPTY */ {
                   }
                 ;
 
-retry           : /* EMPTY */ {
-                   $<number>$ = 1;
-                  }
-                | RETRY NUMBER {
+connectiontimeout : TIMEOUT NUMBER SECOND {
+                        portset.timeout = $<number>2 * 1000; // timeout is in milliseconds internally
+                    }
+                  ;
+
+retry           : RETRY NUMBER {
                    $<number>$ = $2;
                   }
                 ;
@@ -1641,8 +1709,7 @@ actionrate      : IF NUMBER RESTART NUMBER CYCLE THEN action1 {
                  }
                 ;
 
-urloption       : /* EMPTY */
-                | CONTENT urloperator STRING {
+urloption       : CONTENT urloperator STRING {
                     seturlrequest($<number>2, $<string>3);
                     FREE($3);
                   }
@@ -3447,8 +3514,7 @@ static void addeventaction(EventAction_T *_ea, Action_Type failed, Action_Type s
  */
 static void addgeneric(Port_T port, char *send, char *expect) {
         Generic_T g = port->parameters.generic.sendexpect;
-
-        if (g == NULL) {
+        if (! g) {
                 NEW(g);
                 port->parameters.generic.sendexpect = g;
         } else {
@@ -3457,13 +3523,11 @@ static void addgeneric(Port_T port, char *send, char *expect) {
                 NEW(g->next);
                 g = g->next;
         }
-
-        if (send != NULL) {
+        if (send) {
                 g->send = send;
                 g->expect = NULL;
-        } else if (expect != NULL) {
+        } else if (expect) {
 #ifdef HAVE_REGEX_H
-
                 int reg_return;
                 NEW(g->expect);
                 reg_return = regcomp(g->expect, expect, REG_NOSUB|REG_EXTENDED);
@@ -3584,6 +3648,7 @@ static void addmmonit(Mmonit_T mmonit) {
         Mmonit_T c;
         NEW(c);
         c->url = mmonit->url;
+        c->ssl.use_ssl = sslset.use_ssl;
         c->ssl.verify = sslset.verify;
         c->ssl.allowSelfSigned = sslset.allowSelfSigned;
         c->ssl.minimumValidDays = sslset.minimumValidDays;
@@ -3630,7 +3695,7 @@ static void addmailserver(MailServer_T mailserver) {
         s->username    = mailserver->username;
         s->password    = mailserver->password;
 
-        s->ssl.use_ssl = mailserver->ssl.use_ssl;
+        s->ssl.use_ssl = sslset.use_ssl;
         s->ssl.verify = sslset.verify;
         s->ssl.allowSelfSigned = sslset.allowSelfSigned;
         s->ssl.minimumValidDays = sslset.minimumValidDays;
@@ -3993,7 +4058,7 @@ static void reset_mailserverset() {
  */
 static void reset_mmonitset() {
         memset(&mmonitset, 0, sizeof(struct mymmonit));
-        mailserverset.port = 8080;
+        mmonitset.timeout = NET_TIMEOUT;
 }
 
 
@@ -4007,6 +4072,7 @@ static void reset_portset() {
         portset.family = Socket_Ip;
         portset.timeout = NET_TIMEOUT;
         portset.retry = 1;
+        portset.protocol = Protocol_get(Protocol_DEFAULT);
         urlrequest = NULL;
 }
 
