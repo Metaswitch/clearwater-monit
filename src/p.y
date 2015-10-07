@@ -1232,6 +1232,7 @@ connection      : IF FAILED host port connectionoptlist rate1 THEN action1 recov
 
 connectionoptlist : /* EMPTY */
                 | connectionoptlist connectionopt
+                | sendexpectlist
                 ;
 
 connectionopt   : ip
@@ -1272,6 +1273,7 @@ connectionunix  : IF FAILED unixsocket connectionuxoptlist rate1 THEN action1 re
 
 connectionuxoptlist : /* EMPTY */
                 | connectionuxoptlist connectionuxopt
+                | sendexpectlist
                 ;
 
 connectionuxopt : type
@@ -1472,12 +1474,11 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                 | PROTOCOL WEBSOCKET websocketlist {
                         portset.protocol = Protocol_get(Protocol_WEBSOCKET);
                   }
-                | sendexpectlist {
-                        portset.protocol = Protocol_get(Protocol_GENERIC);
-                  }
                 ;
 
-sendexpectlist  : sendexpect
+sendexpectlist  : sendexpect {
+                        portset.protocol = Protocol_get(Protocol_GENERIC);
+                  }
                 | sendexpectlist sendexpect
                 ;
 
