@@ -813,9 +813,13 @@ void Util_printRunList() {
                 printf(" %-18s = ", "M/Monit(s)");
                 for (c = Run.mmonits; c; c = c->next) {
                         printf("%s with timeout %.0f seconds", c->url->url, c->timeout / 1000.);
+                        if (c->ssl.use_ssl)
+                                printf(" using SSL/TLS");
                         const char *options = Ssl_printOptions(&c->ssl, (char[STRLEN]){}, STRLEN);
                         if (options && *options)
-                                printf(" ssl options {%s}", options);
+                                printf(" with options {%s}", options);
+                        if (c->ssl.checksum)
+                                printf(" and certificate checksum %s equal to '%s'", checksumnames[c->ssl.checksumType], c->ssl.checksum);
                         if (c->url->user)
                                 printf(" using credentials");
                         if (c->next)
@@ -831,9 +835,13 @@ void Util_printRunList() {
                 printf(" %-18s = ", "Mail server(s)");
                 for (mta = Run.mailservers; mta; mta = mta->next) {
                         printf("%s:%d", mta->host, mta->port);
+                        if (mta->ssl.use_ssl)
+                                printf(" using SSL/TLS");
                         const char *options = Ssl_printOptions(&mta->ssl, (char[STRLEN]){}, STRLEN);
                         if (options && *options)
-                                printf(" ssl options {%s}", options);
+                                printf(" with options {%s}", options);
+                        if (mta->ssl.checksum)
+                                printf(" and certificate checksum %s equal to '%s'", checksumnames[mta->ssl.checksumType], mta->ssl.checksum);
                         if (mta->next)
                                 printf(", ");
                 }
@@ -1050,36 +1058,24 @@ void Util_printService(Service_T s) {
         }
 
         for (Port_T o = s->portlist; o; o = o->next) {
-                StringBuffer_clear(buf);
-                const char *options = Ssl_printOptions(&o->target.net.ssl, (char[STRLEN]){}, STRLEN);
-                if (o->retry > 1) {
-                        printf(" %-20s = %s\n", "Port",
-                                StringBuffer_toString(
-                                        Util_printRule(buf, o->action,
-                                                "if failed [%s]:%d%s type %s/%s %s%s%s%sprotocol %s with timeout %.0f seconds and retry %d times",
-                                                o->hostname, o->target.net.port, Util_portRequestDescription(o),
-                                                Util_portTypeDescription(o), Util_portIpDescription(o),
-                                                o->target.net.ssl.use_ssl ? "SSL " : "",
-                                                (options && *options) ? "with options {" : "",
-                                                (options && *options) ? options : "",
-                                                (options && *options) ? "} " : "",
-                                                o->protocol->name,
-                                                o->timeout / 1000.,
-                                                o->retry)));
-                } else {
-                        printf(" %-20s = %s\n", "Port",
-                                StringBuffer_toString(
-                                        Util_printRule(buf, o->action,
-                                                "if failed [%s]:%d%s type %s/%s %s%s%s%sprotocol %s with timeout %.0f seconds",
-                                                o->hostname, o->target.net.port, Util_portRequestDescription(o),
-                                                Util_portTypeDescription(o), Util_portIpDescription(o),
-                                                o->target.net.ssl.use_ssl ? "SSL " : "",
-                                                (options && *options) ? "with options {" : "",
-                                                (options && *options) ? options : "",
-                                                (options && *options) ? "} " : "",
-                                                o->protocol->name,
-                                                o->timeout / 1000.)));
+                StringBuffer_T buf2 = StringBuffer_create(64);
+                StringBuffer_append(buf2, "if failed [%s]:%d%s type %s/%s protocol %s with timeout %.0f seconds",
+                        o->hostname, o->target.net.port, Util_portRequestDescription(o), Util_portTypeDescription(o), Util_portIpDescription(o), o->protocol->name, o->timeout / 1000.);
+                if (o->retry > 1)
+                        StringBuffer_append(buf2, " and retry %d times", o->retry);
+                if (o->target.net.ssl.use_ssl) {
+                        StringBuffer_append(buf2, " using SSL/TLS");
+                        const char *options = Ssl_printOptions(&o->target.net.ssl, (char[STRLEN]){}, STRLEN);
+                        if (options && *options)
+                                StringBuffer_append(buf2, " with options {%s}", options);
+                        if (o->target.net.ssl.minimumValidDays > 0)
+                                StringBuffer_append(buf2, " and certificate expire in more than %d days", o->target.net.ssl.minimumValidDays);
+                        if (o->target.net.ssl.checksum)
+                                StringBuffer_append(buf2, " and certificate checksum %s equal to '%s'", checksumnames[o->target.net.ssl.checksumType], o->target.net.ssl.checksum);
                 }
+                StringBuffer_clear(buf);
+                printf(" %-20s = %s\n", "Port", StringBuffer_toString(Util_printRule(buf, o->action, StringBuffer_toString(buf2))));
+                StringBuffer_free(&buf2);
         }
 
         for (Port_T o = s->socketlist; o; o = o->next) {

@@ -303,7 +303,7 @@ static int verifyMaxForward(int);
 %token IF ELSE THEN OR FAILED
 %token SET LOGFILE FACILITY DAEMON SYSLOG MAILSERVER HTTPD ALLOW REJECTOPT ADDRESS INIT
 %token READONLY CLEARTEXT MD5HASH SHA1HASH CRYPT DELAY
-%token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CACERTIFICATEPATH EXPIRE
+%token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CERTIFICATE CACERTIFICATEPATH EXPIRE
 %token INTERFACE LINK PACKET BYTEIN BYTEOUT PACKETIN PACKETOUT SPEED SATURATION UPLOAD DOWNLOAD TOTAL
 %token IDFILE STATEFILE SEND EXPECT EXPECTBUFFER CYCLE COUNT REMINDER
 %token PIDFILE START STOP PATHTOK
@@ -663,6 +663,7 @@ mmonitopt       : TIMEOUT NUMBER SECOND {
                         mmonitset.timeout = $<number>2 * 1000; // net timeout is in milliseconds internally
                   }
                 | ssl
+                | sslchecksum
                 | sslversion
                 | certmd5
                 ;
@@ -699,32 +700,48 @@ ssloptionlist   : /* EMPTY */
                 | ssloptionlist ssloption
                 ;
 
-ssloption       : VERIFY ENABLE {
+ssloption       : VERIFY ':' ENABLE {
                         sslset.use_ssl = true;
                         sslset.verify = true;
                   }
-                | VERIFY DISABLE {
+                | VERIFY ':' DISABLE {
                         sslset.use_ssl = true;
                         sslset.verify = false;
                   }
-                | SELFSIGNED ALLOW {
+                | SELFSIGNED ':' ALLOW {
                         sslset.use_ssl = true;
                         sslset.allowSelfSigned = true;
                   }
-                | SELFSIGNED REJECTOPT {
+                | SELFSIGNED ':' REJECTOPT {
                         sslset.use_ssl = true;
                         sslset.allowSelfSigned = false;
                   }
-                | VERSIONOPT sslversion {
+                | VERSIONOPT ':' sslversion {
                         sslset.use_ssl = true;
                   }
-                | EXPIRE NUMBER DAY {
+                | CLIENTPEMFILE ':' PATH {
                         sslset.use_ssl = true;
-                        sslset.minimumValidDays = $<number>2;
+                        sslset.clientpemfile = $3;
                   }
-                | CHECKSUM STRING {
+                | CACERTIFICATEPATH ':' PATH {
                         sslset.use_ssl = true;
-                        sslset.checksum = $<string>2;
+                        sslset.CACertificatePath = $3;
+                  }
+                ;
+
+sslexpire       : CERTIFICATE EXPIRE expireoperator NUMBER DAY {
+                        sslset.use_ssl = true;
+                        sslset.minimumValidDays = $<number>4;
+                  }
+                ;
+
+expireoperator  : /* EMPTY */
+                | GREATER
+                ;
+
+sslchecksum     : CERTIFICATE CHECKSUM checksumoperator STRING {
+                        sslset.use_ssl = true;
+                        sslset.checksum = $<string>4;
                         switch (cleanup_hash_string(sslset.checksum)) {
                                 case 32:
                                         sslset.checksumType = Hash_Md5;
@@ -736,25 +753,25 @@ ssloption       : VERIFY ENABLE {
                                         yyerror2("Unknown checksum type: [%s] is not MD5 nor SHA1", sslset.checksum);
                         }
                   }
-                | CHECKSUM MD5HASH STRING {
+                | CERTIFICATE CHECKSUM MD5HASH checksumoperator STRING {
                         sslset.use_ssl = true;
-                        sslset.checksum = $<string>3;
+                        sslset.checksum = $<string>5;
                         if (cleanup_hash_string(sslset.checksum) != 32)
                                 yyerror2("Unknown checksum type: [%s] is not MD5", sslset.checksum);
                         sslset.checksumType = Hash_Md5;
                   }
-                | CHECKSUM SHA1HASH STRING {
+                | CERTIFICATE CHECKSUM SHA1HASH checksumoperator STRING {
                         sslset.use_ssl = true;
-                        sslset.checksum = $<string>3;
+                        sslset.checksum = $<string>5;
                         if (cleanup_hash_string(sslset.checksum) != 40)
                                 yyerror2("Unknown checksum type: [%s] is not SHA1", sslset.checksum);
                         sslset.checksumType = Hash_Sha1;
                   }
-                | CACERTIFICATEPATH PATH {
-                        sslset.use_ssl = true;
-                        sslset.CACertificatePath = $2;
-                  }
                 ;
+
+checksumoperator : /* EMPTY */
+                 | EQUAL
+                 ;
 
 sslversion      : SSLV2 {
                         sslset.use_ssl = true;
@@ -854,6 +871,7 @@ mailserveropt   : username {
                         mailserverset.password = $<string>1;
                   }
                 | ssl
+                | sslchecksum
                 | sslversion
                 | certmd5
                 ;
@@ -1223,6 +1241,8 @@ connectionopt   : ip
                 | connectiontimeout
                 | retry
                 | ssl
+                | sslchecksum
+                | sslexpire
                 ;
 
 connectionurl   : IF FAILED URL URLOBJECT connectionurloptlist rate1 THEN action1 recovery {
@@ -1240,6 +1260,8 @@ connectionurlopt : urloption
                  | connectiontimeout
                  | retry
                  | ssl
+                 | sslchecksum
+                 | sslexpire
                  ;
 
 connectionunix  : IF FAILED unixsocket connectionuxoptlist rate1 THEN action1 recovery {
@@ -1358,16 +1380,16 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_HTTP);
                   }
                 | PROTOCOL HTTPS httplist {
+                        sslset.use_ssl = true;
                         portset.type = Socket_Tcp;
-                        portset.target.net.ssl.use_ssl = true;
                         portset.protocol = Protocol_get(Protocol_HTTP);
                  }
                 | PROTOCOL IMAP {
                         portset.protocol = Protocol_get(Protocol_IMAP);
                   }
                 | PROTOCOL IMAPS {
+                        sslset.use_ssl = true;
                         portset.type = Socket_Tcp;
-                        portset.target.net.ssl.use_ssl = true;
                         portset.protocol = Protocol_get(Protocol_IMAP);
                   }
                 | PROTOCOL CLAMAV {
@@ -1402,8 +1424,8 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_POP);
                   }
                 | PROTOCOL POPS {
+                        sslset.use_ssl = true;
                         portset.type = Socket_Tcp;
-                        portset.target.net.ssl.use_ssl = true;
                         portset.protocol = Protocol_get(Protocol_POP);
                   }
                 | PROTOCOL SIEVE {
@@ -1413,8 +1435,8 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_SMTP);
                   }
                 | PROTOCOL SMTPS {
+                        sslset.use_ssl = true;
                         portset.type = Socket_Tcp;
-                        portset.target.net.ssl.use_ssl = true;
                         portset.protocol = Protocol_get(Protocol_SMTP);
                  }
                 | PROTOCOL SSH  {
@@ -2879,7 +2901,7 @@ static void addport(Port_T *list, Port_T port) {
                 p->target.unix.pathname = port->target.unix.pathname;
         } else {
                 p->target.net.port = port->target.net.port;
-                if (port->target.net.ssl.use_ssl == true) {
+                if (sslset.use_ssl == true) {
 #ifdef HAVE_OPENSSL
                         p->target.net.ssl.use_ssl = true;
                         p->target.net.ssl.verify = sslset.verify;
@@ -3606,8 +3628,7 @@ static void prepare_urlrequest(URL_T U) {
         portset.type = Socket_Tcp;
         portset.parameters.http.request = Str_cat("%s%s%s", U->path, U->query ? "?" : "", U->query ? U->query : "");
         if (IS(U->protocol, "https"))
-                portset.target.net.ssl.use_ssl = true;
-
+                sslset.use_ssl = true;
 }
 
 

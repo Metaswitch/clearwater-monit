@@ -665,19 +665,15 @@ char *Ssl_printOptions(SslOptions_T *options, char *b, int size) {
         if (options->use_ssl) {
                 int count = 0;
                 if (options->version != -1)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sversion %s", count++ ? ", " : "", sslnames[options->version]);
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sversion: %s", count++ ? ", " : "", sslnames[options->version]);
                 if (options->verify == true)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sverify certificates", count++ ? ", " : "");
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sverify: enabled", count++ ? ", " : "");
                 if (options->allowSelfSigned == true)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sallow self signed certificates", count++ ? ", " : "");
-                if (options->minimumValidDays != -1)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%swarn %d days before expiry", count++ ? ", " : "", options->minimumValidDays);
-                if (options->checksum)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%scertificate checksum %s(%s)", count++ ? ", " : "", checksumnames[options->checksumType], options->checksum);
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sselfsigned: allowed", count++ ? ", " : "");
                 if (options->clientpemfile)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sclient certificate path %s", count ++ ? ", " : "", options->clientpemfile);
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sclientpemfile: %s", count ++ ? ", " : "", options->clientpemfile);
                 if (options->CACertificatePath)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sCA certificates directory path %s", count ++ ? ", " : "", options->CACertificatePath);
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sCACertificatePath: %s", count ++ ? ", " : "", options->CACertificatePath);
         }
         return b;
 }

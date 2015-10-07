@@ -109,7 +109,7 @@ number      [0-9]+
 real        [0-9]+([.][0-9]+)?
 str         [^\000-\041@:{}"';(),%]+
 hostname    {str}(\.{str})*
-greater     ("greater"|"gt"|">")
+greater     ("more"|"greater"|"gt"|">")
 less        ("less"|"lt"|"<")
 equal       ("equal"|"eq"|"=="|"=")
 notequal    ("notequal"|"ne"|"!=")
@@ -149,6 +149,7 @@ has               {/* EMPTY */}
 using             {/* EMPTY */}
 use               {/* EMPTY */}
 the               {/* EMPTY */}
+to                {/* EMPTY */}
 sum               {/* EMPTY */}
 than              {/* EMPTY */}
 usage             {/* EMPTY */}
@@ -161,7 +162,7 @@ per               {/* EMPTY */}
 in                {/* EMPTY */}
 last              {/* EMPTY */}
 capacity          {/* EMPTY */}
-certificate       {/* EMPTY */}
+option(s)         {/* EMPTY */}
 
 {startarg}        { BEGIN(ARGUMENT_COND); return START; }
 {stoparg}         { BEGIN(ARGUMENT_COND); return STOP; }
@@ -182,10 +183,12 @@ or                { return OR; }
 then              { return THEN; }
 failed            { return FAILED; }
 ssl               { return SSL; }
+tls               { return SSL; }
 enable            { return ENABLE; }
 disable           { return DISABLE; }
 verify            { return VERIFY; }
 expire            { return EXPIRE; }
+certificate       { return CERTIFICATE; }
 cacertificatepath { return CACERTIFICATEPATH; }
 set               { return SET; }
 daemon            { return DAEMON; }
