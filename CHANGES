@@ -120,7 +120,7 @@ Fixed: Compilation with SSL when SSLv3 is disabled in the SSL library.
 
 Fixed: Don't log error if SSL SNI is not supported by server.
 
-Fixed: SSL client certificate authentication.
+Fixed: SSL client certificate authentication for monit's HTTP interface.
 
 
 Version 5.14
