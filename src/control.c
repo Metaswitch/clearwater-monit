@@ -239,7 +239,7 @@ static boolean_t _doStart(Service_T s) {
                         LogDebug("'%s' start ignored -- method not defined\n", s->name);
                 }
         } else {
-                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s' (services %s depends on)", StringBuffer_toString(sb), s->name);
+                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s'", StringBuffer_toString(sb));
                 s->doaction = Action_Start; // Retry the start next cycle
         }
         Util_monitorSet(s);
