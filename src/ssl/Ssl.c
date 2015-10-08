@@ -273,7 +273,7 @@ static int _verifyServerCertificates(int preverify_ok, X509_STORE_CTX *ctx) {
                                         X509_STORE_CTX_set_error(ctx, X509_V_OK);
                                         return 1;
                                 }
-                                snprintf(C->error, sizeof(C->error), "self signed certificate is not allowed, please use a trusted certificate or use the 'allowselfcertification' option");
+                                snprintf(C->error, sizeof(C->error), "self signed certificate is not allowed, please use a trusted certificate or use the 'selfsigned: allow' SSL option");
                                 break;
                         default:
                                 break;
