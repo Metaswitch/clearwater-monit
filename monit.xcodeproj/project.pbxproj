@@ -812,10 +812,11 @@
 					$SRCROOT/libmonit/src/util,
 					/opt/local/include,
 				);
+				LIBRARY_SEARCH_PATHS = /opt/local/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
-				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util";
+				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util /opt/local/include";
 			};
 			name = Debug;
 		};
@@ -850,9 +851,10 @@
 					$SRCROOT/libmonit/src/util,
 					/opt/local/include,
 				);
+				LIBRARY_SEARCH_PATHS = /opt/local/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.6;
 				SDKROOT = macosx;
-				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util";
+				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util /opt/local/include";
 			};
 			name = Release;
 		};
