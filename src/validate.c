@@ -427,7 +427,7 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         LogError("'%s' error -- unknown resource ID: [%d]\n", s->name, r->resource_id);
                         return State_Failed;
         }
-        Event_post(s, Event_Resource, rv ? State_Succeeded : State_Failed, r->action, "%s", report);
+        Event_post(s, Event_Resource, rv, r->action, "%s", report);
         return rv;
 }
 
