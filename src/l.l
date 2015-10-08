@@ -162,7 +162,7 @@ per               {/* EMPTY */}
 in                {/* EMPTY */}
 last              {/* EMPTY */}
 capacity          {/* EMPTY */}
-option(s)         {/* EMPTY */}
+option(s)?        {/* EMPTY */}
 
 {startarg}        { BEGIN(ARGUMENT_COND); return START; }
 {stoparg}         { BEGIN(ARGUMENT_COND); return STOP; }
