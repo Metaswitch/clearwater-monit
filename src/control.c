@@ -429,7 +429,7 @@ boolean_t control_service_daemon(List_T services, const char *action) {
         StringBuffer_T sb = StringBuffer_create(64);
         StringBuffer_append(sb, "action=%s", action);
         for (list_t s = services->head; s; s = s->next)
-                StringBuffer_append(sb, "&service=%s", s->e);
+                StringBuffer_append(sb, "&service=%s", (char *)s->e);
 
         /* Send request */
         int errors = 0;
