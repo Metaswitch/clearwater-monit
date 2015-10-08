@@ -47,6 +47,16 @@ set logfile syslog
 #
 # set statefile /var/.monit.state
 #
+#
+## Set global SSL options (just most common options showed, see manual for
+## full list).
+#
+# set ssl {
+#     verify     : enable, # verify SSL certificates (disabled by default but STRONGLY RECOMMENDED)
+#     selfsigned : allow   # allow self signed SSL certificates (reject by default)
+# }
+#
+#
 ## Set the list of mail servers for alert delivery. Multiple servers may be 
 ## specified using a comma separator. If the first mail server fails, Monit 
 # will use the second mail server in the list and so on. By default Monit uses 
@@ -85,7 +95,7 @@ set logfile syslog
 ## statement is missing::
 ## --8<--
 ## set mail-format {
-##      from: monit@$HOST
+##   from:    monit@$HOST
 ##   subject: monit alert --  $EVENT $SERVICE
 ##   message: $EVENT Service $SERVICE
 ##                 Date:        $DATE
@@ -183,9 +193,7 @@ set httpd port 2812 and
 #    if failed host www.tildeslash.com port 80 protocol http 
 #       and request "/somefile.html"
 #    then restart
-#    if failed port 443 type tcpssl protocol http
-#       with timeout 15 seconds
-#    then restart
+#    if failed port 443 protocol https with timeout 15 seconds then restart
 #    if 3 restarts within 5 cycles then unmonitor
 #    depends on apache_bin
 #    group server
