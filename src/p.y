@@ -722,10 +722,22 @@ ssloption       : VERIFY ':' ENABLE {
                 | CLIENTPEMFILE ':' PATH {
                         sslset.use_ssl = true;
                         sslset.clientpemfile = $3;
+                        if (! File_exist(sslset.clientpemfile))
+                                yyerror2("SSL client PEM file doesn't exist");
+                        else if (! File_isFile(sslset.clientpemfile))
+                                yyerror2("SSL client PEM file is not a file");
+                        else if (! File_isReadable(sslset.clientpemfile))
+                                yyerror2("Cannot read SSL client PEM file");
                   }
                 | CACERTIFICATEPATH ':' PATH {
                         sslset.use_ssl = true;
                         sslset.CACertificatePath = $3;
+                        if (! File_exist(sslset.CACertificatePath))
+                                yyerror2("SSL CA certificates directory doesn't exist");
+                        else if (! File_isDirectory(sslset.CACertificatePath))
+                                yyerror2("SSL CA certificates path is not directory");
+                        else if (! File_isReadable(sslset.CACertificatePath))
+                                yyerror2("Cannot read CA certificates directory");
                   }
                 ;
 
