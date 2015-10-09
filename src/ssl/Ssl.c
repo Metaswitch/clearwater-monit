@@ -667,9 +667,9 @@ char *Ssl_printOptions(SslOptions_T *options, char *b, int size) {
                 if (options->version != -1)
                         snprintf(b + strlen(b), size - strlen(b) - 1, "%sversion: %s", count++ ? ", " : "", sslnames[options->version]);
                 if (options->verify == true)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sverify: enabled", count++ ? ", " : "");
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sverify: enable", count++ ? ", " : "");
                 if (options->allowSelfSigned == true)
-                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sselfsigned: allowed", count++ ? ", " : "");
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sselfsigned: allow", count++ ? ", " : "");
                 if (options->clientpemfile)
                         snprintf(b + strlen(b), size - strlen(b) - 1, "%sclientpemfile: %s", count ++ ? ", " : "", options->clientpemfile);
                 if (options->CACertificatePath)
