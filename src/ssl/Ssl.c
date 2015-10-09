@@ -213,7 +213,7 @@ static int _checkExpiration(T C, X509_STORE_CTX *ctx, X509 *certificate) {
 #endif
                 if (deltadays < C->minimumValidDays) {
                         X509_STORE_CTX_set_error(ctx, X509_V_ERR_APPLICATION_VERIFICATION);
-                        snprintf(C->error, sizeof(C->error), "the certificate will expire in %d days, please renew it", deltadays);
+                        snprintf(C->error, sizeof(C->error), "certificate expire in %d days matches check limit [expire > %d days]", deltadays, C->minimumValidDays);
                         return 0;
                 }
         }
