@@ -187,7 +187,7 @@ tls               { return SSL; }
 enable            { return ENABLE; }
 disable           { return DISABLE; }
 verify            { return VERIFY; }
-expire            { return EXPIRE; }
+expire(s)?        { return EXPIRE; }
 certificate       { return CERTIFICATE; }
 cacertificatepath { return CACERTIFICATEPATH; }
 set               { return SET; }

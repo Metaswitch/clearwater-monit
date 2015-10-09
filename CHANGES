@@ -34,7 +34,7 @@ a certificate expiration alert when the certificate is no longer valid.
   Syntax:
         CERTIFICATE EXPIRE <number> DAY(S)
   Example:
-        if failed port 443 protocol htps and certificate expire in 30 days then alert
+        if failed port 443 protocol https and certificate expire in 30 days then alert
 
 New: Extend the certificate checkum test with SHA1 hash type in addition to existing MD5.
 The checksum statement will automatically determine the cipher to use based on the hash
@@ -45,7 +45,11 @@ more verbose. The certificate checksum is supported also in the "set mmonit" and
   Syntax:
         CERTIFICATE CHECKSUM [MD5 | SHA1] <hash>
   Example:
-        if failed port 443 protocol https and certificate checksum equal to "1ED948A6F4258ACAB964227EF4EB19FCC453B0F8"
+        if failed
+                port 443
+                protocol https
+                and certificate checksum equal to "1ED948A6F4258ACAB964227EF4EB19FCC453B0F8"
+        then alert
 
 New: A new statement for setting global or local SSL/TLS options was added ("SSL" or "TLS" as an alias can be used).
   Syntax:

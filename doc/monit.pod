@@ -550,6 +550,80 @@ This will load any file matching the globstring. That is, all
 files in I</etc/monit.d> that ends with the prefix I<.cfg>.
 
 
+=head1 SSL OPTIONS
+
+You can set SSL/TLS options using an SSL statement (you can also use
+TLS instead of SSL for convenience).
+
+Syntax:
+
+    [SET] <SSL | TLS> [OPTIONS] {
+        VERSION:           <AUTO | SSLV2 | SSLV3 | TLSV1 | TLSV11 | TLSV12>
+        VERIFY:            <ENABLE | DISABLE>
+        SELFSIGNED:        <ALLOW | REJECT>
+        CLIENTPEMFILE:     <path>
+        CACERTIFICATEPATH: <path>
+    }
+
+I<VERSION> allows to set specific SSL/TLS version to use. By default Monit uses
+AUTO, which automatically selects the protocol to use. In AUTO mode, only TLS
+protocols family is used - if you need to use SSLv2 or SSLv3, you have to explicitly
+set the version to it (as it is considered obsolete from the security point of view).
+
+I<VERIFY> allows to enable SSL server certificate verification. If the certificate
+is not trusted, not valid yet or expired, Monit will report error. By default
+the certificate verification is disabled, we B<strongly recommend> to enable it.
+
+I<SELFSIGNED> by default self-signed certificates are rejected. You can allow self-signed
+certificates, but we recommend to do it only selectively in local context where you
+want to trust it.
+
+I<CLIENTPEMFILE> sets a path to SSL client certificates database in PEM file format.
+When an SSL server requires client certificate authentication, Monit will try to
+find a client certificate which corresponds to server's CA from this database and if
+found, it will use it for authentication.
+
+I<CACERTIFICATEPATH> sets a path to CA certificates directory. Monit uses OpenSSL's
+default directory if this options is not used (you can use "openssl version -d" command
+to get the default directory path).
+
+The SSL/TLS options statement can be used either globally (sets default for every SSL/TLS
+connection) or locally in the connection test, mailserver or mmonit statement context, which
+overrides or extend the global settings.
+
+To set the global SSL/TLS options, use this statement in the global context with a SET keyword:
+
+    set ssl options {...}
+
+Example of global and local SSL/TLS options:
+
+    set ssl options {
+            verify: enable
+    }
+
+    # verify certificates (via global setting), no self-signed certificates are trusted by default:
+    check host myhost1 with address www.myhost1.com
+            if failed
+                    port 443
+                    protocol https
+            then alert
+
+    # verify certificates (via global setting), self-signed certificates are trusted locally:
+    check host myhost2 with address www.myhost2.com
+            if failed
+                    port 443
+                    protocol https
+                    with ssl options {selfsigned: allow}
+            then alert
+
+    # do not verify certificates (override global setting)
+    check host myhost3 with address www.myhost3.com
+            if failed
+                    port 443
+                    protocol https
+                    with ssl options {verify: disable}
+            then alert
+
 
 =head1 MONIT HTTPD
 
@@ -1057,9 +1131,13 @@ The description of the error condition
 The mail server Monit should use to send alert messages is
 defined with a C<set mailserver> statement:
 
- SET MAILSERVER <hostname|ip-address [PORT number] [USERNAME string]
- [PASSWORD string] [using SSLAUTO|SSLV2|SSLV3|TLSV1|TLSV11|TLSV12]
- [CERTMD5 checksum]>, ...
+ SET MAILSERVER
+        <hostname|ip-address>
+        [PORT number]
+        [USERNAME string] [PASSWORD string]
+        [using SSL [with options {...}]
+        [CERTIFICATE CHECKSUM [MD5|SHA1] <hash>],
+        ...
    [with TIMEOUT X SECONDS]
    [using HOSTNAME hostname]
 
@@ -1074,7 +1152,8 @@ Monit supports AUTH PLAIN and AUTH LOGIN for SMTP authentication.
 You can set a username and a password using the USERNAME and
 PASSWORD options.
 
-You can enable SSL or TLS with optional certificate checksum.
+You can enable SSL/TLS with custom L<options|"SSL OPTIONS">. It is
+also possible to check a SSL certificate checksum.
 
 The default connection timeout is 5 seconds. You can rise this
 limit using the TIMEOUT option.
@@ -2458,6 +2537,9 @@ TCP/UDP port test syntax:
     <port>
     [ipversion]
     [type]
+    [ssl [with options {...}]]
+    [certificate checksum]
+    [certificate expire days]
     [protocol | {send/expect}+]
     [timeout]
     [retry]
@@ -2500,29 +2582,45 @@ multiple addresses are available and connection to one address failed,
 Monit will try the next address and so on until a connection succeed or
 until there are no more addresses left to try.
 
-I<type: TYPE {TCP|UDP|TCPSSL}>. Optionally specify the socket type
+I<type: TYPE [TCP | UDP]>. Optionally specify the socket type
 Monit should use when trying to connect to the port. The
-different socket types are; TCP, UDP or TCPSSL, where TCP is a
-regular stream based socket, UDP is a datagram socket and TCPSSL
-specifies that Monit should use a TCP socket with SSL when
-connecting to a port. The default socket type is TCP. If TCPSSL
-is used you may optionally specify the SSL/TLS protocol to be
-used and the MD5 checksum of the server's certificate.
+different socket types are: TCP or UDP, where TCP is a
+regular stream based socket, UDP is a datagram socket. The
+default socket type is TCP.
 
-The TCPSSL options are:
+I<ssl: [SSL | TLS] [with options {...}]>. Enable SSL/TLS. You can 
+set custom SSL/TLS L<options|"SSL OPTIONS">, such as SSL/TLS version
+to use, whether to verify certificates, trust self-signed certificates
+or set SSL client certificates database path for client certificates
+authentication.
 
- TCPSSL [SSLAUTO|SSLV2|SSLV3|TLSV1|TLSV11|TLSV12] [CERTMD5 md5sum]
+I<certificate checksum: CERTIFICATE CHECKSUM [MD5|SHA1] hash>. Verify the
+SSL server certificate by checking its checksum. You can use either MD5
+or SHA1 checksum (if you don't specify the type, Monit will determine the
+digest based on the hash length). You can use an I<openssl> CLI to get the
+checksum value for your certificate, which you can use in Monit's control file:
 
-The default mode is I<SSLAUTO> and it will select the method
-automatically, but for security reasons only TLS is used, not SSL. If
-you need SSLv2 or SSLv3 you have to explicitly select that method using
-I<SSLV2> or I<SSLV3> option.
+ openssl x509 -fingerprint -sha1 -in server.crt | head -1 | cut -f2 -d'='
 
-The I<md5sum> allows to check a certificate checksum. You can use an openssl
-CLI to get the checksum value for your certificate, which you can use in Monit's
-control file:
+Example:
 
- openssl x509 -fingerprint -md5 -in server.crt | head -1 | cut -f2 -d'='
+ if failed
+     port 443 
+     protocol https 
+     and certificate checksum equal to "1ED948A6F4258ACAB964227EF4EB19FCC453B0F8"
+ then alert
+
+I<certificate expire days: CERTIFICATE EXPIRE in number DAYS>. Send alert
+if the certificate is going to expire within the given number of days. This
+test allows you to be notified that certificate renewal is necessary.
+
+Example:
+
+  if failed
+      port 443
+      protocol https
+      and certificate expires in 30 days
+  then alert
 
 I<protocol: PROTO(COL) protocol>. Optionally specify the protocol
 Monit should speak when a connection is established. At the
