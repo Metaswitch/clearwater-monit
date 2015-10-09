@@ -124,6 +124,7 @@
 #define T Ssl_T
 struct T {
         boolean_t accepted;
+        boolean_t verify;
         boolean_t allowSelfSignedCertificates;
         Ssl_Version version;
         Hash_Type checksumType;
@@ -265,7 +266,7 @@ static int _verifyServerCertificates(int preverify_ok, X509_STORE_CTX *ctx) {
                 return 0;
         }
         *C->error = 0;
-        if (! preverify_ok) {
+        if (! preverify_ok && C->verify) {
                 int error = X509_STORE_CTX_get_error(ctx);
                 switch (error) {
                         case X509_V_ERR_DEPTH_ZERO_SELF_SIGNED_CERT:
@@ -482,6 +483,7 @@ T Ssl_new(Ssl_Version version, const char *CACertificatePath, const char *client
                 LogError("SSL: cannot create client handler -- %s\n", SSLERROR);
                 goto sslerror;
         }
+        SSL_set_verify(C->handler, SSL_VERIFY_PEER, _verifyServerCertificates);
         SSL_set_mode(C->handler, SSL_MODE_ENABLE_PARTIAL_WRITE | SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER);
         SSL_set_app_data(C->handler, C);
         return C;
@@ -629,8 +631,7 @@ int Ssl_read(T C, void *b, int size, int timeout) {
 
 void Ssl_setVerifyCertificates(T C, boolean_t verify) {
         ASSERT(C);
-        if (verify)
-                SSL_set_verify(C->handler, SSL_VERIFY_PEER, _verifyServerCertificates);
+        C->verify = verify;
 }
 
 

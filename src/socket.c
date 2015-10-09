@@ -613,12 +613,8 @@ void Socket_enableSsl(T S, SslOptions_T ssl, const char *name)  {
         if ((S->ssl = Ssl_new(ssl.version != -1 ? ssl.version : Run.ssl.version != -1 ? Run.ssl.version : SSL_Auto, ssl.CACertificatePath ? ssl.CACertificatePath : Run.ssl.CACertificatePath ? Run.ssl.CACertificatePath : NULL, ssl.clientpemfile ? ssl.clientpemfile : Run.ssl.clientpemfile ? Run.ssl.clientpemfile : NULL))) {
                 // Set SSL options with fallback to global SSL options
 
-                if (ssl.minimumValidDays > 0 || ssl.checksum)
-                        Ssl_setVerifyCertificates(S->ssl, true);
-                else if (ssl.verify != -1)
+                if (ssl.verify != -1)
                         Ssl_setVerifyCertificates(S->ssl, ssl.verify);
-                else if (Run.ssl.minimumValidDays > 0 || Run.ssl.checksum)
-                        Ssl_setVerifyCertificates(S->ssl, true);
                 else if (Run.ssl.verify != -1)
                         Ssl_setVerifyCertificates(S->ssl, Run.ssl.verify);
 
