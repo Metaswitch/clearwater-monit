@@ -672,7 +672,7 @@ Example:
 
 B<Options>:
 
-B<UNIXSOCKET> set the path to the Unix Socket Monit should bind to 
+B<UNIXSOCKET> set the path to the Unix Socket Monit should bind to
 and listen on.
 
 B<PORT> set the port Monit should bind to and listen on. Monit is
@@ -2297,7 +2297,7 @@ The test will fail if the link/interface is down or link errors were detected.
 
 Example:
 
- check network eth0 with interface eth0 
+ check network eth0 with interface eth0
        if failed link then alert
 
 In case a link failed you can add a start and stop program to automatically
@@ -2312,7 +2312,7 @@ commands for your system)
 
 =head2 NETWORK LINK CAPACITY TEST
 
-You can check the network link mode capacity for changes. This test 
+You can check the network link mode capacity for changes. This test
 may only be used within a check network service entry in the Monit
 control file.
 
@@ -2332,7 +2332,7 @@ a speed attribute.
 
 Example:
 
- check network eth0 with interface eth0 
+ check network eth0 with interface eth0
        if changed link capacity then alert
 
 
@@ -2355,13 +2355,13 @@ default is EQUAL).
 I<action> is a choice of "ALERT", "RESTART", "START", "STOP",
 "EXEC" or "UNMONITOR".
 
-NOTE: this test depends on the availability of the speed attribute 
+NOTE: this test depends on the availability of the speed attribute
 and not all interface types have this attribute. See the LINK SPEED test
 description.
 
 Example:
 
- check network eth0 with interface eth0 
+ check network eth0 with interface eth0
        if saturation > 90% then alert
 
 
@@ -2399,7 +2399,7 @@ I<unit> is a choice of "B","KB","MB","GB" or long alternatives
 
 I<time-unit> is a choice of "MINUTE(S)", "HOUR(S)", "DAY".
 NOTE: Monit maintains a rolling count of total uploaded and downloaded
-bytes for the last 24 hours only. The value of time-unit can therefor not 
+bytes for the last 24 hours only. The value of time-unit can therefor not
 specify a range wider than one day.
 
 I<action> is a choice of "ALERT", "RESTART", "START", "STOP",
@@ -2407,7 +2407,7 @@ I<action> is a choice of "ALERT", "RESTART", "START", "STOP",
 
 Examples:
 
- check network eth0 with interface eth0 
+ check network eth0 with interface eth0
        if upload > 500 kB/s then alert
        if total download > 1 GB in last 2 hours then alert
        if total download > 10 GB in last day then alert
@@ -2451,7 +2451,7 @@ I<action> is a choice of "ALERT", "RESTART", "START", "STOP",
 
 Examples:
 
- check network eth0 with interface eth0 
+ check network eth0 with interface eth0
        if upload > 1000 packets/s then alert
        if total upload > 900000 packets in last hour then alert
 
@@ -2588,7 +2588,7 @@ different socket types are: TCP or UDP, where TCP is a
 regular stream based socket, UDP is a datagram socket. The
 default socket type is TCP.
 
-I<ssl: [SSL | TLS] [with options {...}]>. Enable SSL/TLS. You can 
+I<ssl: [SSL | TLS] [with options {...}]>. Enable SSL/TLS. You can
 set custom SSL/TLS L<options|"SSL OPTIONS">, such as SSL/TLS version
 to use, whether to verify certificates, trust self-signed certificates
 or set SSL client certificates database path for client certificates
@@ -2605,8 +2605,8 @@ checksum value for your certificate, which you can use in Monit's control file:
 Example:
 
  if failed
-     port 443 
-     protocol https 
+     port 443
+     protocol https
      and certificate checksum equal to "1ED948A6F4258ACAB964227EF4EB19FCC453B0F8"
  then alert
 
