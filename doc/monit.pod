@@ -565,19 +565,14 @@ will apply to all SSL connections made through Monit:
 
 I<VERSION> set the specific SSL/TLS version to use. By default Monit
 uses AUTO. In AUTO mode, only TLS is used, SSLv2 and SSLv3 is
-considered obsolete. If you have to use SSLv2 or SSLv3, you must to
+considered obsolete. If you have to use SSLv2 or SSLv3, you must
 explicitly set the version.
 
 I<VERIFY> enable SSL server certificate verification. This will verify
 and report an error if the server certificate is not trusted, not valid
 or has expired. By default certificate verification is disabled, though
 we recommend enabling it, otherwise there is no guarantee that Monit
-speaks with the server you think it speaks with. That is, not enabling
-certificate verification opens up for a I<man-in-the-middle> attack,
-which in Monit's case might not be as critical as when you connect to
-your online bank with your Browser. Still, when you use I<check host>
-and test a I<https> connection it is good to know that Monit will
-verify that it connects to the correct server.
+speaks with the server you think it speaks with. 
 
 I<SELFSIGNED> self-signed certificates are rejected by default. Use
 this option to allow self-signed certificates.
