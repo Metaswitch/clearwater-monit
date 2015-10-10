@@ -2545,7 +2545,7 @@ TCP/UDP port test syntax:
     [type]
     [ssl [with options {...}]]
     [certificate checksum]
-    [certificate expire days]
+    [certificate valid days]
     [protocol | {send/expect}+]
     [timeout]
     [retry]
@@ -2617,8 +2617,8 @@ Example:
      and certificate checksum = "1ED948A6F4258ACAB964227EF4EB19FCC453B0F8"
  then alert
 
-I<certificate expire days: CERTIFICATE EXPIRE in number DAYS>. Send
-alert if the certificate will expire within the given number of days.
+I<certificate expire days: CERTIFICATE VALID for number DAYS>. Send
+an alert if the certificate will expire in the given number of days.
 This test is pretty useful to get a notification when it is time to
 renew your SSL certificate.
 
@@ -2627,7 +2627,7 @@ Example:
   if failed
       port 443
       protocol https
-      and certificate expire in 30 days
+      and certificate valid > 30 days
   then alert
 
 I<protocol: PROTO(COL) protocol>. Optionally specify the protocol Monit
