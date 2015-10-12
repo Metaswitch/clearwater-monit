@@ -1,8 +1,8 @@
-                     CHANGES version 5.15-beta
+                     CHANGES version 5.15
 
            This file summarizes changes made since 5.0
 
-Version 5.15-beta
+Version 5.15
 
 New: Added support for optional SSL certificates verification(trust and validity).
 As it was not enabled in previous monit versions, it is not enabled by default to not
@@ -12,9 +12,6 @@ trust the server certificate even though it may be valid if CA certificates are
 updated). The self-signed certificates are not trusted by default and you have to
 explicitly allow them if you want to trust them. See bellow for new ssl options
 statement.
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !!! WE STRONGLY RECOMMEND TO ENABLE CERTIFICATE VERIFICATION !!!
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 New: Support SSL client certificate authentication for SSL services. See bellow for
 new ssl options statement.
