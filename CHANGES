@@ -29,9 +29,9 @@ certificate in time. Note: if the above mentioned certificate verification is en
 and this pre-expiration statement is not used, the certificate verification will send
 a certificate expiration alert when the certificate is no longer valid.
   Syntax:
-        CERTIFICATE EXPIRE <number> DAY(S)
+        CERTIFICATE VALID <number> DAY(S)
   Example:
-        if failed port 443 protocol https and certificate expire in 30 days then alert
+        if failed port 443 protocol https and certificate valid > 30 days then alert
 
 New: Extend the certificate checkum test with SHA1 hash type in addition to existing MD5.
 The checksum statement will automatically determine the cipher to use based on the hash
@@ -51,43 +51,15 @@ more verbose. The certificate checksum is supported also in the "set mmonit" and
 New: A new statement for setting global or local SSL/TLS options was added ("SSL" or "TLS" as an alias can be used).
   Syntax:
         <SSL | TLS> {
-                # SSL certificate verification (default: DISABLE)
                 VERIFY:            <ENABLE | DISABLE>
-                # Allow self-signed certificates (default: REJECT)
                 SELFSIGNED:        <ALLOW | REJECT>
-                # SSL version to use (default: AUTO) Note: SSLv2 and SSLv3 are prohibited in AUTO mode and you have to explicitly set it if needed
                 VERSION:           <AUTO | SSLV2 | SSLV3 | TLSV1 | TLSV11 | TLSV12>
-                # SSL client certificates database in PEM file format (used when SSL server requires client certificate authentication)
                 CLIENTPEMFILE:     <path>
-                # CA certificates directory (default: use OpenSSL's default directory, can be displayed using "openssl version -d" command)
+                CACERTIFICATEFILE: <path>
                 CACERTIFICATEPATH: <path>
         }
 The SSL/TLS options can be set either globally (using "SET SSL") or locally (in the context of the port test). The global sets
-default value and can be extended (if global is not set) or overriden locally. For example to enable certificate verification
-for all services but trust self-signed only for one specific SSL server:
-        set ssl {
-                verify: enable
-        }
-        # verify certificates (via global setting), no self-signed certificates are trusted by default:
-        check host myhost1 with address www.myhost1.com
-                if failed
-                        port 443
-                        protocol https
-                then alert
-        # verify certificates (via global setting), self-signed certificates are trusted locally:
-        check host myhost2 with address www.myhost2.com
-                if failed
-                        port 443
-                        protocol https
-                        using ssl with options {selfsigned: allow}
-                then alert
-        # do not verify certificates (override global setting)
-        check host myhost3 with address www.myhost3.com
-                if failed
-                        port 443
-                        protocol https
-                        using ssl with options {verify: disable}
-                then alert
+default value and can be extended (if global is not set) or overriden locally.
 
 New: Issue #233: The content match test will skip existing content of the file
 the first time the file is added to Monit.
