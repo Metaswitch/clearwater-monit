@@ -303,7 +303,7 @@ static int verifyMaxForward(int);
 %token IF ELSE THEN OR FAILED
 %token SET LOGFILE FACILITY DAEMON SYSLOG MAILSERVER HTTPD ALLOW REJECTOPT ADDRESS INIT
 %token READONLY CLEARTEXT MD5HASH SHA1HASH CRYPT DELAY
-%token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CERTIFICATE CACERTIFICATEPATH VALID
+%token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CERTIFICATE CACERTIFICATEFILE CACERTIFICATEPATH VALID
 %token INTERFACE LINK PACKET BYTEIN BYTEOUT PACKETIN PACKETOUT SPEED SATURATION UPLOAD DOWNLOAD TOTAL
 %token IDFILE STATEFILE SEND EXPECT EXPECTBUFFER CYCLE COUNT REMINDER
 %token PIDFILE START STOP PATHTOK
@@ -683,6 +683,7 @@ setssl          : SET SSL '{' ssloptionlist '}' {
                         Run.ssl.checksumType = sslset.checksumType;
                         Run.ssl.checksum = sslset.checksum;
                         Run.ssl.clientpemfile = sslset.clientpemfile;
+                        Run.ssl.CACertificateFile = sslset.CACertificateFile;
                         Run.ssl.CACertificatePath = sslset.CACertificatePath;
                         if (Run.ssl.allowSelfSigned == true)
                                 Run.httpd.flags |= Httpd_AllowSelfSignedCertificates;
@@ -728,6 +729,18 @@ ssloption       : VERIFY ':' ENABLE {
                                 yyerror2("SSL client PEM file is not a file");
                         else if (! File_isReadable(sslset.clientpemfile))
                                 yyerror2("Cannot read SSL client PEM file");
+                  }
+                | CACERTIFICATEFILE ':' PATH {
+                        if (sslset.CACertificateFile)
+                                yyerror2("Duplicate SSL CA certificates file doesn't exist");
+                        sslset.use_ssl = true;
+                        sslset.CACertificateFile = $3;
+                        if (! File_exist(sslset.CACertificateFile))
+                                yyerror2("SSL CA certificates file doesn't exist");
+                        else if (! File_isFile(sslset.CACertificateFile))
+                                yyerror2("SSL CA certificates file is not a file");
+                        else if (! File_isReadable(sslset.CACertificateFile))
+                                yyerror2("Cannot read CA certificates file");
                   }
                 | CACERTIFICATEPATH ':' PATH {
                         sslset.use_ssl = true;
@@ -2924,6 +2937,7 @@ static void addport(Port_T *list, Port_T port) {
                         p->target.net.ssl.checksumType = sslset.checksumType;
                         p->target.net.ssl.checksum = sslset.checksum;
                         p->target.net.ssl.clientpemfile = sslset.clientpemfile;
+                        p->target.net.ssl.CACertificateFile = sslset.CACertificateFile;
                         p->target.net.ssl.CACertificatePath = sslset.CACertificatePath;
 #else
                         yyerror("SSL check cannot be activated -- SSL disabled");
@@ -3690,6 +3704,7 @@ static void addmmonit(Mmonit_T mmonit) {
         c->ssl.checksumType = sslset.checksumType;
         c->ssl.checksum = sslset.checksum;
         c->ssl.clientpemfile = sslset.clientpemfile;
+        c->ssl.CACertificateFile = sslset.CACertificateFile;
         c->ssl.CACertificatePath = sslset.CACertificatePath;
         if (IS(c->url->protocol, "https")) {
 #ifdef HAVE_OPENSSL
@@ -3737,6 +3752,7 @@ static void addmailserver(MailServer_T mailserver) {
         s->ssl.checksumType = sslset.checksumType;
         s->ssl.checksum = sslset.checksum;
         s->ssl.clientpemfile = sslset.clientpemfile;
+        s->ssl.CACertificateFile = sslset.CACertificateFile;
         s->ssl.CACertificatePath = sslset.CACertificatePath;
         reset_sslset();
 

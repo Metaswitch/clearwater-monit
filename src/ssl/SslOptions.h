@@ -39,6 +39,7 @@ typedef struct T {
         int minimumValidDays;         /**< Minimum valid days left for certificate */
         char *checksum;      /**< The expected md5 sum of the server's certificate */
         char *clientpemfile;                      /**< Optional client certificate */
+        char *CACertificateFile;             /**< Path to CA certificates PEM file */
         char *CACertificatePath;            /**< Path to CA certificates directory */
 } T;
 

@@ -610,7 +610,11 @@ void Socket_test(void *P) {
 void Socket_enableSsl(T S, SslOptions_T ssl, const char *name)  {
         assert(S);
 #ifdef HAVE_OPENSSL
-        if ((S->ssl = Ssl_new(ssl.version != -1 ? ssl.version : Run.ssl.version != -1 ? Run.ssl.version : SSL_Auto, ssl.CACertificatePath ? ssl.CACertificatePath : Run.ssl.CACertificatePath ? Run.ssl.CACertificatePath : NULL, ssl.clientpemfile ? ssl.clientpemfile : Run.ssl.clientpemfile ? Run.ssl.clientpemfile : NULL))) {
+        if ((S->ssl = Ssl_new(ssl.version != -1 ? ssl.version : Run.ssl.version != -1 ? Run.ssl.version : SSL_Auto,
+                              ssl.CACertificateFile ? ssl.CACertificateFile : Run.ssl.CACertificateFile ? Run.ssl.CACertificateFile : NULL,
+                              ssl.CACertificatePath ? ssl.CACertificatePath : Run.ssl.CACertificatePath ? Run.ssl.CACertificatePath : NULL,
+                              ssl.clientpemfile ? ssl.clientpemfile : Run.ssl.clientpemfile ? Run.ssl.clientpemfile : NULL)))
+        {
                 // Set SSL options with fallback to global SSL options
 
                 if (ssl.verify != -1)

@@ -78,11 +78,12 @@ void Ssl_setFipsMode(boolean_t enabled);
 /**
  * Create a new SSL connection object
  * @param version An SSL version to use
+ * @param CACertificateFile Optional path to CA certificates PEM encoded file
  * @param CACertificatePath Optional path to CA certificates directory
  * @param clientpem Optional path to client certificate PEM file
  * @return a new SSL connection object or NULL if failed
  */
-T Ssl_new(Ssl_Version version, const char *CACertificatePath, const char *clientpem);
+T Ssl_new(Ssl_Version version, const char *CACertificateFile, const char *CACertificatePath, const char *clientpem);
 
 
 /**

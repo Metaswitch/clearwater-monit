@@ -404,7 +404,7 @@ void Ssl_setFipsMode(boolean_t enabled) {
 }
 
 
-T Ssl_new(Ssl_Version version, const char *CACertificatePath, const char *clientpem) {
+T Ssl_new(Ssl_Version version, const char *CACertificateFile, const char *CACertificatePath, const char *clientpem) {
         T C;
         NEW(C);
         C->version = version;
@@ -460,13 +460,12 @@ T Ssl_new(Ssl_Version version, const char *CACertificatePath, const char *client
                 LogError("SSL: client context initialization failed -- %s\n", SSLERROR);
                 goto sslerror;
         }
-        if (CACertificatePath) {
-                if (! SSL_CTX_load_verify_locations(C->ctx, NULL, CACertificatePath)) {
-                        LogError("SSL: CA certificates path %s loading failed -- %s\n", CACertificatePath, SSLERROR);
+        SSL_CTX_set_default_verify_paths(C->ctx);
+        if (CACertificateFile || CACertificatePath) {
+                if (! SSL_CTX_load_verify_locations(C->ctx, CACertificateFile, CACertificatePath)) {
+                        LogError("SSL: CA certificates loading failed -- %s\n", SSLERROR);
                         goto sslerror;
                 }
-        } else {
-                SSL_CTX_set_default_verify_paths(C->ctx);
         }
         if (clientpem && ! _setClientCertificate(C, clientpem))
                 goto sslerror;
@@ -673,6 +672,8 @@ char *Ssl_printOptions(SslOptions_T *options, char *b, int size) {
                         snprintf(b + strlen(b), size - strlen(b) - 1, "%sselfsigned: allow", count++ ? ", " : "");
                 if (options->clientpemfile)
                         snprintf(b + strlen(b), size - strlen(b) - 1, "%sclientpemfile: %s", count ++ ? ", " : "", options->clientpemfile);
+                if (options->CACertificateFile)
+                        snprintf(b + strlen(b), size - strlen(b) - 1, "%sCACertificateFile: %s", count ++ ? ", " : "", options->CACertificateFile);
                 if (options->CACertificatePath)
                         snprintf(b + strlen(b), size - strlen(b) - 1, "%sCACertificatePath: %s", count ++ ? ", " : "", options->CACertificatePath);
         }

@@ -189,6 +189,7 @@ disable           { return DISABLE; }
 verify            { return VERIFY; }
 valid             { return VALID; }
 certificate       { return CERTIFICATE; }
+cacertificatefile { return CACERTIFICATEFILE; }
 cacertificatepath { return CACERTIFICATEPATH; }
 set               { return SET; }
 daemon            { return DAEMON; }

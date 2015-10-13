@@ -560,6 +560,7 @@ will apply to all SSL connections made through Monit:
       VERIFY: <ENABLE | DISABLE>
       SELFSIGNED: <ALLOW | REJECT>
       CLIENTPEMFILE: <path>
+      CACERTIFICATEFILE: <path>
       CACERTIFICATEPATH: <path>
   }
 
@@ -583,10 +584,17 @@ certificate authentication, Monit will try to find a public key
 certificate in this file which match the server's Certificate Authority
 and if found, use this certificate for client authentication.
 
+I<CACERTIFICATEFILE> set the path to the PEM encoded file containing
+Certificate Authority (CA) certificates. Monit uses OpenSSL's default
+CA cartificates if this options is not used (you can use "openssl version -d"
+command to get the default CA certificates). Many distributions comes
+with SSL and CA certificates already setup and using this option is
+normally not necessary.
+
 I<CACERTIFICATEPATH> set the path to the directory containing
 Certificate Authority (CA) certificates. Monit uses OpenSSL's default
-directory if this options is not used (you can use "openssl version -d"
-command to get the default directory path). Many distributions comes
+CA certificates if this options is not used (you can use "openssl version -d"
+command to get the default CA certificates). Many distributions comes
 with SSL and CA certificates already setup and using this option is
 normally not necessary.
 
