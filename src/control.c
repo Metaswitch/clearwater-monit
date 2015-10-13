@@ -236,7 +236,8 @@ static boolean_t _doStart(Service_T s) {
                                 }
                         }
                 } else {
-                        LogDebug("'%s' start ignored -- method not defined\n", s->name);
+                        LogDebug("'%s' start method not defined\n", s->name);
+                        Event_post(s, Event_Exec, State_Succeeded, s->action_EXEC, "monitoring enabled");
                 }
         } else {
                 Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s'", StringBuffer_toString(sb));
