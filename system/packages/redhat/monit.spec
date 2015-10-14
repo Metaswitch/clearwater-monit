@@ -9,8 +9,12 @@ BuildRoot: %{_tmppath}/%{name}-buildroot
 License: AGPL
 BuildRequires: flex
 BuildRequires: bison
-BuildRequires: openssl-devel
-BuildRequires: pam-devel
+
+%{!?_with_ssl: %{!?_without_ssl: %define _with_ssl --with-ssl}}
+%{?_with_ssl:BuildRequires: openssl-devel}
+
+%{!?_with_pam: %{!?_without_pam: %define _with_pam --with-pam}}
+%{?_with_pam:BuildRequires: pam-devel}
 
 %description
 Monit is a utility for managing and monitoring processes,
@@ -22,7 +26,11 @@ actions in error situations.
 %setup
 
 %build
-%configure
+%configure \
+        %{?_with_ssl} \
+        %{?_without_ssl} \
+        %{?_with_pam} \
+        %{?_without_pam}
 make %{?_smp_mflags}
 
 %install
@@ -63,6 +71,8 @@ fi
 %changelog
 * Mon Oct 12 2015 Martin Pala <martinp@tildeslash.com>
 - Upgraded to monit-5.15
+- Added rombuild options for building without PAM (--without pam)
+- Added rombuild options for building without SSL (--without ssl)
 
 * Mon Jun 08 2015 Martin Pala <martinp@tildeslash.com>
 - Upgraded to monit-5.14
