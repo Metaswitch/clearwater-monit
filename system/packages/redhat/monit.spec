@@ -7,8 +7,6 @@ Source: http://mmonit.com/monit/dist/%{name}-%{version}.tar.gz
 Group: Utilities/Console
 BuildRoot: %{_tmppath}/%{name}-buildroot
 License: AGPL
-BuildRequires: flex
-BuildRequires: bison
 
 %{!?_with_ssl: %{!?_without_ssl: %define _with_ssl --with-ssl}}
 %{?_with_ssl:BuildRequires: openssl-devel}
@@ -71,8 +69,9 @@ fi
 %changelog
 * Mon Oct 12 2015 Martin Pala <martinp@tildeslash.com>
 - Upgraded to monit-5.15
-- Added rombuild options for building without PAM (--without pam)
-- Added rombuild options for building without SSL (--without ssl)
+- Added rpmbuild options for building without PAM (--without pam)
+- Added rpmbuild options for building without SSL (--without ssl)
+- Dropped build dependency on flex and bison
 
 * Mon Jun 08 2015 Martin Pala <martinp@tildeslash.com>
 - Upgraded to monit-5.14
