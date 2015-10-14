@@ -98,6 +98,8 @@ Fixed: Don't log error if SSL SNI is not supported by server.
 
 Fixed: SSL client certificate authentication for monit's HTTP interface.
 
+Fixed: Access to resources via secondary group membership when executing program as different UID
+
 
 Version 5.14
 
