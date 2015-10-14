@@ -486,24 +486,29 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                                     "<td>base directory %s with %d slots</td></tr>",
                                     Run.eventlist_dir, Run.eventlist_slots);
         }
+#ifdef HAVE_OPENSSL
         {
                 const char *options = Ssl_printOptions(&(Run.ssl), (char[STRLEN]){}, STRLEN);
                 if (options && *options)
                         StringBuffer_append(res->outputbuffer,
                                     "<tr><td>SSL options</td><td>%s</td></tr>", options);
         }
+#endif
         if (Run.mmonits) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>M/Monit server(s)</td><td>");
                 for (Mmonit_T c = Run.mmonits; c; c = c->next)
                 {
                         StringBuffer_append(res->outputbuffer, "%s with timeout %.0f seconds", c->url->url, c->timeout / 1000.);
-                        if (c->ssl.use_ssl)
+#ifdef HAVE_OPENSSL
+                        if (c->ssl.use_ssl) {
                                 StringBuffer_append(res->outputbuffer, " using SSL/TLS");
-                        const char *options = Ssl_printOptions(&c->ssl, (char[STRLEN]){}, STRLEN);
-                        if (options && *options)
-                                StringBuffer_append(res->outputbuffer, " with options {%s}", options);
-                        if (c->ssl.checksum)
-                                StringBuffer_append(res->outputbuffer, " and certificate checksum %s equal to '%s'", checksumnames[c->ssl.checksumType], c->ssl.checksum);
+                                const char *options = Ssl_printOptions(&c->ssl, (char[STRLEN]){}, STRLEN);
+                                if (options && *options)
+                                        StringBuffer_append(res->outputbuffer, " with options {%s}", options);
+                                if (c->ssl.checksum)
+                                        StringBuffer_append(res->outputbuffer, " and certificate checksum %s equal to '%s'", checksumnames[c->ssl.checksumType], c->ssl.checksum);
+                        }
+#endif
                         if (c->url->user)
                                 StringBuffer_append(res->outputbuffer, " using credentials");
                         if (c->next)
@@ -515,13 +520,16 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Mail server(s)</td><td>");
                 for (MailServer_T mta = Run.mailservers; mta; mta = mta->next) {
                         StringBuffer_append(res->outputbuffer, "%s:%d", mta->host, mta->port);
-                        if (mta->ssl.use_ssl)
+#ifdef HAVE_OPENSSL
+                        if (mta->ssl.use_ssl) {
                                 StringBuffer_append(res->outputbuffer, " using SSL/TLS");
-                        const char *options = Ssl_printOptions(&mta->ssl, (char[STRLEN]){}, STRLEN);
-                        if (options && *options)
-                                StringBuffer_append(res->outputbuffer, " with options {%s}", options);
-                        if (mta->ssl.checksum)
-                                StringBuffer_append(res->outputbuffer, " and certificate checksum %s equal to '%s'", checksumnames[mta->ssl.checksumType], mta->ssl.checksum);
+                                const char *options = Ssl_printOptions(&mta->ssl, (char[STRLEN]){}, STRLEN);
+                                if (options && *options)
+                                        StringBuffer_append(res->outputbuffer, " with options {%s}", options);
+                                if (mta->ssl.checksum)
+                                        StringBuffer_append(res->outputbuffer, " and certificate checksum %s equal to '%s'", checksumnames[mta->ssl.checksumType], mta->ssl.checksum);
+                        }
+#endif
                         if (mta->next)
                                 StringBuffer_append(res->outputbuffer, "</td></tr><tr><td>&nbsp;</td><td>");
                 }
@@ -1599,6 +1607,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                         p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->protocol->name, p->timeout / 1000.);
                 if (p->retry > 1)
                         StringBuffer_append(buf, " and retry %d times", p->retry);
+#ifdef HAVE_OPENSSL
                 if (p->target.net.ssl.use_ssl) {
                         StringBuffer_append(buf, " using SSL/TLS");
                         const char *options = Ssl_printOptions(&p->target.net.ssl, (char[STRLEN]){}, STRLEN);
@@ -1609,6 +1618,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                         if (p->target.net.ssl.checksum)
                                 StringBuffer_append(buf, " and certificate checksum %s equal to '%s'", checksumnames[p->target.net.ssl.checksumType], p->target.net.ssl.checksum);
                 }
+#endif
                 Util_printRule(res->outputbuffer, p->action, "%s", StringBuffer_toString(buf));
                 StringBuffer_free(&buf);
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
