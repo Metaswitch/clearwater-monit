@@ -814,6 +814,8 @@ static void version() {
  * M/Monit heartbeat thread
  */
 static void *heartbeat(void *args) {
+        sigset_t ns;
+        set_signal_block(&ns, NULL);
         LogInfo("M/Monit heartbeat started\n");
         LOCK(heartbeatMutex)
         {
