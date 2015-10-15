@@ -1307,38 +1307,36 @@ connectionuxopt : type
                 | retry
                 ;
 
-icmp            : IF FAILED ICMP icmptype icmpcount nettimeout rate1 THEN action1 recovery {
+icmp            : IF FAILED ICMP icmptype icmpoptlist rate1 THEN action1 recovery {
                         icmpset.family = Socket_Ip;
                         icmpset.type = $<number>4;
-                        icmpset.count = $<number>5;
-                        icmpset.timeout = $<number>6;
-                        addeventaction(&(icmpset).action, $<number>9, $<number>10);
+                        addeventaction(&(icmpset).action, $<number>8, $<number>9);
                         addicmp(&icmpset);
                   }
-                | IF FAILED PING icmpcount nettimeout rate1 THEN action1 recovery {
+                | IF FAILED PING icmpoptlist rate1 THEN action1 recovery {
                         icmpset.family = Socket_Ip;
-                        icmpset.type = ICMP_ECHO;
-                        icmpset.count = $<number>4;
-                        icmpset.timeout = $<number>5;
-                        addeventaction(&(icmpset).action, $<number>8, $<number>9);
+                        addeventaction(&(icmpset).action, $<number>7, $<number>8);
                         addicmp(&icmpset);
                  }
-                | IF FAILED PING4 icmpcount nettimeout rate1 THEN action1 recovery {
+                | IF FAILED PING4 icmpoptlist rate1 THEN action1 recovery {
                         icmpset.family = Socket_Ip4;
-                        icmpset.type = ICMP_ECHO;
-                        icmpset.count = $<number>4;
-                        icmpset.timeout = $<number>5;
-                        addeventaction(&(icmpset).action, $<number>8, $<number>9);
+                        addeventaction(&(icmpset).action, $<number>7, $<number>8);
                         addicmp(&icmpset);
                  }
-                | IF FAILED PING6 icmpcount nettimeout rate1 THEN action1 recovery {
+                | IF FAILED PING6 icmpoptlist rate1 THEN action1 recovery {
                         icmpset.family = Socket_Ip6;
-                        icmpset.type = ICMP_ECHO;
-                        icmpset.count = $<number>4;
-                        icmpset.timeout = $<number>5;
-                        addeventaction(&(icmpset).action, $<number>8, $<number>9);
+                        addeventaction(&(icmpset).action, $<number>7, $<number>8);
                         addicmp(&icmpset);
                  }
+                ;
+
+icmpoptlist     : /* EMPTY */
+                | icmpoptlist icmpopt
+                ;
+
+icmpopt         : icmpcount
+                | icmpsize
+                | icmptimeout
                 ;
 
 host            : /* EMPTY */ {
@@ -1701,13 +1699,20 @@ uptime          : IF UPTIME operator NUMBER time rate1 THEN action1 recovery {
                     adduptime(&uptimeset);
                   }
 
-icmpcount       : /* EMPTY */ {
-                   $<number>$ = ICMP_ATTEMPT_COUNT;
-                  }
-                | COUNT NUMBER {
-                        $<number>$ = $2;
+icmpcount       : COUNT NUMBER {
+                        icmpset.count = $<number>2;
                  }
                 ;
+
+icmpsize        : SIZE NUMBER {
+                        icmpset.size = $<number>2;
+                 }
+                ;
+
+icmptimeout     : TIMEOUT NUMBER SECOND {
+                        icmpset.timeout = $<number>2 * 1000; // timeout is in milliseconds internally
+                    }
+                  ;
 
 exectimeout     : /* EMPTY */ {
                    $<number>$ = EXEC_TIMEOUT;
@@ -3511,6 +3516,7 @@ static void addicmp(Icmp_T is) {
         NEW(icmp);
         icmp->family       = is->family;
         icmp->type         = is->type;
+        icmp->size         = is->size;
         icmp->count        = is->count;
         icmp->timeout      = is->timeout;
         icmp->action       = is->action;
@@ -4306,6 +4312,7 @@ static void reset_filesystemset() {
  */
 static void reset_icmpset() {
         icmpset.type = ICMP_ECHO;
+        icmpset.size = ICMP_SIZE;
         icmpset.count = ICMP_ATTEMPT_COUNT;
         icmpset.timeout = NET_TIMEOUT;
         icmpset.action = NULL;

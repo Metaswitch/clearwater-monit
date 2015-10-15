@@ -1359,8 +1359,7 @@ State_Type check_remote_host(Service_T s) {
         for (Icmp_T icmp = s->icmplist; icmp; icmp = icmp->next) {
                 switch (icmp->type) {
                         case ICMP_ECHO:
-                                icmp->response = icmp_echo(s->path, icmp->family, icmp->timeout, icmp->count);
-
+                                icmp->response = icmp_echo(s->path, icmp->family, icmp->size, icmp->timeout, icmp->count);
                                 if (icmp->response == -2) {
                                         icmp->is_available = true;
 #ifdef SOLARIS

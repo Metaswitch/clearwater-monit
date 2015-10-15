@@ -152,12 +152,6 @@
  */
 
 
-/* ------------------------------------------------------------- Definitions */
-
-
-#define DATALEN 64
-
-
 /* ----------------------------------------------------------------- Private */
 
 
@@ -311,8 +305,9 @@ static void _setPingOptions(int socket, struct addrinfo *addr) {
 }
 
 
-static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *addr, int retry, int maxretries, int id, long long started) {
-        char buf[STRLEN] = {};
+static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *addr, int size, int retry, int maxretries, int id, long long started) {
+        char buf[ICMP_MAXSIZE] = {};
+        int header_len = 0;
         int out_len = 0;
         void *out_icmp = NULL;
         struct icmp *out_icmp4;
@@ -328,7 +323,8 @@ static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *ad
                         out_icmp4->icmp_id = htons(id);
                         out_icmp4->icmp_seq = htons(retry);
                         memcpy((long long *)(out_icmp4->icmp_data), &started, sizeof(long long)); // set data to timestamp
-                        out_len = offsetof(struct icmp, icmp_data) + DATALEN;
+                        header_len = offsetof(struct icmp, icmp_data);
+                        out_len = header_len + size;
                         out_icmp4->icmp_cksum = _checksum((unsigned char *)out_icmp4, out_len); // IPv4 requires checksum computation
                         out_icmp = out_icmp4;
                         break;
@@ -341,12 +337,17 @@ static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *ad
                         out_icmp6->icmp6_id = htons(id);
                         out_icmp6->icmp6_seq = htons(retry);
                         memcpy((long long *)(out_icmp6 + 1), &started, sizeof(long long)); // set data to timestamp
-                        out_len = sizeof(struct icmp6_hdr) + DATALEN;
+                        header_len = sizeof(struct icmp6_hdr);
+                        out_len = header_len + size;
                         out_icmp = out_icmp6;
                         break;
 #endif
                 default:
                         break;
+        }
+        if (out_len > sizeof(buf)) {
+                LogError("Ping request for %s %d/%d failed -- too large (%d vs. maximum %lu bytes)\n", hostname, retry, maxretries, size, sizeof(buf) - header_len);
+                return false;
         }
         ssize_t n;
         do {
@@ -370,7 +371,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
         struct icmp6_hdr *in_icmp6;
 #endif
         ssize_t n;
-        char buf[STRLEN];
+        char buf[ICMP_MAXSIZE] = {};
         switch (addr->ai_family) {
                 case AF_INET:
                         in_len = sizeof(struct ip) + sizeof(struct icmp);
@@ -438,16 +439,9 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
 }
 
 
-/*
- * Create a ICMP socket for hostname, send echo and wait for response.
- * @param hostname The host to open a socket at
- * @param family The socket family to use
- * @param timeout If response will not come within timeout milliseconds abort
- * @param maxretries How many pings to send at maximum
- * @return response time on succes, -1 on error, -2 when monit has no permissions for raw socket (normally requires root or net_icmpaccess privilege on Solaris)
- */
-double icmp_echo(const char *hostname, Socket_Family family, int timeout, int maxretries) {
+double icmp_echo(const char *hostname, Socket_Family family, int size, int timeout, int maxretries) {
         ASSERT(hostname);
+        ASSERT(size > 0);
         int rv;
         double response = -1.;
         struct addrinfo *result, hints = {
@@ -507,7 +501,7 @@ double icmp_echo(const char *hostname, Socket_Family family, int timeout, int ma
         uint16_t id = getpid() & 0xFFFF;
         for (int retry = 1; retry <= maxretries; retry++) {
                 long long started = Time_milli();
-                if (_sendPing(hostname, s, addr, retry, maxretries, id, started) && (response = _receivePing(hostname, s, addr, retry, maxretries, id, started, timeout)) >= 0.)
+                if (_sendPing(hostname, s, addr, size, retry, maxretries, id, started) && (response = _receivePing(hostname, s, addr, retry, maxretries, id, started, timeout)) >= 0.)
                         break;
         }
 error1:

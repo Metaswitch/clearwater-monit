@@ -1651,7 +1651,7 @@ static void print_service_rules_icmp(HttpResponse res, Service_T s) {
                                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Ping</td><td>");
                                 break;
                 }
-                Util_printRule(res->outputbuffer, i->action, "If failed [count %d with timeout %.0f seconds]", i->count, i->timeout / 1000.);
+                Util_printRule(res->outputbuffer, i->action, "If failed [count %d size %d with timeout %.0f seconds]", i->count, i->size, i->timeout / 1000.);
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }

@@ -1053,13 +1053,13 @@ void Util_printService(Service_T s) {
                 StringBuffer_clear(buf);
                 switch (o->family) {
                         case Socket_Ip4:
-                                printf(" %-20s = %s\n", "Ping4", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d with timeout %.0f seconds", o->count, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping4", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
                                 break;
                         case Socket_Ip6:
-                                printf(" %-20s = %s\n", "Ping6", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d with timeout %.0f seconds", o->count, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping6", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
                                 break;
                         default:
-                                printf(" %-20s = %s\n", "Ping", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d with timeout %.0f seconds", o->count, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
                                 break;
                 }
         }

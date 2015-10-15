@@ -328,6 +328,8 @@ typedef enum {
 #define MD_SIZE 65
 
 
+#define ICMP_SIZE 64
+#define ICMP_MAXSIZE 1500
 #define ICMP_ATTEMPT_COUNT 3
 
 
@@ -642,6 +644,7 @@ typedef struct myport {
 /** Defines a ICMP/Ping object */
 typedef struct myicmp {
         int type;                                              /**< ICMP type used */
+        int size;                                     /**< ICMP echo requests size */
         int count;                                   /**< ICMP echo requests count */
         int timeout;         /**< The timeout in milliseconds to wait for response */
         boolean_t is_available;               /**< true if the server is available */
