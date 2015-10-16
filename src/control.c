@@ -293,10 +293,12 @@ static boolean_t _doStop(Service_T s, boolean_t unmonitor) {
         } else {
                 LogDebug("'%s' stop skipped -- method not defined\n", s->name);
         }
-        if (unmonitor)
+        if (unmonitor) {
                 Util_monitorUnset(s);
-        else
+        } else {
                 Util_resetInfo(s);
+                s->monitor = Monitor_Init;
+        }
         return rv;
 }
 
