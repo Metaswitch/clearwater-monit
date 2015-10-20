@@ -860,12 +860,10 @@ group[ \t]+       {
 
 <<EOF>>           {
 
-                       if ( ! pop_buffer_state() )
-                       {
-                         yyterminate();
-                       } else {
-                         BEGIN(INITIAL);
-                       }
+                       BEGIN(INITIAL);
+                       check_state = None_State;
+                       if (! pop_buffer_state())
+                                yyterminate();
                   }
 
 %%
