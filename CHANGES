@@ -101,6 +101,8 @@ Fixed: Issue #261: Monit leaked file descriptors of program execution failed.
 Fixed: Issue #264: Monit stopped on reload if the configuration file didn't end with
 empty line.
 
+Fixed: Issue #267: Execution of command with timeout > 2147 seconds on 32-bit systems.
+
 Fixed: Compilation with SSL when SSLv3 is disabled in the SSL library.
 
 Fixed: Don't log error if SSL SNI is not supported by server.
