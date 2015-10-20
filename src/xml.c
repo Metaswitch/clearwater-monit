@@ -357,7 +357,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                 StringBuffer_append(B,
                                                     "<icmp>"
                                                     "<type>%s</type>"
-                                                    "<responsetime>%.3f</responsetime>"
+                                                    "<responsetime>%.6f</responsetime>"
                                                     "</icmp>",
                                                     icmpnames[i->type],
                                                     i->is_available ? i->response : -1.);

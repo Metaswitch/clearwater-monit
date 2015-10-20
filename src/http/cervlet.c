@@ -2074,7 +2074,7 @@ static void print_service_status_icmp(HttpResponse res, Service_T s) {
                 else if (i->response < 0)
                         StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
                 else
-                        StringBuffer_append(res->outputbuffer, "<td>%.3fs</td>", i->response);
+                        StringBuffer_append(res->outputbuffer, "<td>%.3fms</td>", i->response * 1000.);
                 StringBuffer_append(res->outputbuffer, "</tr>");
         }
 }
@@ -2770,8 +2770,8 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                                             "ping response time");
                                 else
                                         StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %.3fs\n",
-                                                            "ping response time", i->response);
+                                                            "  %-33s %.3fms\n",
+                                                            "ping response time", i->response * 1000.);
                         }
                         for (Port_T p = s->portlist; p; p = p->next) {
                                 if (p->is_available)

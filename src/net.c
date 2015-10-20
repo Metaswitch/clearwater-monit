@@ -385,7 +385,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                         break;
         }
         while (Net_canRead(socket, read_timeout) && ! (Run.flags & Run_Stopped)) {
-                long long stopped = Time_milli();
+                long long stopped = Time_micro();
                 struct sockaddr_storage in_addr;
                 socklen_t addrlen = sizeof(in_addr);
                 do {
@@ -429,8 +429,8 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                                 continue; // Try to read next packet, but don't exceed the timeout while waiting for our response so we won't loop forever if the socket is flooded with other ICMP packets
                 } else {
                         memcpy(&started, data, sizeof(long long));
-                        double response = (double)(stopped - started) / 1000.;
-                        DEBUG("Ping response for %s %d/%d succeeded -- received id=%d sequence=%d response_time=%.3fs\n", hostname, retry, maxretries, in_id, in_seq, response);
+                        double response = (double)(stopped - started) / 1000000.;
+                        DEBUG("Ping response for %s %d/%d succeeded -- received id=%d sequence=%d response_time=%.3fms\n", hostname, retry, maxretries, in_id, in_seq, response * 1000.);
                         return response; // Wait for one response only
                 }
         }
@@ -500,7 +500,7 @@ double icmp_echo(const char *hostname, Socket_Family family, int size, int timeo
         _setPingOptions(s, addr);
         uint16_t id = getpid() & 0xFFFF;
         for (int retry = 1; retry <= maxretries; retry++) {
-                long long started = Time_milli();
+                long long started = Time_micro();
                 if (_sendPing(hostname, s, addr, size, retry, maxretries, id, started) && (response = _receivePing(hostname, s, addr, retry, maxretries, id, started, timeout)) >= 0.)
                         break;
         }

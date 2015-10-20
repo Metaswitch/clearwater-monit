@@ -69,6 +69,8 @@ New: Ping test allows to set a data size.
 New: RPM build allows to build without PAM and SSL now:
         rpmbuild -tb monit-5.15.tar.gz --without pam --without ssl
 
+New: The ping test response time has microseconds precision now.
+
 Fixed: Issue #231: Support for OpenSSL 0.9.8
 
 Fixed: Issue #228: The file permission hint was too long (may get trucanted).

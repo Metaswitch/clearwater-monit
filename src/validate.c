@@ -1373,7 +1373,7 @@ State_Type check_remote_host(Service_T s) {
                                         Event_post(s, Event_Icmp, State_Failed, icmp->action, "ping test failed");
                                 } else {
                                         icmp->is_available = true;
-                                        Event_post(s, Event_Icmp, State_Succeeded, icmp->action, "ping test succeeded [response time %.3fs]", icmp->response);
+                                        Event_post(s, Event_Icmp, State_Succeeded, icmp->action, "ping test succeeded [response time %.3fms]", icmp->response * 1000.);
                                 }
                                 last_ping = icmp;
                                 break;
