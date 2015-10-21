@@ -3,15 +3,16 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 47;
 	objects = {
 
 /* Begin PBXBuildFile section */
-		524981F8194B37DD004A50DB /* libcrypto.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 524981F6194B37DD004A50DB /* libcrypto.a */; };
-		524981F9194B37DD004A50DB /* libssl.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 524981F7194B37DD004A50DB /* libssl.a */; };
 		52A1311D13A7886800583257 /* libmonit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 52A1311C13A7886800583257 /* libmonit.a */; };
 		52AE77CC14037DA300D2861D /* sha1.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE77CA14037DA300D2861D /* sha1.c */; };
 		52AE77CF14037E6A00D2861D /* md5_crypt.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE77CD14037E6A00D2861D /* md5_crypt.c */; };
+		52F67BD91BD7AC1C0092111B /* libcrypto.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 52F67BD81BD7AC1C0092111B /* libcrypto.tbd */; };
+		52F67BDB1BD7AC290092111B /* libssl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 52F67BDA1BD7AC290092111B /* libssl.tbd */; };
+		52F67BDD1BD7AC5A0092111B /* libpam.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 52F67BDC1BD7AC5A0092111B /* libpam.tbd */; };
 		52F6E80513A74F220023F87A /* alert.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E74413A74F220023F87A /* alert.c */; };
 		52F6E80613A74F220023F87A /* collector.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E74613A74F220023F87A /* collector.c */; };
 		52F6E80713A74F220023F87A /* control.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E74913A74F220023F87A /* control.c */; };
@@ -73,9 +74,6 @@
 		52F6E85213A74F220023F87A /* util.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7AD13A74F220023F87A /* util.c */; };
 		52F6E85313A74F220023F87A /* validate.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7AF13A74F220023F87A /* validate.c */; };
 		52F6E85513A74F220023F87A /* xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7B113A74F220023F87A /* xml.c */; };
-		52F6E8D113A756DB0023F87A /* libpam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 52F6E8D013A756DB0023F87A /* libpam.dylib */; };
-		52F6E8D313A756EB0023F87A /* libpthread.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 52F6E8D213A756EB0023F87A /* libpthread.dylib */; };
-		52F6E8D513A757050023F87A /* libresolv.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 52F6E8D413A757050023F87A /* libresolv.dylib */; };
 		9303FB8018C47E7000138D72 /* websocket.c in Sources */ = {isa = PBXBuildFile; fileRef = 9303FB7F18C47E7000138D72 /* websocket.c */; };
 		9305FD5E1A96873200B7F8A2 /* Ssl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9305FD591A96873200B7F8A2 /* Ssl.c */; };
 		9357B19B19F2F5A400329B3F /* mongodb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19919F2F5A400329B3F /* mongodb.c */; };
@@ -166,8 +164,6 @@
 		5205879F18CF7235006296CB /* monit.service.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = monit.service.in; sourceTree = "<group>"; };
 		520587A118CF7235006296CB /* monit.upstart.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = monit.upstart.in; sourceTree = "<group>"; };
 		520587A218CF7235006296CB /* rc.monit */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = rc.monit; sourceTree = "<group>"; };
-		524981F6194B37DD004A50DB /* libcrypto.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcrypto.a; path = /opt/local/lib/libcrypto.a; sourceTree = "<absolute>"; };
-		524981F7194B37DD004A50DB /* libssl.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libssl.a; path = /opt/local/lib/libssl.a; sourceTree = "<absolute>"; };
 		528EA77213A74E05003DA4BE /* monit */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = monit; sourceTree = BUILT_PRODUCTS_DIR; };
 		528F7DB318BCABC9004BF9B5 /* CONTRIBUTORS */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CONTRIBUTORS; sourceTree = "<group>"; };
 		52A1310B13A7882A00583257 /* libmonit.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = libmonit.xcodeproj; path = libmonit/libmonit.xcodeproj; sourceTree = "<group>"; };
@@ -184,6 +180,9 @@
 		52D25EE217C0E8680039D3E4 /* monitrc */ = {isa = PBXFileReference; lastKnownFileType = text; path = monitrc; sourceTree = "<group>"; };
 		52D25EE317C0E8680039D3E4 /* README */ = {isa = PBXFileReference; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
 		52D25EE917C0EB460039D3E4 /* monit.pod */ = {isa = PBXFileReference; lastKnownFileType = text; path = monit.pod; sourceTree = "<group>"; };
+		52F67BD81BD7AC1C0092111B /* libcrypto.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcrypto.tbd; path = usr/lib/libcrypto.tbd; sourceTree = SDKROOT; };
+		52F67BDA1BD7AC290092111B /* libssl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libssl.tbd; path = usr/lib/libssl.tbd; sourceTree = SDKROOT; };
+		52F67BDC1BD7AC5A0092111B /* libpam.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libpam.tbd; path = usr/lib/libpam.tbd; sourceTree = SDKROOT; };
 		52F6E67B13A74F220023F87A /* monit.pod */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; lineEnding = 0; path = monit.pod; sourceTree = "<group>"; };
 		52F6E74413A74F220023F87A /* alert.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = alert.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E74513A74F220023F87A /* alert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = alert.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
@@ -281,9 +280,6 @@
 		52F6E7AE13A74F220023F87A /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = util.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		52F6E7AF13A74F220023F87A /* validate.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = validate.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7B113A74F220023F87A /* xml.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = xml.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		52F6E8D013A756DB0023F87A /* libpam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libpam.dylib; path = usr/lib/libpam.dylib; sourceTree = SDKROOT; };
-		52F6E8D213A756EB0023F87A /* libpthread.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libpthread.dylib; path = usr/lib/libpthread.dylib; sourceTree = SDKROOT; };
-		52F6E8D413A757050023F87A /* libresolv.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libresolv.dylib; path = usr/lib/libresolv.dylib; sourceTree = SDKROOT; };
 		52FFBA1118A7E785001F9962 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = "<group>"; };
 		9303FB7F18C47E7000138D72 /* websocket.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = websocket.c; sourceTree = "<group>"; };
 		9305FD591A96873200B7F8A2 /* Ssl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Ssl.c; sourceTree = "<group>"; };
@@ -300,12 +296,10 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				524981F8194B37DD004A50DB /* libcrypto.a in Frameworks */,
-				524981F9194B37DD004A50DB /* libssl.a in Frameworks */,
+				52F67BDD1BD7AC5A0092111B /* libpam.tbd in Frameworks */,
+				52F67BDB1BD7AC290092111B /* libssl.tbd in Frameworks */,
+				52F67BD91BD7AC1C0092111B /* libcrypto.tbd in Frameworks */,
 				52A1311D13A7886800583257 /* libmonit.a in Frameworks */,
-				52F6E8D513A757050023F87A /* libresolv.dylib in Frameworks */,
-				52F6E8D313A756EB0023F87A /* libpthread.dylib in Frameworks */,
-				52F6E8D113A756DB0023F87A /* libpam.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -425,12 +419,10 @@
 		52A1312013A788B900583257 /* libs */ = {
 			isa = PBXGroup;
 			children = (
-				524981F6194B37DD004A50DB /* libcrypto.a */,
-				524981F7194B37DD004A50DB /* libssl.a */,
+				52F67BDC1BD7AC5A0092111B /* libpam.tbd */,
+				52F67BDA1BD7AC290092111B /* libssl.tbd */,
+				52F67BD81BD7AC1C0092111B /* libcrypto.tbd */,
 				52A1311C13A7886800583257 /* libmonit.a */,
-				52F6E8D413A757050023F87A /* libresolv.dylib */,
-				52F6E8D213A756EB0023F87A /* libpthread.dylib */,
-				52F6E8D013A756DB0023F87A /* libpam.dylib */,
 			);
 			name = libs;
 			sourceTree = "<group>";
@@ -643,9 +635,14 @@
 			attributes = {
 				LastUpgradeCheck = 0700;
 				ORGANIZATIONNAME = "Tildeslash Ltd.";
+				TargetAttributes = {
+					528EA77113A74E05003DA4BE = {
+						DevelopmentTeam = Z7D8RDKK69;
+					};
+				};
 			};
 			buildConfigurationList = 528EA76C13A74E05003DA4BE /* Build configuration list for PBXProject "monit" */;
-			compatibilityVersion = "Xcode 3.2";
+			compatibilityVersion = "Xcode 6.3";
 			developmentRegion = English;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -813,7 +810,7 @@
 					/opt/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = /opt/local/lib;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
 				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util /opt/local/include";
@@ -852,7 +849,7 @@
 					/opt/local/include,
 				);
 				LIBRARY_SEARCH_PATHS = /opt/local/lib;
-				MACOSX_DEPLOYMENT_TARGET = 10.6;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
 				SDKROOT = macosx;
 				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util /opt/local/include";
 			};
@@ -862,16 +859,24 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				COPY_PHASE_STRIP = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
-				HEADER_SEARCH_PATHS = /opt/local/include;
-				LIBRARY_SEARCH_PATHS = "";
+				HEADER_SEARCH_PATHS = (
+					/opt/local/include,
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
 					"-DDARWIN",
 					"-DSYSCONFDIR=\"\\\"/etc\\\"\"",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util $SRCROOT/libmonit/src/exceptions";
 			};
 			name = Debug;
@@ -880,16 +885,24 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				CODE_SIGN_ENTITLEMENTS = "";
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
 				COPY_PHASE_STRIP = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				GCC_ENABLE_OBJC_EXCEPTIONS = YES;
-				HEADER_SEARCH_PATHS = /opt/local/include;
-				LIBRARY_SEARCH_PATHS = "";
+				HEADER_SEARCH_PATHS = (
+					/opt/local/include,
+					/usr/local/include,
+				);
+				LIBRARY_SEARCH_PATHS = /usr/local/lib;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
 					"-DDARWIN",
 					"-DSYSCONFDIR=\"\\\"/etc\\\"\"",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE = "";
 				USER_HEADER_SEARCH_PATHS = "$SRCROOT/src/ $SRCROOT/libmonit/src/ $SRCROOT/libmonit/src/thread $SRCROOT/libmonit/src/io $SRCROOT/libmonit/src/net $SRCROOT/libmonit/src/util $SRCROOT/libmonit/src/exceptions";
 			};
 			name = Release;
