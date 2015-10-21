@@ -1370,11 +1370,11 @@ char *Util_monitId(char *idfile) {
                 /* Generate the unique id */
                 snprintf(buf, STRLEN, "%lu%d%lu", (unsigned long)Time_now(), getpid(), random());
                 md5_init(&ctx);
-                md5_append(&ctx, (const md5_byte_t *)buf, (int)strlen(buf));
+                md5_append(&ctx, (const md5_byte_t *)buf, STRLEN - 1);
                 md5_finish(&ctx, (md5_byte_t *)digest);
                 Util_digest2Bytes((unsigned char *)digest, 16, Run.id);
                 fprintf(file, "%s", Run.id);
-                LogInfo("Generated unique Monit id %s and stored to '%s'\n", Run.id, idfile);
+                LogInfo(" New Monit id: %s\n Stored in '%s'\n", Run.id, idfile);
         } else {
                 if (! File_isFile(idfile)) {
                         LogError("idfile '%s' is not a regular file\n", idfile);
