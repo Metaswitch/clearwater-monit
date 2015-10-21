@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		521E7D701BD7EEDA00ADBB72 /* libsystem_kernel.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 521E7D6F1BD7EEDA00ADBB72 /* libsystem_kernel.tbd */; };
 		52A1311D13A7886800583257 /* libmonit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 52A1311C13A7886800583257 /* libmonit.a */; };
 		52AE77CC14037DA300D2861D /* sha1.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE77CA14037DA300D2861D /* sha1.c */; };
 		52AE77CF14037E6A00D2861D /* md5_crypt.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE77CD14037E6A00D2861D /* md5_crypt.c */; };
@@ -297,6 +298,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				521E7D701BD7EEDA00ADBB72 /* libsystem_kernel.tbd in Frameworks */,
 				52F67BDD1BD7AC5A0092111B /* libpam.tbd in Frameworks */,
 				52F67BDB1BD7AC290092111B /* libssl.tbd in Frameworks */,
 				52F67BD91BD7AC1C0092111B /* libcrypto.tbd in Frameworks */,
