@@ -802,24 +802,28 @@ void Util_printRunList() {
                 printf(" %-18s = base directory %s with %s slots\n",
                        "Event queue", Run.eventlist_dir, slots);
         }
+#ifdef HAVE_OPENSSL
         {
                 const char *options = Ssl_printOptions(&(Run.ssl), (char[STRLEN]){}, STRLEN);
                 if (options && *options)
                         printf(" %-18s = %s\n", "SSL options", options);
         }
-
+#endif
         if (Run.mmonits) {
                 Mmonit_T c;
                 printf(" %-18s = ", "M/Monit(s)");
                 for (c = Run.mmonits; c; c = c->next) {
                         printf("%s with timeout %.0f seconds", c->url->url, c->timeout / 1000.);
-                        if (c->ssl.use_ssl)
+#ifdef HAVE_OPENSSL
+                        if (c->ssl.use_ssl) {
                                 printf(" using SSL/TLS");
-                        const char *options = Ssl_printOptions(&c->ssl, (char[STRLEN]){}, STRLEN);
-                        if (options && *options)
-                                printf(" with options {%s}", options);
-                        if (c->ssl.checksum)
-                                printf(" and certificate checksum %s equal to '%s'", checksumnames[c->ssl.checksumType], c->ssl.checksum);
+                                const char *options = Ssl_printOptions(&c->ssl, (char[STRLEN]){}, STRLEN);
+                                if (options && *options)
+                                        printf(" with options {%s}", options);
+                                if (c->ssl.checksum)
+                                        printf(" and certificate checksum %s equal to '%s'", checksumnames[c->ssl.checksumType], c->ssl.checksum);
+                        }
+#endif
                         if (c->url->user)
                                 printf(" using credentials");
                         if (c->next)
@@ -835,13 +839,16 @@ void Util_printRunList() {
                 printf(" %-18s = ", "Mail server(s)");
                 for (mta = Run.mailservers; mta; mta = mta->next) {
                         printf("%s:%d", mta->host, mta->port);
-                        if (mta->ssl.use_ssl)
+#ifdef HAVE_OPENSSL
+                        if (mta->ssl.use_ssl) {
                                 printf(" using SSL/TLS");
-                        const char *options = Ssl_printOptions(&mta->ssl, (char[STRLEN]){}, STRLEN);
-                        if (options && *options)
-                                printf(" with options {%s}", options);
-                        if (mta->ssl.checksum)
-                                printf(" and certificate checksum %s equal to '%s'", checksumnames[mta->ssl.checksumType], mta->ssl.checksum);
+                                const char *options = Ssl_printOptions(&mta->ssl, (char[STRLEN]){}, STRLEN);
+                                if (options && *options)
+                                        printf(" with options {%s}", options);
+                                if (mta->ssl.checksum)
+                                        printf(" and certificate checksum %s equal to '%s'", checksumnames[mta->ssl.checksumType], mta->ssl.checksum);
+                        }
+#endif
                         if (mta->next)
                                 printf(", ");
                 }
@@ -1046,13 +1053,13 @@ void Util_printService(Service_T s) {
                 StringBuffer_clear(buf);
                 switch (o->family) {
                         case Socket_Ip4:
-                                printf(" %-20s = %s\n", "Ping4", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d with timeout %.0f seconds", o->count, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping4", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
                                 break;
                         case Socket_Ip6:
-                                printf(" %-20s = %s\n", "Ping6", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d with timeout %.0f seconds", o->count, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping6", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
                                 break;
                         default:
-                                printf(" %-20s = %s\n", "Ping", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d with timeout %.0f seconds", o->count, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
                                 break;
                 }
         }
@@ -1063,6 +1070,7 @@ void Util_printService(Service_T s) {
                         o->hostname, o->target.net.port, Util_portRequestDescription(o), Util_portTypeDescription(o), Util_portIpDescription(o), o->protocol->name, o->timeout / 1000.);
                 if (o->retry > 1)
                         StringBuffer_append(buf2, " and retry %d times", o->retry);
+#ifdef HAVE_OPENSSL
                 if (o->target.net.ssl.use_ssl) {
                         StringBuffer_append(buf2, " using SSL/TLS");
                         const char *options = Ssl_printOptions(&o->target.net.ssl, (char[STRLEN]){}, STRLEN);
@@ -1073,6 +1081,7 @@ void Util_printService(Service_T s) {
                         if (o->target.net.ssl.checksum)
                                 StringBuffer_append(buf2, " and certificate checksum %s equal to '%s'", checksumnames[o->target.net.ssl.checksumType], o->target.net.ssl.checksum);
                 }
+#endif
                 StringBuffer_clear(buf);
                 printf(" %-20s = %s\n", "Port", StringBuffer_toString(Util_printRule(buf, o->action, StringBuffer_toString(buf2))));
                 StringBuffer_free(&buf2);

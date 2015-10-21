@@ -341,7 +341,7 @@ static void do_reinit() {
         gc();
 
         if (! parse(Run.files.control)) {
-                LogError("%s daemon died\n", prog);
+                LogError("%s stopped -- configuration file parsing error\n", prog);
                 exit(1);
         }
 
@@ -362,7 +362,7 @@ static void do_reinit() {
         file_init();
 
         if (! file_createPidFile(Run.files.pid)) {
-                LogError("%s daemon died\n", prog);
+                LogError("%s stopped -- cannot create a pid file\n", prog);
                 exit(1);
         }
 
@@ -814,6 +814,8 @@ static void version() {
  * M/Monit heartbeat thread
  */
 static void *heartbeat(void *args) {
+        sigset_t ns;
+        set_signal_block(&ns, NULL);
         LogInfo("M/Monit heartbeat started\n");
         LOCK(heartbeatMutex)
         {
