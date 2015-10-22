@@ -315,36 +315,6 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                                 mach_port_deallocate(mytask, task);
                         }
                 }
-                if (task_for_pid(mytask, pt[i].pid, &task) == KERN_SUCCESS) {
-                        mach_msg_type_number_t   count;
-                        task_basic_info_data_t   taskinfo;
-                        thread_array_t           threadtable;
-                        unsigned int             threadtable_size;
-                        thread_basic_info_t      threadinfo;
-                        thread_basic_info_data_t threadinfo_data;
-
-                        count = TASK_BASIC_INFO_COUNT;
-                        if (task_info(task, TASK_BASIC_INFO, (task_info_t)&taskinfo, &count) == KERN_SUCCESS) {
-                                pt[i].mem_kbyte   = (unsigned long)(taskinfo.resident_size / 1024);
-                                pt[i].cputime     = (long)((taskinfo.user_time.seconds + taskinfo.system_time.seconds) * 10 + (taskinfo.user_time.microseconds + taskinfo.system_time.microseconds) / 100000);
-                                pt[i].cpu_percent = 0;
-                        }
-                        if (task_threads(task, &threadtable, &threadtable_size) == KERN_SUCCESS) {
-                                threadinfo = &threadinfo_data;
-                                for (int j = 0; j < threadtable_size; j++) {
-                                        count = THREAD_BASIC_INFO_COUNT;
-                                        if (thread_info(threadtable[j], THREAD_BASIC_INFO, (thread_info_t)threadinfo, &count) == KERN_SUCCESS) {
-                                                if ((threadinfo->flags & TH_FLAGS_IDLE) == 0) {
-                                                        pt[i].cputime += (long)((threadinfo->user_time.seconds + threadinfo->system_time.seconds) * 10 + (threadinfo->user_time.microseconds + threadinfo->system_time.microseconds) / 100000);
-                                                        pt[i].cpu_percent = 0;
-                                                }
-                                        }
-                                        mach_port_deallocate(mytask, threadtable[j]);
-                                }
-                                vm_deallocate(mytask, (vm_address_t)threadtable,threadtable_size * sizeof(thread_act_t));
-                        }
-                        mach_port_deallocate(mytask, task);
-                }
         }
         FREE(args);
         FREE(pinfo);
