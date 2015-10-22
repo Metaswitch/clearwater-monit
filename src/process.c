@@ -213,7 +213,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
         }
 
         if ((*size_r = initprocesstree_sysdep(pt_r)) <= 0 || ! *pt_r) {
-                DEBUG("System statistic error -- cannot initialize the process tree -- process resource monitoring disabled\n");
+                DEBUG("System statistic -- cannot initialize the process tree -- process resource monitoring disabled\n");
                 Run.flags &= ~Run_ProcessEngineEnabled;
                 if (*oldpt_r)
                         delprocesstree(oldpt_r, oldsize_r);

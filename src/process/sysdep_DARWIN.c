@@ -84,7 +84,7 @@ static int  pagesize_kbyte;
 static long total_old    = 0;
 static long cpu_user_old = 0;
 static long cpu_syst_old = 0;
-static boolean_t isPrerequisiteSatisfied = false;
+static boolean_t isSipEnabled = true;
 
 
 /* ----------------------- OS X >= 10.11 System Integrity Protection Check */
@@ -95,42 +95,43 @@ static boolean_t isPrerequisiteSatisfied = false;
  is enabled, we are not allowed to call task_for_pid. The alternative is to 
  call the private API csr_check(CSR_ALLOW_TASK_FOR_PID) but this API is only 
  supported back to 10.10 AFAIK while we need to support systems all the way
- back to 10.6 and test the feature at runtime not at build time (via ifdefs) */
-static boolean_t _checkPrerequisite() {
-        isPrerequisiteSatisfied = false;
-        host_t  myhost = mach_host_self();
+ back to 10.6 and test the feature at runtime not at build time (via ifdefs) 
+ @return true if enabled otherwise false */
+static boolean_t _isSipEnabled() {
+        isSipEnabled = true;
+        host_t myhost = mach_host_self();
         mach_port_t psDefault;
         kern_return_t status = processor_set_default(myhost, &psDefault);
         mach_port_t psDefaultCtrl;
         status = host_processor_set_priv(myhost, psDefault, &psDefaultCtrl);
         if (status != KERN_SUCCESS) {
-                // Will fail if we are not running as root in which case task_for_pid will also fail
+                // Will fail if we are not running as root in which case task_for_pid will fail anyway
                 DEBUG("host_processor_set_priv failed -- %s\n", mach_error_string(status));
-                return false;
+                return isSipEnabled;
         }
         task_array_t tasks;
         mach_msg_type_number_t nTasks;
         status = processor_set_tasks(psDefaultCtrl, &tasks, &nTasks);
         if (status != KERN_SUCCESS) {
                 DEBUG("processor_set_tasks failed with error -- %s\n", mach_error_string(status));
-                return false;
+                return isSipEnabled;
         }
         for (int i = 0; i < nTasks; i++) {
                 int pid;
                 pid_for_task(tasks[i], &pid);
                 if (pid == 1) {
-                        isPrerequisiteSatisfied = true;
+                        isSipEnabled = false;
                 }
                 mach_port_deallocate(mach_task_self(), tasks[i]);
         }
         status= vm_deallocate(mach_task_self(), (vm_address_t)tasks, nTasks * sizeof(task_t));
         status = mach_port_deallocate(mach_task_self(), psDefaultCtrl);
 #if __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_11
-        if (! isPrerequisiteSatisfied) {
+        if (isSipEnabled) {
                 DEBUG("System Integrity Protection is enabled and Monit cannot check process memory or CPU usage\n");
         }
 #endif
-        return isPrerequisiteSatisfied;
+        return isSipEnabled;
 }
 
 
@@ -142,10 +143,6 @@ boolean_t init_process_info_sysdep(void) {
         size_t           len;
         struct clockinfo clock;
         uint64_t         memsize;
-
-        if (!_checkPrerequisite()) {
-                return false;
-        }
 
         mib[0] = CTL_KERN;
         mib[1] = KERN_CLOCKRATE;
@@ -181,6 +178,8 @@ boolean_t init_process_info_sysdep(void) {
         }
         pagesize_kbyte /= 1024;
 
+        isSipEnabled = _isSipEnabled();
+
         return true;
 }
 
@@ -201,7 +200,12 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         size_t             size;
         int                mib[4];
 
-        if (!isPrerequisiteSatisfied)
+        /* Issue #266: As of OS X 10.11 a new System Integrity Protection policy
+         (SIP) is in use which deny usage of task_for_pid, i.e. we cannot get 
+         process info and to continue here would be useless. SIP is enabled by
+         default on 10.11. If we are running as non-root 'isSipEnabled' is also
+         set to true, as we are not allowed to call task_for_pid then neither */
+        if (isSipEnabled)
                 return 0;
 
         mib[0] = CTL_KERN;
@@ -282,8 +286,6 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         pt[i].zombie = true;
                 pt[i].time = get_float_time();
 
-                /* Issue #266: As of OS X 10.11 a new System Integrity Protection policy is in use which
-                 deny usage of task_for_pid et.al. when enabled. Default is enabled. */
                 if (task_for_pid(mytask, pt[i].pid, &task) == KERN_SUCCESS) {
                         mach_msg_type_number_t   count;
                         task_basic_info_data_t   taskinfo;
