@@ -346,7 +346,7 @@ static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *ad
                         break;
         }
         if (out_len > sizeof(buf)) {
-                LogError("Ping request for %s %d/%d failed -- too large (%d vs. maximum %lu bytes)\n", hostname, retry, maxretries, size, sizeof(buf) - header_len);
+                LogError("Ping request for %s %d/%d failed -- too large (%d vs. maximum %lu bytes)\n", hostname, retry, maxretries, size, (unsigned long)(sizeof(buf) - header_len));
                 return false;
         }
         ssize_t n;
