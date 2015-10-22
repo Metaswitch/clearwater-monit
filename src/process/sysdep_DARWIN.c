@@ -125,6 +125,11 @@ static boolean_t _checkPrerequisite() {
         }
         status= vm_deallocate(mach_task_self(), (vm_address_t)tasks, nTasks * sizeof(task_t));
         status = mach_port_deallocate(mach_task_self(), psDefaultCtrl);
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= __MAC_10_11
+        if (! isPrerequisiteSatisfied) {
+                DEBUG("System Integrity Protection is enabled and Monit cannot check process memory or CPU usage\n");
+        }
+#endif
         return isPrerequisiteSatisfied;
 }
 
