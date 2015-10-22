@@ -84,25 +84,48 @@ static int  pagesize_kbyte;
 static long total_old    = 0;
 static long cpu_user_old = 0;
 static long cpu_syst_old = 0;
-static boolean_t csrAllowTaskForPid = true;
+static boolean_t isPrerequisiteSatisfied = false;
 
 
-/* ----------------------- OS X >= 10.11 System Integrity Protection  Check */
+/* ----------------------- OS X >= 10.11 System Integrity Protection Check */
 
-typedef uint32_t csr_config_t;
-extern int csr_check(csr_config_t mask);
-
-#define CSR_ALLOW_TASK_FOR_PID	(1 << 2)
-
-static void _check_sip() {
-#if __MAC_OS_X_VERSION_MAX_ALLOWED <= __MAC_10_11
-        csrAllowTaskForPid = csr_check(CSR_ALLOW_TASK_FOR_PID) == 0
-        ? true
-        : false;
-        if (! csrAllowTaskForPid) {
-                DEBUG("System Integrity Protection is enabled and Monit cannot check process memory nor CPU usage\n");
+/* Check if OS X 10.11 System Integrity Protection (SIP) is enabled. The idea
+ here is to collect all pids via processor_set_tasks() and if we have pid = 1 in
+ the list, then SIP is _not_ enabled, otherwise we assume it is. If SIP
+ is enabled, we are not allowed to call task_for_pid. The alternative is to 
+ call the private API csr_check(CSR_ALLOW_TASK_FOR_PID) but this API is only 
+ supported back to 10.10 AFAIK while we need to support systems all the way
+ back to 10.6 and test the feature at runtime not at build time (via ifdefs) */
+static boolean_t _checkPrerequisite() {
+        isPrerequisiteSatisfied = false;
+        host_t  myhost = mach_host_self();
+        mach_port_t psDefault;
+        kern_return_t status = processor_set_default(myhost, &psDefault);
+        mach_port_t psDefaultCtrl;
+        status = host_processor_set_priv(myhost, psDefault, &psDefaultCtrl);
+        if (status != KERN_SUCCESS) {
+                // Will fail if we are not running as root in which case task_for_pid will also fail
+                DEBUG("host_processor_set_priv failed -- %s\n", mach_error_string(status));
+                return false;
         }
-#endif
+        task_array_t tasks;
+        mach_msg_type_number_t nTasks;
+        status = processor_set_tasks(psDefaultCtrl, &tasks, &nTasks);
+        if (status != KERN_SUCCESS) {
+                DEBUG("processor_set_tasks failed with error -- %s\n", mach_error_string(status));
+                return false;
+        }
+        for (int i = 0; i < nTasks; i++) {
+                int pid;
+                pid_for_task(tasks[i], &pid);
+                if (pid == 1) {
+                        isPrerequisiteSatisfied = true;
+                }
+                mach_port_deallocate(mach_task_self(), tasks[i]);
+        }
+        status= vm_deallocate(mach_task_self(), (vm_address_t)tasks, nTasks * sizeof(task_t));
+        status = mach_port_deallocate(mach_task_self(), psDefaultCtrl);
+        return isPrerequisiteSatisfied;
 }
 
 
@@ -114,11 +137,9 @@ boolean_t init_process_info_sysdep(void) {
         size_t           len;
         struct clockinfo clock;
         uint64_t         memsize;
-        static boolean_t is_sip_checked = false;
 
-        if (!is_sip_checked) {
-                _check_sip();
-                is_sip_checked = true;
+        if (!_checkPrerequisite()) {
+                return false;
         }
 
         mib[0] = CTL_KERN;
@@ -174,6 +195,9 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         size_t             args_size = 0;
         size_t             size;
         int                mib[4];
+
+        if (!isPrerequisiteSatisfied)
+                return 0;
 
         mib[0] = CTL_KERN;
         mib[1] = KERN_PROC;
@@ -253,39 +277,37 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         pt[i].zombie = true;
                 pt[i].time = get_float_time();
 
-                if (csrAllowTaskForPid) {
-                        /* Issue #266: As of OS X 10.11 a new System Integrity Protection policy is in use which
-                         deny usage of task_for_pid et.al. if enabled. Default is enabled. */
-                        if (task_for_pid(mytask, pt[i].pid, &task) == KERN_SUCCESS) {
-                                mach_msg_type_number_t   count;
-                                task_basic_info_data_t   taskinfo;
-                                thread_array_t           threadtable;
-                                unsigned int             threadtable_size;
-                                thread_basic_info_t      threadinfo;
-                                thread_basic_info_data_t threadinfo_data;
+                /* Issue #266: As of OS X 10.11 a new System Integrity Protection policy is in use which
+                 deny usage of task_for_pid et.al. when enabled. Default is enabled. */
+                if (task_for_pid(mytask, pt[i].pid, &task) == KERN_SUCCESS) {
+                        mach_msg_type_number_t   count;
+                        task_basic_info_data_t   taskinfo;
+                        thread_array_t           threadtable;
+                        unsigned int             threadtable_size;
+                        thread_basic_info_t      threadinfo;
+                        thread_basic_info_data_t threadinfo_data;
 
-                                count = TASK_BASIC_INFO_COUNT;
-                                if (task_info(task, TASK_BASIC_INFO, (task_info_t)&taskinfo, &count) == KERN_SUCCESS) {
-                                        pt[i].mem_kbyte   = (unsigned long)(taskinfo.resident_size / 1024);
-                                        pt[i].cputime     = (long)((taskinfo.user_time.seconds + taskinfo.system_time.seconds) * 10 + (taskinfo.user_time.microseconds + taskinfo.system_time.microseconds) / 100000);
-                                        pt[i].cpu_percent = 0;
-                                }
-                                if (task_threads(task, &threadtable, &threadtable_size) == KERN_SUCCESS) {
-                                        threadinfo = &threadinfo_data;
-                                        for (int j = 0; j < threadtable_size; j++) {
-                                                count = THREAD_BASIC_INFO_COUNT;
-                                                if (thread_info(threadtable[j], THREAD_BASIC_INFO, (thread_info_t)threadinfo, &count) == KERN_SUCCESS) {
-                                                        if ((threadinfo->flags & TH_FLAGS_IDLE) == 0) {
-                                                                pt[i].cputime += (long)((threadinfo->user_time.seconds + threadinfo->system_time.seconds) * 10 + (threadinfo->user_time.microseconds + threadinfo->system_time.microseconds) / 100000);
-                                                                pt[i].cpu_percent = 0;
-                                                        }
-                                                }
-                                                mach_port_deallocate(mytask, threadtable[j]);
-                                        }
-                                        vm_deallocate(mytask, (vm_address_t)threadtable,threadtable_size * sizeof(thread_act_t));
-                                }
-                                mach_port_deallocate(mytask, task);
+                        count = TASK_BASIC_INFO_COUNT;
+                        if (task_info(task, TASK_BASIC_INFO, (task_info_t)&taskinfo, &count) == KERN_SUCCESS) {
+                                pt[i].mem_kbyte   = (unsigned long)(taskinfo.resident_size / 1024);
+                                pt[i].cputime     = (long)((taskinfo.user_time.seconds + taskinfo.system_time.seconds) * 10 + (taskinfo.user_time.microseconds + taskinfo.system_time.microseconds) / 100000);
+                                pt[i].cpu_percent = 0;
                         }
+                        if (task_threads(task, &threadtable, &threadtable_size) == KERN_SUCCESS) {
+                                threadinfo = &threadinfo_data;
+                                for (int j = 0; j < threadtable_size; j++) {
+                                        count = THREAD_BASIC_INFO_COUNT;
+                                        if (thread_info(threadtable[j], THREAD_BASIC_INFO, (thread_info_t)threadinfo, &count) == KERN_SUCCESS) {
+                                                if ((threadinfo->flags & TH_FLAGS_IDLE) == 0) {
+                                                        pt[i].cputime += (long)((threadinfo->user_time.seconds + threadinfo->system_time.seconds) * 10 + (threadinfo->user_time.microseconds + threadinfo->system_time.microseconds) / 100000);
+                                                        pt[i].cpu_percent = 0;
+                                                }
+                                        }
+                                        mach_port_deallocate(mytask, threadtable[j]);
+                                }
+                                vm_deallocate(mytask, (vm_address_t)threadtable,threadtable_size * sizeof(thread_act_t));
+                        }
+                        mach_port_deallocate(mytask, task);
                 }
         }
         FREE(args);
