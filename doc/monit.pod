@@ -8,7 +8,6 @@ Monit - utility for monitoring services on a Unix system
 =head1 SYNOPSIS
 
 B<monit> [options] {arguments}
-certificates
 
 =head1 DESCRIPTION
 
