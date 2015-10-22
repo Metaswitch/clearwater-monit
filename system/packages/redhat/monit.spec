@@ -1,6 +1,6 @@
 Name: monit
 Summary: Process monitor and restart utility
-Version: 5.15
+Version: 6.0
 Release: 1
 URL: http://mmonit.com/monit/
 Source: http://mmonit.com/monit/dist/%{name}-%{version}.tar.gz
@@ -67,6 +67,9 @@ fi
 %{_mandir}/man1/%{name}.1.gz
 
 %changelog
+* Thu Oct 22 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-6.0
+
 * Mon Oct 12 2015 Martin Pala <martinp@tildeslash.com>
 - Upgraded to monit-5.15
 - Added rpmbuild options for building without PAM (--without pam)
