@@ -8,7 +8,7 @@ Monit - utility for monitoring services on a Unix system
 =head1 SYNOPSIS
 
 B<monit> [options] {arguments}
-
+certificates
 
 =head1 DESCRIPTION
 
@@ -443,7 +443,7 @@ The format for logfile is:
 
 for example:
 
-    [CET Jan  5 18:49:29] info : 'mymachine' Monit started
+    [CET Jan  5 18:49:29] info : 'localhost' Monit started
 
 
 
@@ -586,21 +586,20 @@ and if found, use this certificate for client authentication.
 
 I<CACERTIFICATEFILE> set the path to the PEM encoded file containing
 Certificate Authority (CA) certificates. Monit uses OpenSSL's default
-CA cartificates if this options is not used (you can use "openssl version -d"
-command to get the default CA certificates). Many distributions comes
+CA certificates if this options is not used (I<openssl version -d>
+can be used to get the default CA certificates). Many distributions comes
 with SSL and CA certificates already setup and using this option is
 normally not necessary.
 
 I<CACERTIFICATEPATH> set the path to the directory containing
 Certificate Authority (CA) certificates. Monit uses OpenSSL's default
-CA certificates if this options is not used (you can use "openssl version -d"
-command to get the default CA certificates). Many distributions comes
+CA certificates if this options is not used. Many distributions comes
 with SSL and CA certificates already setup and using this option is
 normally not necessary.
 
-The SSL options statement can be used both globally (default for all
-SSL/TLS connection made through Monit) or local in a check, in
-mailserver settings or with the mmonit statement, and will then
+The SSL options statement will globally apply to all SSL/TLS connection
+made through Monit. SSL options can also be set in a local check, in
+I<mailserver> settings or in the I<mmonit> statement, and will then
 override or extend the global settings.
 
 To set global SSL options, put this statement near the top of your
