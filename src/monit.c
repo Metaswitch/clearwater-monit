@@ -193,6 +193,15 @@ boolean_t do_wakeupcall() {
 /* ----------------------------------------------------------------- Private */
 
 
+static void _validateOnce() {
+        if (State_open()) {
+                State_update();
+                validate();
+                State_close();
+        }
+}
+
+
 /**
  * Initialize this application - Register signal handlers,
  * Parse the control file and initialize the program's
@@ -443,8 +452,11 @@ static void do_action(char **args) {
         } else if (IS(action, "quit")) {
                 kill_daemon(SIGTERM);
         } else if (IS(action, "validate")) {
-                if (validate())
-                        exit(1);
+                if (do_wakeupcall())
+                        status(LEVEL_NAME_FULL, Run.mygroup, service);
+                else
+                        _validateOnce();
+                exit(1);
         } else {
                 LogError("Invalid argument -- %s  (-h will show valid arguments)\n", action);
                 exit(1);
@@ -564,7 +576,7 @@ static void do_default() {
                                 do_reinit();
                 }
         } else {
-                validate();
+                _validateOnce();
         }
 }
 
