@@ -468,8 +468,7 @@ static void do_action(char **args) {
  * Finalize monit
  */
 static void do_exit() {
-        sigset_t ns;
-        set_signal_block(&ns, NULL);
+        set_signal_block();
         Run.flags |= Run_Stopped;
         if ((Run.flags & Run_Daemon) && ! (Run.flags & Run_Once)) {
                 if (can_http())
@@ -562,7 +561,7 @@ static void do_default() {
                         State_save();
 
                         /* In the case that there is no pending action then sleep */
-                        if (! (Run.flags & Run_ActionPending))
+                        if (! (Run.flags & Run_ActionPending) && ! (Run.flags & Run_Stopped))
                                 sleep(Run.polltime);
 
                         if (Run.flags & Run_DoWakeup) {
@@ -826,8 +825,7 @@ static void version() {
  * M/Monit heartbeat thread
  */
 static void *heartbeat(void *args) {
-        sigset_t ns;
-        set_signal_block(&ns, NULL);
+        set_signal_block();
         LogInfo("M/Monit heartbeat started\n");
         LOCK(heartbeatMutex)
         {

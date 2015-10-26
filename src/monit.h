@@ -1215,7 +1215,7 @@ boolean_t sendmail(Mail_T);
 void  init_env();
 void  monit_http(Httpd_Action);
 boolean_t can_http();
-void set_signal_block(sigset_t *, sigset_t *);
+void set_signal_block();
 State_Type check_process(Service_T);
 State_Type check_filesystem(Service_T);
 State_Type check_file(Service_T);

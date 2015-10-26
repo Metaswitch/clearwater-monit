@@ -73,15 +73,14 @@ Sigfunc *signal(int signo, Sigfunc *func) {
 
 /**
  * Set a collective thread signal block for signals honored by monit
- * @param new The signal mask to use for the block
- * @param old The signal mask used to save the previous mask
  */
-void set_signal_block(sigset_t *new, sigset_t *old) {
-        sigemptyset(new);
-        sigaddset(new, SIGHUP);
-        sigaddset(new, SIGINT);
-        sigaddset(new, SIGUSR1);
-        sigaddset(new, SIGTERM);
-        pthread_sigmask(SIG_BLOCK, new, old);
+void set_signal_block() {
+        sigset_t mask;
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGHUP);
+        sigaddset(&mask, SIGINT);
+        sigaddset(&mask, SIGUSR1);
+        sigaddset(&mask, SIGTERM);
+        pthread_sigmask(SIG_BLOCK, &mask, NULL);
 }
 

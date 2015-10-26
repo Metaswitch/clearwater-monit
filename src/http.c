@@ -137,8 +137,7 @@ void monit_http(Httpd_Action action) {
 
 
 static void *thread_wrapper(void *arg) {
-        sigset_t ns;
-        set_signal_block(&ns, NULL);
+        set_signal_block();
         Engine_start();
 #ifdef HAVE_OPENSSL
         Ssl_threadCleanup();
