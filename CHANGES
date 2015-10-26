@@ -8,6 +8,8 @@ Fixed: If monit daemon is running, the "monit validate" command will now pass th
 command to the daemon instead of running in its own context. The validate also
 respects the service monitoring state now.
 
+Fixed: Support connection parameters preceding send/expect test.
+
 
 Version 5.15
 
