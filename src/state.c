@@ -182,7 +182,7 @@ static void update_v1() {
 boolean_t State_open() {
         State_close();
         if ((file = open(Run.files.state, O_RDWR | O_CREAT, 0600)) == -1) {
-                LogError("Cannot open for write -- %s\n", STRERROR);
+                LogError("State file '%s': cannot open for write -- %s\n", Run.files.state, STRERROR);
                 return false;
         }
         atexit(State_close);
