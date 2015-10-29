@@ -79,7 +79,6 @@
 /* ----------------------------------------------------------------- Private */
 
 
-static int  hz;
 static int  pagesize_kbyte;
 static long total_old    = 0;
 static long cpu_user_old = 0;
@@ -139,31 +138,16 @@ static boolean_t _isSipEnabled() {
 
 
 boolean_t init_process_info_sysdep(void) {
-        int              mib[2];
-        size_t           len;
-        struct clockinfo clock;
-        uint64_t         memsize;
-
-        mib[0] = CTL_KERN;
-        mib[1] = KERN_CLOCKRATE;
-        len    = sizeof(clock);
-        if (sysctl(mib, 2, &clock, &len, NULL, 0) == -1) {
-                DEBUG("system statistic error -- cannot get clock rate: %s\n", STRERROR);
-                return false;
-        }
-        hz     = clock.hz;
-
-        mib[0] = CTL_HW;
-        mib[1] = HW_NCPU;
-        len    = sizeof(systeminfo.cpus);
+        int mib[2] = {CTL_HW, HW_NCPU};
+        size_t len = sizeof(systeminfo.cpus);
         if (sysctl(mib, 2, &systeminfo.cpus, &len, NULL, 0) == -1) {
                 DEBUG("system statistic error -- cannot get cpu count: %s\n", STRERROR);
                 return false;
         }
 
-        mib[1]  = HW_MEMSIZE;
-        len     = sizeof(memsize);
-        memsize = 0L;
+        uint64_t memsize = 0LL;
+        mib[1] = HW_MEMSIZE;
+        len = sizeof(memsize);
         if (sysctl(mib, 2, &memsize, &len, NULL, 0 ) == -1) {
                 DEBUG("system statistic error -- cannot get real memory amount: %s\n", STRERROR);
                 return false;

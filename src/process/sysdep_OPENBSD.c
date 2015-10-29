@@ -80,7 +80,6 @@
 /* ----------------------------------------------------------------- Private */
 
 
-static int      hz;
 static int      pagesize_kbyte;
 static long     total_old    = 0;
 static long     cpu_user_old = 0;
@@ -93,28 +92,14 @@ static unsigned maxslp;
 
 
 boolean_t init_process_info_sysdep(void) {
-        int              mib[2];
-        size_t           len;
-        int64_t          physmem;
-        struct clockinfo clock;
-
-        mib[0] = CTL_KERN;
-        mib[1] = KERN_CLOCKRATE;
-        len    = sizeof(clock);
-        if (sysctl(mib, 2, &clock, &len, NULL, 0) == -1) {
-                DEBUG("system statistic error -- cannot get clock rate: %s\n", STRERROR);
-                return false;
-        }
-        hz     = clock.hz;
-
-        mib[0] = CTL_HW;
-        mib[1] = HW_NCPU;
-        len    = sizeof(systeminfo.cpus);
+        int mib[2] = {CTL_HW, HW_NCPU};
+        size_t len = sizeof(systeminfo.cpus);
         if (sysctl(mib, 2, &systeminfo.cpus, &len, NULL, 0) == -1) {
                 DEBUG("system statistic error -- cannot get cpu count: %s\n", STRERROR);
                 return false;
         }
 
+        int64_t physmem;
         mib[1] = HW_PHYSMEM64;
         len    = sizeof(physmem);
         if (sysctl(mib, 2, &physmem, &len, NULL, 0) == -1) {
