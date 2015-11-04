@@ -590,9 +590,8 @@ static State_Type _checkTimestamp(Service_T s, time_t timestamp) {
                                 /* if we are testing for changes only, the value is variable */
                                 if (t->timestamp != timestamp) {
                                         rv = State_Changed;
-                                        /* reset expected value for next cycle */
-                                        t->timestamp = timestamp;
-                                        Event_post(s, Event_Timestamp, State_Changed, t->action, "timestamp was changed for %s", s->path);
+                                        Event_post(s, Event_Timestamp, State_Changed, t->action, "timestamp for %s changed from %s to %s", s->path, t->timestamp ? Time_string(t->timestamp, (char[26]){}) : "N/A", Time_string(timestamp, (char[26]){}));
+                                        t->timestamp = timestamp; // reset expected value for next cycle
                                 } else {
                                         Event_post(s, Event_Timestamp, State_ChangedNot, t->action, "timestamp was not changed for %s", s->path);
                                 }
@@ -600,9 +599,9 @@ static State_Type _checkTimestamp(Service_T s, time_t timestamp) {
                                 /* we are testing constant value for failed or succeeded state */
                                 if (Util_evalQExpression(t->operator, now - timestamp, t->time)) {
                                         rv = State_Failed;
-                                        Event_post(s, Event_Timestamp, State_Failed, t->action, "timestamp test failed for %s", s->path);
+                                        Event_post(s, Event_Timestamp, State_Failed, t->action, "timestamp for %s failed -- current timestamp is %s", s->path, Time_string(timestamp, (char[26]){}));
                                 } else {
-                                        Event_post(s, Event_Timestamp, State_Succeeded, t->action, "timestamp test succeeded for %s", s->path);
+                                        Event_post(s, Event_Timestamp, State_Succeeded, t->action, "timestamp test succeeded for %s [current timestamp is %s]", s->path, Time_string(timestamp, (char[26]){}));
                                 }
                         }
                 }

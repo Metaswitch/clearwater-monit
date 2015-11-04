@@ -4,6 +4,8 @@
 
 Version 6.0
 
+New: Issue #280: Timestamp test related events report the timestamp value now.
+
 Fixed: If monit daemon is running, the "monit validate" command will now pass the
 command to the daemon instead of running in its own context. The validate also
 respects the service monitoring state now.
