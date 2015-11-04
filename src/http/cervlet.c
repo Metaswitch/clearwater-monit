@@ -2603,12 +2603,13 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                                     "  %-33s %o\n"
                                                     "  %-33s %d\n"
                                                     "  %-33s %d\n"
-                                                    "  %-33s %s\n"
                                                     "  %-33s %s\n",
                                                     "permission", s->inf->priv.file.mode & 07777,
                                                     "uid", (int)s->inf->priv.file.uid,
                                                     "gid", (int)s->inf->priv.file.gid,
-                                                    "size", Str_bytesToSize(s->inf->priv.file.size, buf),
+                                                    "size", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                        StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s %s\n",
                                                     "timestamp", Time_string(s->inf->priv.file.timestamp, buf));
                                         if (s->checksum) {
                                                 StringBuffer_append(res->outputbuffer,

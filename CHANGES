@@ -10,6 +10,8 @@ respects the service monitoring state now.
 
 Fixed: Support connection parameters preceding send/expect test.
 
+Fixed: Issue #279: Monit CLI status displayed file size for timestamp.
+
 
 Version 5.15
 
