@@ -228,7 +228,7 @@ static boolean_t _doStart(Service_T s) {
                                 char msg[STRLEN];
                                 int64_t timeout = s->start->timeout * USEC_PER_SEC;
                                 int status = _commandExecute(s, s->start, msg, sizeof(msg), &timeout);
-                                if ((s->type == Service_Process && _waitProcessStart(s, &timeout) != Process_Started) || status < 0) {
+                                if (status < 0 || (s->type == Service_Process && _waitProcessStart(s, &timeout) != Process_Started)) {
                                         Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start (exit status %d) -- %s", status, *msg ? msg : "no output");
                                         rv = false;
                                 } else {
@@ -316,7 +316,7 @@ static boolean_t _doRestart(Service_T s) {
                 char msg[STRLEN];
                 int64_t timeout = s->restart->timeout * USEC_PER_SEC;
                 int status = _commandExecute(s, s->restart, msg, sizeof(msg), &timeout);
-                if ((s->type == Service_Process && _waitProcessStart(s, &timeout) != Process_Started) || status < 0) {
+                if (status < 0 || (s->type == Service_Process && _waitProcessStart(s, &timeout) != Process_Started)) {
                         rv = false;
                         Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to restart (exit status %d) -- %s", status, msg);
                 } else {

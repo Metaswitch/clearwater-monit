@@ -14,6 +14,8 @@ Fixed: Support connection parameters preceding send/expect test.
 
 Fixed: Issue #279: Monit CLI status displayed file size for timestamp.
 
+Fixed: Don't wait for process start if the start/restart program execution failed.
+
 
 Version 5.15
 
