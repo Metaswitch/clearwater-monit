@@ -527,11 +527,11 @@ boolean_t control_service_string(List_T services, const char *action) {
  */
 boolean_t control_service(const char *S, Action_Type A) {
         Service_T s = NULL;
-        boolean_t rv = false;
+        boolean_t rv = true;
         ASSERT(S);
         if (! (s = Util_getService(S))) {
                 LogError("Service '%s' -- doesn't exist\n", S);
-                return rv;
+                return false;
         }
         s->doaction = Action_Ignored;
         switch (A) {
