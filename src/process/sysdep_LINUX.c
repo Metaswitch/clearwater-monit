@@ -205,7 +205,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         ASSERT(reference);
 
         /* Find all processes in the /proc directory */
-        if ((rv = glob("/proc/[0-9]*", GLOB_ONLYDIR, NULL, &globbuf))) {
+        if ((rv = glob("/proc/[0-9]*", 0, NULL, &globbuf))) {
                 LogError("system statistic error -- glob failed: %d (%s)\n", rv, STRERROR);
                 return 0;
         }

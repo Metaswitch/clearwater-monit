@@ -17,6 +17,8 @@ Fixed: Issue #279: Monit CLI status displayed file size for timestamp.
 Fixed: Issue #283: The monitor and unmonitor action event falsely described
 the monitor/unmonitor action as failed even though it succeeded.
 
+Fixed: Issue #285: Compilation of monit on linux with musl libc library.
+
 Fixed: Don't wait for process start if the start/restart program execution failed.
 
 
