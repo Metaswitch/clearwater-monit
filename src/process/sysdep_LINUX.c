@@ -228,7 +228,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         continue;
                 }
                 *tmp = 0;
-                if (sscanf(buf, "%*d (%256s", procname) != 1) {
+                if (sscanf(buf, "%*d (%255s", procname) != 1) {
                         DEBUG("system statistic error -- file /proc/%d/stat process name parse error\n", stat_pid);
                         continue;
                 }
