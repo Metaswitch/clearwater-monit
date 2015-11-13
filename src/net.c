@@ -305,7 +305,7 @@ static void _setPingOptions(int socket, struct addrinfo *addr) {
 }
 
 
-static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *addr, int size, int retry, int maxretries, int id, long long started) {
+static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *addr, int size, int retry, int maxretries, int id, int64_t started) {
         char buf[ICMP_MAXSIZE] = {};
         int header_len = 0;
         int out_len = 0;
@@ -322,7 +322,7 @@ static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *ad
                         out_icmp4->icmp_cksum = 0;
                         out_icmp4->icmp_id = htons(id);
                         out_icmp4->icmp_seq = htons(retry);
-                        memcpy((long long *)(out_icmp4->icmp_data), &started, sizeof(long long)); // set data to timestamp
+                        memcpy((int64_t *)(out_icmp4->icmp_data), &started, sizeof(int64_t)); // set data to timestamp
                         header_len = offsetof(struct icmp, icmp_data);
                         out_len = header_len + size;
                         out_icmp4->icmp_cksum = _checksum((unsigned char *)out_icmp4, out_len); // IPv4 requires checksum computation
@@ -336,7 +336,7 @@ static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *ad
                         out_icmp6->icmp6_cksum = 0;
                         out_icmp6->icmp6_id = htons(id);
                         out_icmp6->icmp6_seq = htons(retry);
-                        memcpy((long long *)(out_icmp6 + 1), &started, sizeof(long long)); // set data to timestamp
+                        memcpy((int64_t *)(out_icmp6 + 1), &started, sizeof(int64_t)); // set data to timestamp
                         header_len = sizeof(struct icmp6_hdr);
                         out_len = header_len + size;
                         out_icmp = out_icmp6;
@@ -361,7 +361,7 @@ static boolean_t _sendPing(const char *hostname, int socket, struct addrinfo *ad
 }
 
 
-static double _receivePing(const char *hostname, int socket, struct addrinfo *addr, int retry, int maxretries, int out_id, long long started, int timeout) {
+static double _receivePing(const char *hostname, int socket, struct addrinfo *addr, int retry, int maxretries, int out_id, int64_t started, int timeout) {
         int in_len = 0, read_timeout = timeout;
         uint16_t in_id = 0, in_seq = 0;
         unsigned char *data = NULL;
@@ -384,8 +384,8 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                 default:
                         break;
         }
-        while (Net_canRead(socket, read_timeout) && ! (Run.flags & Run_Stopped)) {
-                long long stopped = Time_micro();
+        while (read_timeout > 0 && Net_canRead(socket, read_timeout) && ! (Run.flags & Run_Stopped)) {
+                int64_t stopped = Time_micro();
                 struct sockaddr_storage in_addr;
                 socklen_t addrlen = sizeof(in_addr);
                 do {
@@ -425,10 +425,16 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                                 return -1.;
                 }
                 if (in_addr.ss_family != addr->ai_family || ! in_addrmatch || ! in_typematch || in_id != out_id || in_seq > (uint16_t)maxretries) {
-                        if (stopped >= started && (read_timeout = timeout - (int)(stopped - started)) > 0)
-                                continue; // Try to read next packet, but don't exceed the timeout while waiting for our response so we won't loop forever if the socket is flooded with other ICMP packets
+                        // Try to read next packet, but don't exceed the timeout while waiting for our response so we won't loop forever if the socket is flooded with other ICMP packets
+                        if (stopped < started) {
+                                // Time jumped
+                                break;
+                        } else {
+                                int64_t delta = stopped - started;
+                                read_timeout = timeout - (int)delta;
+                        }
                 } else {
-                        memcpy(&started, data, sizeof(long long));
+                        memcpy(&started, data, sizeof(int64_t));
                         double response = (double)(stopped - started) / 1000000.;
                         DEBUG("Ping response for %s %d/%d succeeded -- received id=%d sequence=%d response_time=%.3fms\n", hostname, retry, maxretries, in_id, in_seq, response * 1000.);
                         return response; // Wait for one response only
@@ -500,7 +506,7 @@ double icmp_echo(const char *hostname, Socket_Family family, int size, int timeo
         _setPingOptions(s, addr);
         uint16_t id = getpid() & 0xFFFF;
         for (int retry = 1; retry <= maxretries; retry++) {
-                long long started = Time_micro();
+                int64_t started = Time_micro();
                 if (_sendPing(hostname, s, addr, size, retry, maxretries, id, started) && (response = _receivePing(hostname, s, addr, retry, maxretries, id, started, timeout)) >= 0.)
                         break;
         }
