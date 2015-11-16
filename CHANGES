@@ -21,6 +21,8 @@ Fixed: Issue #285: Compilation of monit on linux with musl libc library.
 
 Fixed: Don't wait for process start if the start/restart program execution failed.
 
+Fixed: Possible hung in the ping test on Raspberry Pi when the target host is down.
+
 
 Version 5.15
 
