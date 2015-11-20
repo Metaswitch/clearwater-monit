@@ -4,6 +4,9 @@
 
 Version 5.16
 
+New: The HTTP protocol test uses now HEAD method if no content check is set, so
+the test is faster and saves bandwidth.
+
 New: Issue #280: Timestamp test related events report the timestamp value now.
 
 Fixed: If monit daemon is running, the "monit validate" command will now pass the

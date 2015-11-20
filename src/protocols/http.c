@@ -269,10 +269,11 @@ void check_http(Socket_T socket) {
 
         StringBuffer_T sb = StringBuffer_create(168);
         StringBuffer_append(sb,
-                            "GET %s HTTP/1.1\r\n"
+                            "%s %s HTTP/1.1\r\n"
                             "Accept: */*\r\n"
                             "Connection: close\r\n"
                             "%s",
+                            ((P->url_request && P->url_request->regex) || P->parameters.http.checksum) ? "GET" : "HEAD",
                             P->parameters.http.request ? P->parameters.http.request : "/",
                             get_auth_header(P, (char[STRLEN]){0}, STRLEN));
         if (! _hasHeader(P->parameters.http.headers, "Host"))
