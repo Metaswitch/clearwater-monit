@@ -440,9 +440,11 @@ static void do_action(char **args) {
                 LogInfo("Reinitializing %s daemon\n", prog);
                 kill_daemon(SIGHUP);
         } else if (IS(action, "status")) {
-                status(LEVEL_NAME_FULL, Run.mygroup, service);
+                if (! status(LEVEL_NAME_FULL, Run.mygroup, service))
+                        exit(1);
         } else if (IS(action, "summary")) {
-                status(LEVEL_NAME_SUMMARY, Run.mygroup, service);
+                if (! status(LEVEL_NAME_SUMMARY, Run.mygroup, service))
+                        exit(1);
         } else if (IS(action, "procmatch")) {
                 if (! service) {
                         printf("Invalid syntax - usage: procmatch \"<pattern>\"\n");

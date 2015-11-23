@@ -22,6 +22,9 @@ the monitor/unmonitor action as failed even though it succeeded.
 
 Fixed: Issue #285: Compilation of monit on linux with musl libc library.
 
+Fixed: Issue #288: monit CLI status and summary commands exit value should be 1
+when error occurred.
+
 Fixed: Don't wait for process start if the start/restart program execution failed.
 
 Fixed: Possible hung in the ping test on Raspberry Pi when the target host is down.
