@@ -450,15 +450,17 @@ for example:
 
 Use
 
- set daemon n (where n is a number in seconds)
+ SET DAEMON <seconds>
+     [[WITH] START DELAY <seconds>]
 
 to specify Monit's poll cycle length and run Monit in daemon
 mode. You must specify a numeric argument which is a polling
-interval in seconds. In daemon mode, Monit detaches from the
-console, puts itself in the background and runs continuously,
-monitoring each specified service and then goes to sleep for the
-given poll interval, wakes up and start monitoring again in an
-endless cycle.
+interval in seconds.
+
+In daemon mode, Monit detaches from the console, puts itself in
+the background and runs continuously, monitoring each specified
+service and then goes to sleep for the given poll interval, wakes
+up and start monitoring again in an endless cycle.
 
 Alternatively, you can use the C<-d> command line switch to set
 the poll interval, but it is strongly recommended to set the poll
@@ -474,6 +476,10 @@ Calling C<monit> with a Monit daemon running in the background sends
 a wake-up signal to the daemon, forcing it to check services
 immediately. Calling C<monit> with the quit argument will kill a
 running Monit daemon process instead of waking it up.
+
+The start delay option allows to postpone the first check by given
+number of seconds (can be useful for example when the system boots).
+By default Monit starts service checks immediately after start.
 
 
 =head1 INIT SUPPORT
