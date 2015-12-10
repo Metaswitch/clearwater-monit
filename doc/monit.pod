@@ -7,7 +7,7 @@ Monit - utility for monitoring services on a Unix system
 
 =head1 SYNOPSIS
 
-B<monit> [options] {arguments}
+B<monit> [options] <arguments>
 
 =head1 DESCRIPTION
 
@@ -1929,7 +1929,7 @@ text file by using regular expressions.
 
 Syntax:
 
- IF [NOT] MATCH {regex|path} THEN action
+ IF [NOT] MATCH <regex|path> THEN action
 
 I<regex> is a string containing the extended regular expression.
 See also regex(7).
@@ -1952,7 +1952,7 @@ Only lines ending with a newline character are inspected.
 
 Only the first 511 characters of a line are inspected.
 
- IGNORE [NOT] MATCH {regex|path}
+ IGNORE [NOT] MATCH <regex|path>
 
 Lines matching an I<IGNORE> are not inspected during later
 evaluations. I<IGNORE MATCH> has always precedence over
@@ -2559,7 +2559,7 @@ TCP/UDP port test syntax:
     [ssl [with options {...}]]
     [certificate checksum]
     [certificate valid days]
-    [protocol | {send/expect}+]
+    [protocol | <send|expect>, ...]
     [timeout]
     [retry]
  THEN action
@@ -2569,7 +2569,7 @@ Unix socket test syntax:
  IF FAILED
     <unixsocket>
     [type]
-    [protocol | {send/expect}+]
+    [protocol | <send|expect>, ...]
     [timeout]
     [retry]
  THEN action
@@ -2711,7 +2711,7 @@ server with the string given in the expect statement.
 
 Syntax:
 
- [{SEND|EXPECT} "string"]+
+ [<SEND|EXPECT> "string"]+
 
 Monit will send a string as it is, and you B<must> remember to
 include CR and LF in the string sent to the server if the protocol
@@ -2776,7 +2776,7 @@ Syntax:
      [STATUS operator number]
      [CHECKSUM checksum]
      [HTTP HEADERS list of headers]
-     [CONTENT {= | != } STRING]
+     [CONTENT < "=" | "!=" > STRING]
 
 I<REQUEST> option can set an URL string specifying a document on the
 HTTP server. If the request statement isn't specified, the default "/"
