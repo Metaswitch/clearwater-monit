@@ -43,8 +43,7 @@ if test "x$POD2MAN" = "xno"; then
 		AC_MSG_ERROR([pod2man is required to build the monit.1 man file.])
 	fi
 else
-	d=`date  '+%B %d. %Y'`
-	POD2MANFLAGS="--center 'User Commands' --release '${d}' --date='www.mmonit.com' --lax"
+	POD2MANFLAGS="--center 'User Commands' --release AC_PACKAGE_VERSION --date='www.mmonit.com' --lax"
 	AC_SUBST([POD2MANFLAGS])
 fi
 
