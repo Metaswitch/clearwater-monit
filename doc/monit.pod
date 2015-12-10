@@ -530,7 +530,7 @@ like this kind of thing. Include statements can be placed at virtually
 any place in C<monitrc> though the convention is at the bottom. The
 syntax is the following:
 
-  include globstring
+  INCLUDE <globstring>
 
 The globstring is any kind of string as defined in C<glob(7)>. Thus,
 you can refer to a single file or you can load several files at

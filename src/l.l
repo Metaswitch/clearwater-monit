@@ -91,8 +91,10 @@ typedef enum {
 static Check_State check_state = None_State;
 
 /* Prototypes */
-extern void yyerror(const char*,...);
+extern void yyerror(const char *,...);
+extern void yyerror2(const char *,...);
 extern void yywarning(const char *,...);
+extern void yywarning2(const char *,...);
 static void steplinenobycr(char *);
 static void save_arg(void);
 static void include_file(char *);
@@ -895,27 +897,21 @@ static char *handle_quoted_string(char *string) {
 
 static void include_file(char *pattern) {
         glob_t globbuf;
-        int i;
-
-        if (glob(pattern,  GLOB_MARK, NULL, &globbuf) != 0)
-        return; // no include files found
-
-        for (i = 0; i < globbuf.gl_pathc; i++) {
-                FILE *yyin;
-                size_t filename_length = strlen(globbuf.gl_pathv[i]);
-
-                /* check whenever we have caught a directory or file backup copy */
-                if ((filename_length == 0) || (globbuf.gl_pathv[i][filename_length-1] == '~' ) || (globbuf.gl_pathv[i][filename_length-1] == '/' ))
-                continue;
-
-                yyin = fopen( globbuf.gl_pathv[i], "r" );
-
-                if (! yyin)
-                yyerror( "failed to include file" );
-                else
-                push_buffer_state(yy_create_buffer( yyin, YY_BUF_SIZE ), globbuf.gl_pathv[i]);
+        if (glob(pattern, GLOB_MARK, NULL, &globbuf) == 0) {
+                for (int i = 0; i < globbuf.gl_pathc; i++) {
+                        size_t filename_length = strlen(globbuf.gl_pathv[i]);
+                        if ((filename_length == 0) || (globbuf.gl_pathv[i][filename_length - 1] == '~' ) || (globbuf.gl_pathv[i][filename_length - 1] == '/'))
+                                continue; // skip subdirectories and file backup copies
+                        FILE *yyin = fopen(globbuf.gl_pathv[i], "r");
+                        if (! yyin)
+                                yyerror("Cannot include file '%s' -- %s", globbuf.gl_pathv[i], STRERROR);
+                        else
+                                push_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE), globbuf.gl_pathv[i]);
+                }
+                globfree(&globbuf);
+        } else {
+                yywarning("Include failed -- %s", STRERROR); // no include files found
         }
-        globfree(&globbuf);
 }
 
 
