@@ -25,7 +25,10 @@ Fixed: Issue #285: Compilation of monit on linux with musl libc library.
 Fixed: Issue #288: monit CLI status and summary commands exit value should be 1
 when error occurred.
 
-Fixed: Issue #289: document the start delay option.
+Fixed: Issue #289: Document the start delay option.
+
+Fixed: Issue #293: monit CLI command with service group option will return an error
+if the group doesn't exist.
 
 Fixed: Don't wait for process start if the start/restart program execution failed.
 

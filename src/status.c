@@ -58,6 +58,8 @@
 #include "process.h"
 #include "device.h"
 
+// libmonit
+#include "exceptions/AssertException.h"
 
 /**
  *  Obtain status from the monit daemon
@@ -101,22 +103,19 @@ boolean_t status(const char *level, const char *group, const char *service) {
                 char *_auth = Util_getBasicAuthHeaderMonit();
                 Socket_print(S, " HTTP/1.0\r\n%s\r\n", _auth ? _auth : "");
                 FREE(_auth);
-
-                /* Read past HTTP headers and check status */
                 char buf[1024];
-                while (Socket_readLine(S, buf, sizeof(buf))) {
-                        if (*buf == '\n' || *buf == '\r')
-                                break;
-                        if (Str_startsWith(buf, "HTTP/1.0 200"))
-                                status = true;
-                }
-
-                if (! status) {
-                        LogError("Cannot read status from the monit daemon\n");
-                } else {
+                TRY
+                {
+                        Util_parseMonitHttpResponse(S);
                         while (Socket_readLine(S, buf, sizeof(buf)))
                                 printf("%s", buf);
+                        status = true;
                 }
+                ELSE
+                {
+                        LogError("%s\n", Exception_frame.message);
+                }
+                END_TRY;
                 Socket_free(&S);
         }
         return status;

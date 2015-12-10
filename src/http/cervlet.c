@@ -2557,24 +2557,38 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
                 StringBuffer_free(&sb);
                 set_content_type(res, "text/xml");
         } else {
+                set_content_type(res, "text/plain");
                 char *uptime = Util_getUptime(getProcessUptime(getpid(), ptree, ptreesize), " ");
                 StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, uptime);
                 FREE(uptime);
 
+                int found = 0;
                 if (stringGroup) {
                         for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                                 if (IS(stringGroup, sg->name)) {
-                                        for (list_t m = sg->members->head; m; m = m->next)
+                                        for (list_t m = sg->members->head; m; m = m->next) {
                                                 status_service_txt(m->e, res, level);
+                                                found++;
+                                        }
                                         break;
                                 }
                         }
                 } else {
-                        for (Service_T s = servicelist_conf; s; s = s->next_conf)
-                                if (! stringService || IS(stringService, s->name))
+                        for (Service_T s = servicelist_conf; s; s = s->next_conf) {
+                                if (! stringService || IS(stringService, s->name)) {
                                         status_service_txt(s, res, level);
+                                        found++;
+                                }
+                        }
                 }
-                set_content_type(res, "text/plain");
+                if (found == 0) {
+                        if (stringGroup)
+                                send_error(req, res, SC_BAD_REQUEST, "Service group '%s' not found", stringGroup);
+                        else if (stringService)
+                                send_error(req, res, SC_BAD_REQUEST, "Service '%s' not found", stringService);
+                        else
+                                send_error(req, res, SC_BAD_REQUEST, "No service found");
+                }
         }
 }
 

@@ -411,6 +411,7 @@ static void do_action(char **args) {
                    IS(action, "unmonitor") ||
                    IS(action, "restart")) {
                 if (Run.mygroup || service) {
+                        int errors = 0;
                         List_T services = List_new();
                         if (Run.mygroup) {
                                 for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
@@ -422,13 +423,18 @@ static void do_action(char **args) {
                                                 break;
                                         }
                                 }
+                                if (List_length(services) == 0) {
+                                        List_free(&services);
+                                        LogError("Group '%s' not found\n", Run.mygroup);
+                                        exit(1);
+                                }
                         } else if (IS(service, "all")) {
                                 for (Service_T s = servicelist; s; s = s->next)
                                         List_append(services, s->name);
                         } else {
                                 List_append(services, service);
                         }
-                        int errors = exist_daemon() ? control_service_daemon(services, action) : control_service_string(services, action);
+                        errors = exist_daemon() ? control_service_daemon(services, action) : control_service_string(services, action);
                         List_free(&services);
                         if (errors)
                                 exit(1);

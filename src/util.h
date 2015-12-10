@@ -420,10 +420,10 @@ char *Util_portDescription(Port_T p, char *buf, int bufsize);
 
 
 /**
- *  Returns the FQDN hostname or fallback to gethostname() output
- *  @param buf the character array for hostname
- *  @param len the length of buf
- *  @return zero on success
+ * Returns the FQDN hostname or fallback to gethostname() output
+ * @param buf the character array for hostname
+ * @param len the length of buf
+ * @return zero on success
  */
 int Util_getfqdnhostname(char *buf, unsigned len);
 
@@ -434,6 +434,14 @@ int Util_getfqdnhostname(char *buf, unsigned len);
  *  @return string
  */
 const char *Util_timestr(int time);
+
+
+/**
+ * Parse the response from Monit HTTP interface.
+ * @param S Socket reference
+ * @exception IOException in the case of communication error or AssertException if monit returned application error.
+ */
+void Util_parseMonitHttpResponse(Socket_T S);
 
 
 #endif

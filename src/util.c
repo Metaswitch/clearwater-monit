@@ -123,6 +123,8 @@
 // libmonit
 #include "io/File.h"
 #include "system/Time.h"
+#include "exceptions/AssertException.h"
+#include "exceptions/IOException.h"
 
 
 struct ad_user {
@@ -2046,5 +2048,45 @@ const char *Util_timestr(int time) {
                         return tt[i].description;
         } while (tt[++i].description);
         return NULL;
+}
+
+
+void Util_parseMonitHttpResponse(Socket_T S) {
+        char buf[1024];
+        if (! Socket_readLine(S, buf, sizeof(buf)))
+                THROW(IOException, "Error receiving data -- %s", STRERROR);
+        Str_chomp(buf);
+        int status;
+        if (! sscanf(buf, "%*s %d", &status))
+                THROW(IOException, "Cannot parse status in response: %s", buf);
+        if (status >= 300) {
+                int content_length = 0;
+                // Read HTTP headers
+                while (Socket_readLine(S, buf, sizeof(buf))) {
+                        if (! strncmp(buf, "\r\n", sizeof(buf)))
+                                break;
+                        if (Str_startsWith(buf, "Content-Length") && ! sscanf(buf, "%*s%*[: ]%d", &content_length))
+                                THROW(IOException, "Invalid Content-Length header: %s", buf);
+                }
+                // Parse error response
+                char *message = NULL;
+                if (content_length > 0 && content_length < 1024 && Socket_readLine(S, buf, sizeof(buf))) {
+                        char token[] = "</h2>";
+                        message = strstr(buf, token);
+                        if (strlen(message) > strlen(token)) {
+                                message += strlen(token);
+                                char *footer = NULL;
+                                if ((footer = strstr(message, "<p>")) || (footer = strstr(message, "<hr>")))
+                                        *footer = 0;
+                        }
+                }
+                THROW(AssertException, "%s", message ? message : "cannot parse response");
+        } else {
+                // Skip HTTP headers
+                while (Socket_readLine(S, buf, sizeof(buf))) {
+                         if (! strncmp(buf, "\r\n", sizeof(buf)))
+                                break;
+                }
+        }
 }
 

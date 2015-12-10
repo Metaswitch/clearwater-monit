@@ -56,7 +56,10 @@
 #include "net.h"
 #include "socket.h"
 #include "event.h"
+#include "util.h"
 #include "system/Time.h"
+
+// libmonit
 #include "exceptions/AssertException.h"
 
 
@@ -453,42 +456,16 @@ boolean_t control_service_daemon(List_T services, const char *action) {
                 goto err;
         }
 
-        /* Process response */
-        char buf[STRLEN];
-        if (! Socket_readLine(socket, buf, STRLEN)) {
-                errors++;
-                LogError("Error receiving data -- %s\n", STRERROR);
-                goto err;
+        TRY
+        {
+                Util_parseMonitHttpResponse(socket);
         }
-        Str_chomp(buf);
-        int status;
-        if (! sscanf(buf, "%*s %d", &status)) {
+        ELSE
+        {
+                LogError("%s\n", Exception_frame.message);
                 errors++;
-                LogError("Cannot parse status in response: %s\n", buf);
-                goto err;
         }
-        if (status >= 300) {
-                errors++;
-                int content_length = 0;
-                while (Socket_readLine(socket, buf, STRLEN)) {
-                        if (! strncmp(buf, "\r\n", sizeof(buf)))
-                                break;
-                        if (Str_startsWith(buf, "Content-Length") && ! sscanf(buf, "%*s%*[: ]%d", &content_length))
-                                goto err;
-                }
-                char *message = NULL;
-                if (content_length > 0 && content_length < 1024 && Socket_readLine(socket, buf, STRLEN)) {
-                        char token[] = "</h2>";
-                        message = strstr(buf, token);
-                        if (strlen(message) > strlen(token)) {
-                                message += strlen(token);
-                                char *footer = NULL;
-                                if ((footer = strstr(message, "<p>")) || (footer = strstr(message, "<hr>")))
-                                        *footer = 0;
-                        }
-                }
-                LogError("Action failed -- %s\n", message ? message : "unable to parse response");
-        }
+        END_TRY;
 err:
         FREE(auth);
         StringBuffer_free(&sb);
