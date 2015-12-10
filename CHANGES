@@ -39,6 +39,8 @@ Fixed: Don't wait for process start if the start/restart program execution faile
 
 Fixed: Possible hung in the ping test on Raspberry Pi when the target host is down.
 
+Fixed: Use constant time string comparison function for authentication.
+
 
 Version 5.15
 
