@@ -41,6 +41,9 @@ Fixed: Possible hung in the ping test on Raspberry Pi when the target host is do
 
 Fixed: Use constant time string comparison function for authentication.
 
+Warning: The maximum length of password or hash used for Monit HTTP GUI authentication
+is now limited to 64 characters.
+
 
 Version 5.15
 

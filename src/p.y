@@ -4003,26 +4003,28 @@ static boolean_t addcredentials(char *uname, char *passwd, Digest_Type dtype, bo
         ASSERT(uname);
         ASSERT(passwd);
 
+        if (strlen(passwd) > MAX_CONSTANT_TIME_STRING_LENGTH) {
+                yyerror2("Password for user %s is too long, maximum %d allowed", uname, MAX_CONSTANT_TIME_STRING_LENGTH);
+                FREE(uname);
+                FREE(passwd);
+                return false;
+        }
+
         if (! Run.httpd.credentials) {
                 NEW(Run.httpd.credentials);
                 c = Run.httpd.credentials;
         } else {
-
                 if (Util_getUserCredentials(uname) != NULL) {
                         yywarning2("Credentials for user %s were already added, entry ignored", uname);
                         FREE(uname);
                         FREE(passwd);
                         return false;
                 }
-
                 c = Run.httpd.credentials;
-
                 while (c->next != NULL)
                         c = c->next;
-
                 NEW(c->next);
                 c = c->next;
-
         }
 
         c->next        = NULL;
