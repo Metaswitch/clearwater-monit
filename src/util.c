@@ -1709,7 +1709,7 @@ boolean_t Util_checkCredentials(char *uname, char *outside) {
                         LogError("Unknown password digestion method.\n");
                         return false;
         }
-        if (Str_constantTimeCmp(outside_crypt, c->passwd) == 0)
+        if (Str_compareConstantTime(outside_crypt, c->passwd) == 0)
                 return true;
         return false;
 }
