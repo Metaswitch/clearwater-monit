@@ -39,7 +39,8 @@ Fixed: Don't wait for process start if the start/restart program execution faile
 
 Fixed: Possible hung in the ping test on Raspberry Pi when the target host is down.
 
-Fixed: Use constant time string comparison function for authentication.
+Fixed: Use constant time string comparison function for authentication. Thanks to
+Noah Kantrowitz for report.
 
 Warning: The maximum length of password or hash used for Monit HTTP GUI authentication
 is now limited to 64 characters.
