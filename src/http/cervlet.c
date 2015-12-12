@@ -2837,6 +2837,26 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                                             "  %-33s %d\n",
                                                             "last started", Time_string(s->program->started, t),
                                                             "last exit value", s->program->exitStatus);
+                                        if (StringBuffer_length(s->program->output)) {
+                                                const char *output = StringBuffer_toString(s->program->output);
+                                                StringBuffer_append(res->outputbuffer,
+                                                        "  %-33s ", "last output");
+                                                for (int i = 0; output[i]; i++) {
+                                                        if (output[i] == '\r') {
+                                                                // Discard CR
+                                                                continue;
+                                                        } else if (output[i] == '\n') {
+                                                                // Indent 2nd+ line
+                                                                if (output[i + 1])
+                                                                        StringBuffer_append(res->outputbuffer, "\n                                    ");
+                                                                continue;
+                                                        } else {
+                                                                StringBuffer_append(res->outputbuffer, "%c", output[i]);
+                                                        }
+                                                }
+                                                StringBuffer_append(res->outputbuffer,
+                                                        "\n");
+                                        }
                                 } else
                                         StringBuffer_append(res->outputbuffer,
                                                             "  %-33s\n",
