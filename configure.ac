@@ -655,6 +655,7 @@ AC_ARG_WITH(largefiles,
 # Settings for largefiles support
 if test "$use_largefiles" = 1; then
         AC_SYS_LARGEFILE
+        AC_DEFINE([HAVE_LARGEFILES], 1, [Define to 1 if you have large files support])
 fi
 
 
@@ -687,7 +688,7 @@ AC_ARG_WITH(pam,
 )
 
 if test "$use_pam" = "1"; then
-        AC_CHECK_LIB([pam], [pam_start], [], [AC_MSG_ERROR([PAM enabled but headers or library not found, install the PAM development support or run configure --without-pam])])
+        AC_CHECK_LIB([pam], [pam_start], [AC_DEFINE([HAVE_PAM], 1, [Define to 1 if you have PAM support])], [AC_MSG_ERROR([PAM enabled but headers or library not found, install the PAM development support or run configure --without-pam])])
 fi
 
 

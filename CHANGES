@@ -11,6 +11,8 @@ New: Issue #280: Timestamp test related events report the timestamp value now.
 
 New: Issue #299: Show last output of the program check in monit status CLI.
 
+New: Issue #275: monit -V displayes configure options.
+
 Fixed: If monit daemon is running, the "monit validate" command will now pass the
 command to the daemon instead of running in its own context. The validate also
 respects the service monitoring state now.
