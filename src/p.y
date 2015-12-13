@@ -1624,10 +1624,13 @@ radius          : secret {
                 ;
 
 apache_stat_list: apache_stat
-                | apache_stat_list OR apache_stat
+                | apache_stat_list apache_stat
                 ;
 
-apache_stat     : LOGLIMIT operator NUMBER PERCENT {
+apache_stat     : PATHTOK PATH {
+                    portset.parameters.apachestatus.path = $<string>2;
+                  }
+                | LOGLIMIT operator NUMBER PERCENT {
                     portset.parameters.apachestatus.loglimitOP = $<number>2;
                     portset.parameters.apachestatus.loglimit = $<number>3;
                   }

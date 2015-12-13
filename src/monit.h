@@ -583,6 +583,7 @@ typedef struct myport {
         /** Protocol specific parameters */
         union {
                 struct {
+                        char *path;                                              /**< status path */
                         short loglimit;                  /**< Max percentage of logging processes */
                         short closelimit;             /**< Max percentage of closinging processes */
                         short dnslimit;         /**< Max percentage of processes doing DNS lookup */

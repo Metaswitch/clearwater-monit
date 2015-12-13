@@ -2872,9 +2872,11 @@ its default address of http://www.example.com/server-status.
 
 Syntax:
 
- PROTOCOL APACHE-STATUS <limit operator number>+
+ PROTOCOL APACHE-STATUS [PATH <path>] [<property> <operator> <number>]+
 
-I<limit> is acronym for child status:
+I<path> is an optional path to apache status ("/server-status" by default)
+
+I<property> is acronym for child status:
 
  (1) logging (loglimit)
  (2) closing connections (closelimit)

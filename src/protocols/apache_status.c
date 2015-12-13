@@ -43,7 +43,7 @@
 /* ----------------------------------------------------------------- Private */
 
 
-static void parse_scoreboard(Socket_T socket, char *scoreboard) {
+static void parse_scoreboard(Socket_T socket, char *scoreboard, Port_T p) {
         int logging = 0, close = 0, dns = 0, keepalive = 0, reply = 0, request = 0, start = 0, wait = 0, graceful = 0, cleanup = 0, open = 0;
         for (char *state = scoreboard; *state; state++) {
                 switch (*state) {
@@ -85,8 +85,6 @@ static void parse_scoreboard(Socket_T socket, char *scoreboard) {
         int total = logging + close + dns + keepalive + reply + request + start + wait + graceful + cleanup + open;
         if (! total)
                 return; // Idle server
-        Port_T p = Socket_getPort(socket);
-        ASSERT(p);
         if (p->parameters.apachestatus.loglimit > 0 && Util_evalQExpression(p->parameters.apachestatus.loglimitOP, (100 * logging / total), p->parameters.apachestatus.loglimit))
                 THROW(IOException, "APACHE-STATUS: error -- %d percent of processes are logging", 100 * logging / total);
         if (p->parameters.apachestatus.startlimit > 0 && Util_evalQExpression(p->parameters.apachestatus.startlimitOP, (100 * start / total), p->parameters.apachestatus.startlimit))
@@ -116,13 +114,16 @@ static void parse_scoreboard(Socket_T socket, char *scoreboard) {
 void check_apache_status(Socket_T socket) {
         ASSERT(socket);
         char host[STRLEN];
+        Port_T p = Socket_getPort(socket);
+        ASSERT(p);
         if (Socket_print(socket,
-                         "GET /server-status?auto HTTP/1.1\r\n"
-                         "Host: %s\r\n"
-                         "Accept: */*\r\n"
-                         "User-Agent: Monit/%s\r\n"
-                         "Connection: close\r\n\r\n",
-                         Util_getHTTPHostHeader(socket, host, STRLEN), VERSION) < 0)
+                "GET %s?auto HTTP/1.1\r\n"
+                "Host: %s\r\n"
+                "Accept: */*\r\n"
+                "User-Agent: Monit/%s\r\n"
+                "Connection: close\r\n\r\n",
+                p->parameters.apachestatus.path ? p->parameters.apachestatus.path : "/server-status",
+                Util_getHTTPHostHeader(socket, host, STRLEN), VERSION) < 0)
         {
                 THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
         }
@@ -130,7 +131,7 @@ void check_apache_status(Socket_T socket) {
         while (Socket_readLine(socket, buffer, sizeof(buffer))) {
                 if (Str_startsWith(buffer, "Scoreboard: ")) {
                         char *scoreboard = buffer + 12; // skip header
-                        parse_scoreboard(socket, scoreboard);
+                        parse_scoreboard(socket, scoreboard, p);
                         return;
                 }
         }
