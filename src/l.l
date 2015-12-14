@@ -159,6 +159,7 @@ was               {/* EMPTY */}
 times             {/* EMPTY */}
 but               {/* EMPTY */}
 of                {/* EMPTY */}
+or                {/* EMPTY */}
 does              {/* EMPTY */}
 per               {/* EMPTY */}
 in                {/* EMPTY */}
@@ -181,7 +182,6 @@ option(s)?        {/* EMPTY */}
                   }
 
 if                { return IF; }
-or                { return OR; }
 then              { return THEN; }
 failed            { return FAILED; }
 ssl               { return SSL; }
