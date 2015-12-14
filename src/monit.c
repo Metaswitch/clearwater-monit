@@ -780,11 +780,11 @@ static void handle_options(int argc, char **argv) {
  * Print the program's help message
  */
 static void help() {
-        printf("Usage: %s [options] {arguments}\n", prog);
+        printf("Usage: %s [options]+ [command]\n", prog);
         printf("Options are as follows:\n");
         printf(" -c file       Use this control file\n");
         printf(" -d n          Run as a daemon once per n seconds\n");
-        printf(" -g name       Set group name for start, stop, restart, monitor, unmonitor, status and summary\n");
+        printf(" -g name       Set group name for monit commands\n");
         printf(" -l logfile    Print log information to this file\n");
         printf(" -p pidfile    Use this lock file in daemon mode\n");
         printf(" -s statefile  Set the file monit should write state information to\n");
@@ -798,7 +798,7 @@ static void help() {
         printf("               filename is omited; monit will exit afterwards\n");
         printf(" -V            Print version number and patchlevel\n");
         printf(" -h            Print this text\n");
-        printf("Optional action arguments for non-daemon mode are as follows:\n");
+        printf("Optional commands are as follows:\n");
         printf(" start all           - Start all services\n");
         printf(" start <name>        - Only start the named service\n");
         printf(" stop all            - Stop all services\n");
