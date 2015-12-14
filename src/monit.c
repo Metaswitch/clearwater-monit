@@ -823,24 +823,20 @@ static void help() {
  * Print version information
  */
 static void version() {
-        printf("This is Monit version %s\n", VERSION);
+        printf("This is Monit version %s with build options: (", VERSION);
+#ifndef HAVE_OPENSSL
+        printf("no ");
+#endif
+        printf("ssl, ");
+#ifndef HAVE_PAM
+        printf("no ");
+#endif
+        printf("pam, ");
+#ifndef HAVE_LARGEFILES
+        printf("no ");
+#endif
+        printf("large files)\n");
         printf("Copyright (C) 2001-2015 Tildeslash Ltd. All Rights Reserved.\n");
-        printf("Configure options:\n");
-#ifdef HAVE_OPENSSL
-        printf("\tSSL:         enabled\n");
-#else
-        printf("\tSSL:         disabled\n");
-#endif
-#ifdef HAVE_PAM
-        printf("\tPAM:         enabled\n");
-#else
-        printf("\tPAM:         disabled\n");
-#endif
-#ifdef HAVE_LARGEFILES
-        printf("\tLarge files: enabled\n");
-#else
-        printf("\tLarge files: disabled\n");
-#endif
 }
 
 
