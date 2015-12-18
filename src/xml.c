@@ -388,7 +388,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                     "</unix>",
                                                     p->target.unix.pathname ? p->target.unix.pathname : "",
                                                     p->protocol->name ? p->protocol->name : "",
-                                                    p->is_available ? p->response : -1.);
+                                                    p->is_available ? p->response / 1000. : -1.); // We send the response time in [s] for backward compatibility (with microseconds precision)
                         }
                         if (S->type == Service_System && (Run.flags & Run_ProcessEngineEnabled)) {
                                 StringBuffer_append(B,
