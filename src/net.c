@@ -435,8 +435,8 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                         }
                 } else {
                         memcpy(&started, data, sizeof(int64_t));
-                        double response = (double)(stopped - started) / 1000000.;
-                        DEBUG("Ping response for %s %d/%d succeeded -- received id=%d sequence=%d response_time=%s\n", hostname, retry, maxretries, in_id, in_seq, Str_milliToTime(response * 1000., (char[23]){}));
+                        double response = (double)(stopped - started) / 1000.; // Convert microseconds to milliseconds
+                        DEBUG("Ping response for %s %d/%d succeeded -- received id=%d sequence=%d response_time=%s\n", hostname, retry, maxretries, in_id, in_seq, Str_milliToTime(response, (char[23]){}));
                         return response; // Wait for one response only
                 }
         }

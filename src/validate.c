@@ -156,7 +156,7 @@ retry:
         {
                 Socket_test(p);
                 rv = State_Succeeded;
-                DEBUG("'%s' succeeded testing protocol [%s] at %s [response time %s]\n", s->name, p->protocol->name, Util_portDescription(p, buf, sizeof(buf)), Str_milliToTime(p->response * 1000., (char[23]){}));
+                DEBUG("'%s' succeeded testing protocol [%s] at %s [response time %s]\n", s->name, p->protocol->name, Util_portDescription(p, buf, sizeof(buf)), Str_milliToTime(p->response, (char[23]){}));
         }
         ELSE
         {
@@ -1372,7 +1372,7 @@ State_Type check_remote_host(Service_T s) {
                                         Event_post(s, Event_Icmp, State_Failed, icmp->action, "ping test failed");
                                 } else {
                                         icmp->is_available = true;
-                                        Event_post(s, Event_Icmp, State_Succeeded, icmp->action, "ping test succeeded [response time %s]", Str_milliToTime(icmp->response * 1000., (char[23]){}));
+                                        Event_post(s, Event_Icmp, State_Succeeded, icmp->action, "ping test succeeded [response time %s]", Str_milliToTime(icmp->response, (char[23]){}));
                                 }
                                 last_ping = icmp;
                                 break;

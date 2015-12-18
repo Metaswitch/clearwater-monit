@@ -594,9 +594,8 @@ void Socket_test(void *P) {
                                 THROW(IOException, "Invalid socket family %d\n", p->family);
                                 break;
                 }
-                int64_t stop = Time_micro();
+                p->response = (double)(Time_micro() - start) / 1000.; // Convert microseconds to milliseconds
                 p->is_available = true;
-                p->response = (double)(stop - start) / 1000000.;
         }
         ELSE
         {

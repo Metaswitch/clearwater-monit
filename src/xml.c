@@ -360,7 +360,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                     "<responsetime>%.6f</responsetime>"
                                                     "</icmp>",
                                                     icmpnames[i->type],
-                                                    i->is_available ? i->response : -1.);
+                                                    i->is_available ? i->response / 1000. : -1.); // We send the response time in [s] for backward compatibility (with microseconds precision)
                         }
                         for (Port_T p = S->portlist; p; p = p->next) {
                                 StringBuffer_append(B,
@@ -377,7 +377,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                     Util_portRequestDescription(p),
                                                     p->protocol->name ? p->protocol->name : "",
                                                     Util_portTypeDescription(p),
-                                                    p->is_available ? p->response : -1.);
+                                                    p->is_available ? p->response / 1000. : -1.); // We send the response time in [s] for backward compatibility (with microseconds precision)
                         }
                         for (Port_T p = S->socketlist; p; p = p->next) {
                                 StringBuffer_append(B,

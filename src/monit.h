@@ -575,7 +575,7 @@ typedef struct myport {
         int timeout; /**< The timeout in milliseconds to wait for connect or read i/o */
         int retry;       /**< Number of connection retry before reporting an error */
         volatile int socket;                       /**< Socket used for connection */
-        double response;                      /**< Socket connection response time */
+        double response;                 /**< Socket connection response time [ms] */
         Socket_Type type;           /**< Socket type used for connection (UDP/TCP) */
         Socket_Family family;    /**< Socket family used for connection (NET/UNIX) */
         boolean_t is_available;          /**< true if the server/port is available */
@@ -650,7 +650,7 @@ typedef struct myicmp {
         int timeout;         /**< The timeout in milliseconds to wait for response */
         boolean_t is_available;               /**< true if the server is available */
         Socket_Family family;                 /**< ICMP family used for connection */
-        double response;                              /**< ICMP ECHO response time */
+        double response;                         /**< ICMP ECHO response time [ms] */
         EventAction_T action;  /**< Description of the action upon event occurence */
 
         /** For internal use */
