@@ -580,7 +580,7 @@ void Socket_test(void *P) {
         Port_T p = P;
         TRY
         {
-                long long start = Time_milli();
+                int64_t start = Time_micro();
                 switch (p->family) {
                         case Socket_Unix:
                                 _testUnix(p);
@@ -594,13 +594,14 @@ void Socket_test(void *P) {
                                 THROW(IOException, "Invalid socket family %d\n", p->family);
                                 break;
                 }
+                int64_t stop = Time_micro();
                 p->is_available = true;
-                p->response = (Time_milli() - start) / 1000.;
+                p->response = (double)(stop - start) / 1000000.;
         }
         ELSE
         {
                 p->is_available = false;
-                p->response = -1;
+                p->response = -1.;
                 RETHROW;
         }
         END_TRY;

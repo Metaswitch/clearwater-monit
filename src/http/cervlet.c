@@ -2042,7 +2042,7 @@ static void print_service_status_port(HttpResponse res, Service_T s) {
                 else if (! p->is_available)
                         StringBuffer_append(res->outputbuffer, "<td class='red-text'>failed to [%s]:%d%s type %s/%s %sprotocol %s</td>", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
                 else
-                        StringBuffer_append(res->outputbuffer, "<td>%.3fs to %s:%d%s type %s/%s %s protocol %s</td>", p->response, p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
+                        StringBuffer_append(res->outputbuffer, "<td>%s to %s:%d%s type %s/%s %s protocol %s</td>", Str_milliToTime(p->response * 1000., (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
                 StringBuffer_append(res->outputbuffer, "</tr>");
         }
 }
@@ -2057,7 +2057,7 @@ static void print_service_status_socket(HttpResponse res, Service_T s) {
                 else if (! p->is_available)
                         StringBuffer_append(res->outputbuffer, "<td class='red-text'>failed to %s type %s protocol %s</td>", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
                 else
-                        StringBuffer_append(res->outputbuffer, "<td>%.3fs to %s type %s protocol %s</td>", p->response, p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                        StringBuffer_append(res->outputbuffer, "<td>%s to %s type %s protocol %s</td>", Str_milliToTime(p->response * 1000., (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
                 StringBuffer_append(res->outputbuffer, "</tr>");
         }
 }
@@ -2071,10 +2071,10 @@ static void print_service_status_icmp(HttpResponse res, Service_T s) {
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else if (! i->is_available)
                         StringBuffer_append(res->outputbuffer, "<td class='red-text'>connection failed</td>");
-                else if (i->response < 0)
+                else if (i->response < 0.)
                         StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
                 else
-                        StringBuffer_append(res->outputbuffer, "<td>%.3fms</td>", i->response * 1000.);
+                        StringBuffer_append(res->outputbuffer, "<td>%s</td>", Str_milliToTime(i->response * 1000., (char[23]){}));
                 StringBuffer_append(res->outputbuffer, "</tr>");
         }
 }
@@ -2779,20 +2779,20 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                         StringBuffer_append(res->outputbuffer,
                                                             "  %-33s connection failed\n",
                                                             "ping response time");
-                                else if (i->response < 0)
+                                else if (i->response < 0.)
                                         StringBuffer_append(res->outputbuffer,
                                                             "  %-33s N/A\n",
                                                             "ping response time");
                                 else
                                         StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %.3fms\n",
-                                                            "ping response time", i->response * 1000.);
+                                                            "  %-33s %s\n",
+                                                            "ping response time", Str_milliToTime(i->response * 1000., (char[23]){}));
                         }
                         for (Port_T p = s->portlist; p; p = p->next) {
                                 if (p->is_available)
                                         StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %.3fs to [%s]:%d%s type %s/%s %sprotocol %s\n",
-                                                    "port response time", p->response, p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
+                                                    "  %-33s %s to [%s]:%d%s type %s/%s %sprotocol %s\n",
+                                                    "port response time", Str_milliToTime(p->response * 1000., (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
                                 else
                                         StringBuffer_append(res->outputbuffer,
                                                     "  %-33s FAILED to [%s]:%d%s type %s/%s %sprotocol %s\n",
@@ -2801,8 +2801,8 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                         for (Port_T p = s->socketlist; p; p = p->next) {
                                 if (p->is_available)
                                         StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %.3fs to %s type %s protocol %s\n",
-                                                    "unix socket response time", p->response, p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                                                    "  %-33s %s to %s type %s protocol %s\n",
+                                                    "unix socket response time", Str_milliToTime(p->response * 1000., (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
                                 else
                                         StringBuffer_append(res->outputbuffer,
                                                     "  %-33s FAILED to %s type %s protocol %s\n",

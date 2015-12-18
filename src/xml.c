@@ -370,7 +370,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                     "<request><![CDATA[%s]]></request>"
                                                     "<protocol>%s</protocol>"
                                                     "<type>%s</type>"
-                                                    "<responsetime>%.3f</responsetime>"
+                                                    "<responsetime>%.6f</responsetime>"
                                                     "</port>",
                                                     p->hostname ? p->hostname : "",
                                                     p->target.net.port,
@@ -384,7 +384,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                     "<unix>"
                                                     "<path>%s</path>"
                                                     "<protocol>%s</protocol>"
-                                                    "<responsetime>%.3f</responsetime>"
+                                                    "<responsetime>%.6f</responsetime>"
                                                     "</unix>",
                                                     p->target.unix.pathname ? p->target.unix.pathname : "",
                                                     p->protocol->name ? p->protocol->name : "",

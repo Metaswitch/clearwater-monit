@@ -16,6 +16,8 @@ New: Issue #275: monit -V displayes configure options.
 New: Issue #282: Add support for custom server-status path to apache-status protocol
 test.
 
+New: The port/socket test response time has microseconds precision now.
+
 Fixed: If monit daemon is running, the "monit validate" command will now pass the
 command to the daemon instead of running in its own context. The validate also
 respects the service monitoring state now.
