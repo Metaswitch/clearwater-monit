@@ -498,7 +498,7 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>M/Monit server(s)</td><td>");
                 for (Mmonit_T c = Run.mmonits; c; c = c->next)
                 {
-                        StringBuffer_append(res->outputbuffer, "%s with timeout %.0f seconds", c->url->url, c->timeout / 1000.);
+                        StringBuffer_append(res->outputbuffer, "%s with timeout %s", c->url->url, Str_milliToTime(c->timeout, (char[23]){}));
 #ifdef HAVE_OPENSSL
                         if (c->ssl.use_ssl) {
                                 StringBuffer_append(res->outputbuffer, " using SSL/TLS");
@@ -1607,8 +1607,8 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                         p->hostname, p->target.net.port, Util_portRequestDescription(p));
                 if (p->outgoing.ip)
                         StringBuffer_append(buf, " via address %s", p->outgoing.ip);
-                StringBuffer_append(buf, " type %s/%s protocol %s with timeout %.0f seconds",
-                        Util_portTypeDescription(p), Util_portIpDescription(p), p->protocol->name, p->timeout / 1000.);
+                StringBuffer_append(buf, " type %s/%s protocol %s with timeout %s",
+                        Util_portTypeDescription(p), Util_portIpDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}));
                 if (p->retry > 1)
                         StringBuffer_append(buf, " and retry %d times", p->retry);
 #ifdef HAVE_OPENSSL
@@ -1634,9 +1634,9 @@ static void print_service_rules_socket(HttpResponse res, Service_T s) {
         for (Port_T p = s->socketlist; p; p = p->next) {
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Unix Socket</td><td>");
                 if (p->retry > 1)
-                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %.0f seconds and retry %d time(s)", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, p->timeout / 1000., p->retry);
+                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s and retry %d time(s)", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}), p->retry);
                 else
-                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %.0f seconds", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, p->timeout / 1000.);
+                        Util_printRule(res->outputbuffer, p->action, "If failed %s type %s protocol %s with timeout %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name, Str_milliToTime(p->timeout, (char[23]){}));
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }
@@ -1655,7 +1655,7 @@ static void print_service_rules_icmp(HttpResponse res, Service_T s) {
                                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Ping</td><td>");
                                 break;
                 }
-                Util_printRule(res->outputbuffer, i->action, "If failed [count %d size %d with timeout %.0f seconds%s%s]", i->count, i->size, i->timeout / 1000., i->outgoing.ip ? " via address " : "", i->outgoing.ip ? i->outgoing.ip : "");
+                Util_printRule(res->outputbuffer, i->action, "If failed [count %d size %d with timeout %s%s%s]", i->count, i->size, Str_milliToTime(i->timeout, (char[23]){}), i->outgoing.ip ? " via address " : "", i->outgoing.ip ? i->outgoing.ip : "");
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }

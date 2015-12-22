@@ -440,7 +440,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
                         return response; // Wait for one response only
                 }
         }
-        LogError("Ping response for %s %d/%d timed out -- no response within %d seconds\n", hostname, retry, maxretries, timeout / 1000);
+        LogError("Ping response for %s %d/%d timed out -- no response within %s\n", hostname, retry, maxretries, Str_milliToTime(timeout, (char[23]){}));
         return -1.;
 }
 

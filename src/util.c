@@ -815,7 +815,7 @@ void Util_printRunList() {
                 Mmonit_T c;
                 printf(" %-18s = ", "M/Monit(s)");
                 for (c = Run.mmonits; c; c = c->next) {
-                        printf("%s with timeout %.0f seconds", c->url->url, c->timeout / 1000.);
+                        printf("%s with timeout %s", c->url->url, Str_milliToTime(c->timeout, (char[23]){}));
 #ifdef HAVE_OPENSSL
                         if (c->ssl.use_ssl) {
                                 printf(" using SSL/TLS");
@@ -854,7 +854,7 @@ void Util_printRunList() {
                         if (mta->next)
                                 printf(", ");
                 }
-                printf(" with timeout %.0f seconds", Run.mailserver_timeout / 1000.);
+                printf(" with timeout %s", Str_milliToTime(Run.mailserver_timeout, (char[23]){}));
                 if (Run.mail_hostname)
                         printf(" using '%s' as my hostname", Run.mail_hostname);
                 printf("\n");
@@ -1054,7 +1054,7 @@ void Util_printService(Service_T s) {
         for (Icmp_T o = s->icmplist; o; o = o->next) {
                 StringBuffer_clear(buf);
                 const char *output = StringBuffer_toString(Util_printRule(buf, o->action,
-                                        "if failed [count %d size %d with timeout %.0f seconds%s%s]", o->count, o->size, o->timeout / 1000., o->outgoing.ip ? " via address " : "", o->outgoing.ip ? o->outgoing.ip : ""));
+                                        "if failed [count %d size %d with timeout %s%s%s]", o->count, o->size, Str_milliToTime(o->timeout, (char[23]){}), o->outgoing.ip ? " via address " : "", o->outgoing.ip ? o->outgoing.ip : ""));
                 switch (o->family) {
                         case Socket_Ip4:
                                 printf(" %-20s = %s\n", "Ping4", output);
@@ -1074,8 +1074,8 @@ void Util_printService(Service_T s) {
                         o->hostname, o->target.net.port, Util_portRequestDescription(o));
                 if (o->outgoing.ip)
                         StringBuffer_append(buf2, " via address %s", o->outgoing.ip);
-                StringBuffer_append(buf2, " type %s/%s protocol %s with timeout %.0f seconds",
-                        Util_portTypeDescription(o), Util_portIpDescription(o), o->protocol->name, o->timeout / 1000.);
+                StringBuffer_append(buf2, " type %s/%s protocol %s with timeout %s",
+                        Util_portTypeDescription(o), Util_portIpDescription(o), o->protocol->name, Str_milliToTime(o->timeout, (char[23]){}));
                 if (o->retry > 1)
                         StringBuffer_append(buf2, " and retry %d times", o->retry);
 #ifdef HAVE_OPENSSL
@@ -1098,9 +1098,9 @@ void Util_printService(Service_T s) {
         for (Port_T o = s->socketlist; o; o = o->next) {
                 StringBuffer_clear(buf);
                 if (o->retry > 1)
-                        printf(" %-20s = %s\n", "Unix Socket", StringBuffer_toString(Util_printRule(buf, o->action, "if failed %s type %s protocol %s with timeout %.0f seconds and retry %d times", o->target.unix.pathname, Util_portTypeDescription(o), o->protocol->name, o->timeout / 1000., o->retry)));
+                        printf(" %-20s = %s\n", "Unix Socket", StringBuffer_toString(Util_printRule(buf, o->action, "if failed %s type %s protocol %s with timeout %s and retry %d times", o->target.unix.pathname, Util_portTypeDescription(o), o->protocol->name, Str_milliToTime(o->timeout, (char[23]){}), o->retry)));
                 else
-                        printf(" %-20s = %s\n", "Unix Socket", StringBuffer_toString(Util_printRule(buf, o->action, "if failed %s type %s protocol %s with timeout %.0f seconds", o->target.unix.pathname, Util_portTypeDescription(o), o->protocol->name, o->timeout / 1000., o->retry)));
+                        printf(" %-20s = %s\n", "Unix Socket", StringBuffer_toString(Util_printRule(buf, o->action, "if failed %s type %s protocol %s with timeout %s", o->target.unix.pathname, Util_portTypeDescription(o), o->protocol->name, Str_milliToTime(o->timeout, (char[23]){}), o->retry)));
         }
 
         for (Timestamp_T o = s->timestamplist; o; o = o->next) {
