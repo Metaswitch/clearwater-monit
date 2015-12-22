@@ -1304,8 +1304,6 @@ State_Type check_program(Service_T s) {
                 _programOutput(Process_getInputStream(P), s->program->output);
                 StringBuffer_trim(s->program->output);
                 // Evaluate program's exit status against our status checks.
-                /* TODO: Multiple checks we have now should be deprecated and removed - not useful because it
-                 will alert on everything if != is used other than the match or if = is used, might report nothing on error. */
                 for (Status_T status = s->statuslist; status; status = status->next) {
                         if (status->operator == Operator_Changed) {
                                 if (status->initialized) {
