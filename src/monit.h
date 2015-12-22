@@ -560,6 +560,13 @@ typedef struct mygenericproto {
 } *Generic_T;
 
 
+typedef struct outgoing {
+        char *ip;                                         /**< Outgoing IP address */
+        struct sockaddr_storage addr;
+        socklen_t addrlen;
+} Outgoing_T;
+
+
 /** Defines a port object */
 typedef struct myport {
         char *hostname;                                     /**< Hostname to check */
@@ -572,7 +579,8 @@ typedef struct myport {
                         int port;                                 /**< Port number */
                 } net;
         } target;
-        int timeout; /**< The timeout in milliseconds to wait for connect or read i/o */
+        Outgoing_T outgoing;                                 /**< Outgoing address */
+        int timeout;      /**< The timeout in [ms] to wait for connect or read i/o */
         int retry;       /**< Number of connection retry before reporting an error */
         volatile int socket;                       /**< Socket used for connection */
         double response;                 /**< Socket connection response time [ms] */
@@ -651,6 +659,7 @@ typedef struct myicmp {
         boolean_t is_available;               /**< true if the server is available */
         Socket_Family family;                 /**< ICMP family used for connection */
         double response;                         /**< ICMP ECHO response time [ms] */
+        Outgoing_T outgoing;                                 /**< Outgoing address */
         EventAction_T action;  /**< Description of the action upon event occurence */
 
         /** For internal use */

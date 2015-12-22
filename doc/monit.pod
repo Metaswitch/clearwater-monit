@@ -2481,7 +2481,10 @@ is allowed to).
 Syntax:
 
   IF FAILED PING[4|6]
-     [COUNT number] [SIZE number] [WITH] [TIMEOUT number SECONDS]
+     [COUNT number]
+     [SIZE number]
+     [TIMEOUT number SECONDS]
+     [ADDRESS string]
   THEN action
 
 If a DNS host name was used in the I<check host> statement and the host
@@ -2500,6 +2503,8 @@ is 64 bytes.
 If no reply arrive within B<TIMEOUT> seconds, Monit reports an error.
 If at least one reply was received, the ping test is considered a
 success.
+
+The B<ADDRESS> parameter specifies source IP address.
 
 Monit will, by default, send up to I<three> ping request packets in
 one cycle to prevent false alarm (i.e. up to 66% packet loss is
@@ -2554,6 +2559,7 @@ TCP/UDP port test syntax:
  IF FAILED
     [host]
     <port>
+    [localaddress]
     [ipversion]
     [type]
     [ssl [with options {...}]]
@@ -2593,6 +2599,8 @@ I<port: PORT number>. The port number to connect to
 
 I<unixsocket: UNIXSOCKET path>. Specifies the path to a Unix
 socket (local machine only).
+
+I<localaddress: ADDRESS string>. The source IP address to use.
 
 I<ipversion: IPV4 | IPV6 >. Optionally specify the IP version Monit
 should use when trying to connect to the port. If not used, Monit will

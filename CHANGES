@@ -13,6 +13,10 @@ New: Issue #299: Show last output of the program check in monit status CLI.
 
 New: Issue #275: monit -V displayes configure options.
 
+New: Issue #276: Allow specific source address for port and ping tests. Example:
+        if failed ping via address "192.168.1.10" then alert
+        if failed port 80 via address "192.168.1.10" then alert
+
 New: Issue #282: Add support for custom server-status path to apache-status protocol
 test.
 

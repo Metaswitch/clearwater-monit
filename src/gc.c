@@ -356,6 +356,7 @@ static void _gcportlist(Port_T *p) {
         else
                 _gcssloptions(&((*p)->target.net.ssl));
         FREE((*p)->hostname);
+        FREE((*p)->outgoing.ip);
         if ((*p)->protocol->check == check_http) {
                 FREE((*p)->parameters.http.request);
                 FREE((*p)->parameters.http.checksum);
@@ -401,6 +402,7 @@ static void _gcicmp(Icmp_T *i) {
         ASSERT(i&&*i);
         if ((*i)->next)
                 _gcicmp(&(*i)->next);
+        FREE((*i)->outgoing.ip);
         if ((*i)->action)
                 _gc_eventaction(&(*i)->action);
         FREE(*i);

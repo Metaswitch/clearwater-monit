@@ -208,6 +208,7 @@ static Digest_Type digesttype = Digest_Cleartext;
 
 static void  preparse();
 static void  postparse();
+static boolean_t _parseOutgoingAddress(const char *ip, Outgoing_T *outgoing);
 static void  addmail(char *, Mail_T, Mail_T *);
 static Service_T createservice(Service_Type, char *, char *, State_Type (*)(Service_T));
 static void  addservice(Service_T);
@@ -1265,6 +1266,7 @@ connectionopt   : ip
                 | sendexpect
                 | urloption
                 | connectiontimeout
+                | outgoing
                 | retry
                 | ssl
                 | sslchecksum
@@ -1337,6 +1339,7 @@ icmpoptlist     : /* EMPTY */
 icmpopt         : icmpcount
                 | icmpsize
                 | icmptimeout
+                | icmpoutgoing
                 ;
 
 host            : /* EMPTY */ {
@@ -1384,6 +1387,11 @@ typeoptlist     : /* EMPTY */
 
 typeopt         : sslversion
                 | certmd5
+                ;
+
+outgoing        : ADDRESS STRING {
+                        _parseOutgoingAddress($<string>2, &(portset.outgoing));
+                  }
                 ;
 
 protocol        : PROTOCOL APACHESTATUS apache_stat_list {
@@ -1712,6 +1720,11 @@ icmptimeout     : TIMEOUT NUMBER SECOND {
                         icmpset.timeout = $<number>2 * 1000; // timeout is in milliseconds internally
                     }
                   ;
+
+icmpoutgoing    : ADDRESS STRING {
+                        _parseOutgoingAddress($<string>2, &(icmpset.outgoing));
+                  }
+                ;
 
 exectimeout     : /* EMPTY */ {
                    $<number>$ = EXEC_TIMEOUT;
@@ -2716,6 +2729,22 @@ static void postparse() {
 }
 
 
+static boolean_t _parseOutgoingAddress(const char *ip, Outgoing_T *outgoing) {
+        struct addrinfo *result, hints = {.ai_flags = AI_NUMERICHOST};
+        int status = getaddrinfo(ip, NULL, &hints, &result);
+        if (status == 0) {
+                outgoing->ip = (char *)ip;
+                outgoing->addrlen = result->ai_addrlen;
+                memcpy(&(outgoing->addr), result->ai_addr, result->ai_addrlen);
+                freeaddrinfo(result);
+                return true;
+        } else {
+                yyerror2("IP address parsing failed -- %s", ip, status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
+        }
+        return false;
+}
+
+
 /*
  * Create a new service object and add any current objects to the
  * service list.
@@ -2927,6 +2956,7 @@ static void addport(Port_T *list, Port_T port) {
         p->protocol           = port->protocol;
         p->hostname           = port->hostname;
         p->url_request        = port->url_request;
+        p->outgoing           = port->outgoing;
         if (p->family == Socket_Unix) {
                 p->target.unix.pathname = port->target.unix.pathname;
         } else {
@@ -3519,6 +3549,7 @@ static void addicmp(Icmp_T is) {
         icmp->count        = is->count;
         icmp->timeout      = is->timeout;
         icmp->action       = is->action;
+        icmp->outgoing     = is->outgoing;
         icmp->is_available = false;
         icmp->response     = -1;
 

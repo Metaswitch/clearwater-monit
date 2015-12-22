@@ -1053,23 +1053,29 @@ void Util_printService(Service_T s) {
 
         for (Icmp_T o = s->icmplist; o; o = o->next) {
                 StringBuffer_clear(buf);
+                const char *output = StringBuffer_toString(Util_printRule(buf, o->action,
+                                        "if failed [count %d size %d with timeout %.0f seconds%s%s]", o->count, o->size, o->timeout / 1000., o->outgoing.ip ? " via address " : "", o->outgoing.ip ? o->outgoing.ip : ""));
                 switch (o->family) {
                         case Socket_Ip4:
-                                printf(" %-20s = %s\n", "Ping4", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping4", output);
                                 break;
                         case Socket_Ip6:
-                                printf(" %-20s = %s\n", "Ping6", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping6", output);
                                 break;
                         default:
-                                printf(" %-20s = %s\n", "Ping", StringBuffer_toString(Util_printRule(buf, o->action, "if failed count %d size %d with timeout %.0f seconds", o->count, o->size, o->timeout / 1000.)));
+                                printf(" %-20s = %s\n", "Ping", output);
                                 break;
                 }
         }
 
         for (Port_T o = s->portlist; o; o = o->next) {
                 StringBuffer_T buf2 = StringBuffer_create(64);
-                StringBuffer_append(buf2, "if failed [%s]:%d%s type %s/%s protocol %s with timeout %.0f seconds",
-                        o->hostname, o->target.net.port, Util_portRequestDescription(o), Util_portTypeDescription(o), Util_portIpDescription(o), o->protocol->name, o->timeout / 1000.);
+                StringBuffer_append(buf2, "if failed [%s]:%d%s",
+                        o->hostname, o->target.net.port, Util_portRequestDescription(o));
+                if (o->outgoing.ip)
+                        StringBuffer_append(buf2, " via address %s", o->outgoing.ip);
+                StringBuffer_append(buf2, " type %s/%s protocol %s with timeout %.0f seconds",
+                        Util_portTypeDescription(o), Util_portIpDescription(o), o->protocol->name, o->timeout / 1000.);
                 if (o->retry > 1)
                         StringBuffer_append(buf2, " and retry %d times", o->retry);
 #ifdef HAVE_OPENSSL

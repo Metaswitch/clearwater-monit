@@ -1603,8 +1603,12 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
         for (Port_T p = s->portlist; p; p = p->next) {
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Port</td><td>");
                 StringBuffer_T buf = StringBuffer_create(64);
-                StringBuffer_append(buf, "If failed [%s]:%d%s type %s/%s protocol %s with timeout %.0f seconds",
-                        p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->protocol->name, p->timeout / 1000.);
+                StringBuffer_append(buf, "If failed [%s]:%d%s",
+                        p->hostname, p->target.net.port, Util_portRequestDescription(p));
+                if (p->outgoing.ip)
+                        StringBuffer_append(buf, " via address %s", p->outgoing.ip);
+                StringBuffer_append(buf, " type %s/%s protocol %s with timeout %.0f seconds",
+                        Util_portTypeDescription(p), Util_portIpDescription(p), p->protocol->name, p->timeout / 1000.);
                 if (p->retry > 1)
                         StringBuffer_append(buf, " and retry %d times", p->retry);
 #ifdef HAVE_OPENSSL
@@ -1651,7 +1655,7 @@ static void print_service_rules_icmp(HttpResponse res, Service_T s) {
                                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Ping</td><td>");
                                 break;
                 }
-                Util_printRule(res->outputbuffer, i->action, "If failed [count %d size %d with timeout %.0f seconds]", i->count, i->size, i->timeout / 1000.);
+                Util_printRule(res->outputbuffer, i->action, "If failed [count %d size %d with timeout %.0f seconds%s%s]", i->count, i->size, i->timeout / 1000., i->outgoing.ip ? " via address " : "", i->outgoing.ip ? i->outgoing.ip : "");
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }

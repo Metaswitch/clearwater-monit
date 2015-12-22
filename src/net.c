@@ -445,7 +445,7 @@ static double _receivePing(const char *hostname, int socket, struct addrinfo *ad
 }
 
 
-double icmp_echo(const char *hostname, Socket_Family family, int size, int timeout, int maxretries) {
+double icmp_echo(const char *hostname, Socket_Family family, Outgoing_T *outgoing, int size, int timeout, int maxretries) {
         ASSERT(hostname);
         ASSERT(size > 0);
         int rv;
@@ -479,17 +479,25 @@ double icmp_echo(const char *hostname, Socket_Family family, int size, int timeo
         struct addrinfo *addr = result;
         int s = -1;
         while (addr && s < 0) {
-                switch (addr->ai_family) {
-                        case AF_INET:
-                                s = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
-                                break;
+                if (outgoing->addrlen == 0 || outgoing->addrlen == addr->ai_addrlen) {
+                        switch (addr->ai_family) {
+                                case AF_INET:
+                                        s = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+                                        break;
 #ifdef HAVE_IPV6
-                        case AF_INET6:
-                                s = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
-                                break;
+                                case AF_INET6:
+                                        s = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+                                        break;
 #endif
-                        default:
-                                break;
+                                default:
+                                        break;
+                        }
+                        if (outgoing->ip) {
+                                if (bind(s, (struct sockaddr *)&(outgoing->addr), outgoing->addrlen) < 0) {
+                                        LogError("Cannot bind to outgoing address -- %s\n", STRERROR);
+                                        goto error1;
+                                }
+                        }
                 }
                 if (s < 0)
                         addr = addr->ai_next;
