@@ -390,6 +390,21 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
         va_end(ap);
 
         Event_T e = service->eventlist;
+        while (e) {
+                if (e->action == action && e->id == id) {
+                        gettimeofday(&e->collected, NULL);
+
+                        /* Shift the existing event flags to the left and set the first bit based on actual state */
+                        e->state_map <<= 1;
+                        e->state_map |= ((state == State_Succeeded || state == State_ChangedNot) ? 0 : 1);
+
+                        /* Update the message */
+                        FREE(e->message);
+                        e->message = message;
+                        break;
+                }
+                e = e->next;
+        }
         if (! e) {
                 /* Only first failed/changed event can initialize the queue for given event type, thus succeeded events are ignored until first error. */
                 if (state == State_Succeeded || state == State_ChangedNot) {
@@ -397,11 +412,8 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                         FREE(message);
                         return;
                 }
-
-                /* Initialize event list and add first event. The mandatory informations
-                 * are cloned so the event is as standalone as possible and may be saved
-                 * to the queue without the dependency on the original service, thus
-                 * persistent and managable across monit restarts */
+                /* Initialize event list and add first event. The mandatory informations are cloned so the event is as standalone as possible and may be saved
+                 * to the queue without the dependency on the original service, thus persistent and managable across monit restarts */
                 NEW(e);
                 e->id = id;
                 gettimeofday(&e->collected, NULL);
@@ -412,50 +424,8 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                 e->state_map = 1;
                 e->action = action;
                 e->message = message;
+                e->next = service->eventlist;
                 service->eventlist = e;
-        } else {
-                /* Try to find the event with the same origin and type identification. Each service and each test have its own custom actions object, so we share actions object address to identify event source. */
-                do {
-                        if (e->action == action && e->id == id) {
-                                gettimeofday(&e->collected, NULL);
-
-                                /* Shift the existing event flags to the left and set the first bit based on actual state */
-                                e->state_map <<= 1;
-                                e->state_map |= ((state == State_Succeeded || state == State_ChangedNot) ? 0 : 1);
-
-                                /* Update the message */
-                                FREE(e->message);
-                                e->message = message;
-                                break;
-                        }
-                        e = e->next;
-                } while (e);
-                if (! e) {
-                        /* Only first failed/changed event can initialize the queue for given event type, thus succeeded events are ignored until first error. */
-                        if (state == State_Succeeded || state == State_ChangedNot) {
-                                DEBUG("'%s' %s\n", service->name, message);
-                                FREE(message);
-                                return;
-                        }
-
-                        /* Event was not found in the pending events list, we will add it.
-                         * The manadatory informations are cloned so the event is as standalone
-                         * as possible and may be saved to the queue without the dependency on
-                         * the original service, thus persistent and managable across monit
-                         * restarts */
-                        NEW(e);
-                        e->id = id;
-                        gettimeofday(&e->collected, NULL);
-                        e->source = service;
-                        e->mode = service->mode;
-                        e->type = service->type;
-                        e->state = State_Init;
-                        e->state_map = 1;
-                        e->action = action;
-                        e->message = message;
-                        e->next = service->eventlist;
-                        service->eventlist = e;
-                }
         }
         e->state_changed = _checkState(e, state);
         /* In the case that the state changed, update it and reset the counter */
