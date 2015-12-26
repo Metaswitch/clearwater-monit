@@ -412,7 +412,7 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                         FREE(message);
                         return;
                 }
-                /* Initialize event list and add first event. The mandatory informations are cloned so the event is as standalone as possible and may be saved
+                /* Initialize the event. The mandatory informations are cloned so the event is as standalone as possible and may be saved
                  * to the queue without the dependency on the original service, thus persistent and managable across monit restarts */
                 NEW(e);
                 e->id = id;
