@@ -149,7 +149,6 @@ void gc_event(Event_T *e) {
         if ((*e)->next)
                 gc_event(&(*e)->next);
         (*e)->action = NULL;
-        FREE((*e)->source);
         FREE((*e)->message);
         FREE(*e);
 }

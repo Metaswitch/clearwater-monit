@@ -82,25 +82,19 @@ static void substitute(Mail_T, Event_T);
  * @return If failed, return Handler_Alert flag or Handler_Succeeded if succeeded
  */
 Handler_Type handle_alert(Event_T E) {
-        Handler_Type rv = Handler_Succeeded;
-
         ASSERT(E);
 
-        Service_T s = Event_get_source(E);
-        if (! s) {
-                LogError("Aborting alert\n");
-                return rv;
-        }
-        if (s->maillist || Run.maillist) {
+        Handler_Type rv = Handler_Succeeded;
+        if (E->source->maillist || Run.maillist) {
                 Mail_T list = NULL;
                 /*
                  * Build a mail-list with local recipients that has registered interest
                  * for this event.
                  */
-                for (Mail_T m = s->maillist; m; m = m->next) {
+                for (Mail_T m = E->source->maillist; m; m = m->next) {
                         if (
                             /* particular event notification type is allowed for given recipient */
-                            IS_EVENT_SET(m->events, Event_get_id(E)) &&
+                            IS_EVENT_SET(m->events, E->id) &&
                             (
                              /* state change notification is sent always */
                              E->state_changed       ||
@@ -127,7 +121,7 @@ Handler_Type handle_alert(Event_T E) {
                  */
                 for (Mail_T m = Run.maillist; m; m = m->next) {
                         boolean_t skip = false;
-                        for (Mail_T n = s->maillist; n; n = n->next) {
+                        for (Mail_T n = E->source->maillist; n; n = n->next) {
                                 if (IS(m->to, n->to)) {
                                         skip = true;
                                         break;
@@ -137,7 +131,7 @@ Handler_Type handle_alert(Event_T E) {
                             /* the local service alert definition has not overrided the global one */
                             ! skip &&
                             /* particular event notification type is allowed for given recipient */
-                            IS_EVENT_SET(m->events, Event_get_id(E)) &&
+                            IS_EVENT_SET(m->events, E->id) &&
                             (
                              /* state change notification is sent always */
                              E->state_changed       ||
@@ -168,29 +162,32 @@ Handler_Type handle_alert(Event_T E) {
 
 
 static void substitute(Mail_T m, Event_T e) {
-        char timestamp[STRLEN];
-
-        ASSERT(m && e);
+        ASSERT(m);
+        ASSERT(e);
 
         Util_replaceString(&m->from,    "$HOST", Run.system->name);
         Util_replaceString(&m->subject, "$HOST", Run.system->name);
         Util_replaceString(&m->message, "$HOST", Run.system->name);
 
+        char timestamp[26];
         Time_string(e->collected.tv_sec, timestamp);
         Util_replaceString(&m->subject, "$DATE", timestamp);
         Util_replaceString(&m->message, "$DATE", timestamp);
 
-        Util_replaceString(&m->subject, "$SERVICE", Event_get_source_name(e));
-        Util_replaceString(&m->message, "$SERVICE", Event_get_source_name(e));
+        Util_replaceString(&m->subject, "$SERVICE", e->source->name);
+        Util_replaceString(&m->message, "$SERVICE", e->source->name);
 
-        Util_replaceString(&m->subject, "$EVENT", Event_get_description(e));
-        Util_replaceString(&m->message, "$EVENT", Event_get_description(e));
+        const char *description = Event_get_description(e);
+        Util_replaceString(&m->subject, "$EVENT", description);
+        Util_replaceString(&m->message, "$EVENT", description);
 
-        Util_replaceString(&m->subject, "$DESCRIPTION", NVLSTR(Event_get_message(e)));
-        Util_replaceString(&m->message, "$DESCRIPTION", NVLSTR(Event_get_message(e)));
+        const char *message = NVLSTR(e->message);
+        Util_replaceString(&m->subject, "$DESCRIPTION", message);
+        Util_replaceString(&m->message, "$DESCRIPTION", message);
 
-        Util_replaceString(&m->subject, "$ACTION", Event_get_action_description(e));
-        Util_replaceString(&m->message, "$ACTION", Event_get_action_description(e));
+        const char *action = Event_get_action_description(e);
+        Util_replaceString(&m->subject, "$ACTION", action);
+        Util_replaceString(&m->message, "$ACTION", action);
 }
 
 

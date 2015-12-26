@@ -750,15 +750,10 @@ void Util_hmacMD5(const unsigned char *data, int datalen, const unsigned char *k
 
 
 Service_T Util_getService(const char *name) {
-        Service_T s;
-
         ASSERT(name);
-
-        for (s = servicelist; s; s = s->next) {
-                if (IS(s->name, name)) {
+        for (Service_T s = servicelist; s; s = s->next)
+                if (IS(s->name, name))
                         return s;
-                }
-        }
         return NULL;
 }
 

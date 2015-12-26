@@ -468,7 +468,6 @@ static void status_servicegroup(ServiceGroup_T SG, StringBuffer_T B, Level_Type 
  * @param B StringBuffer object
  */
 static void status_event(Event_T E, StringBuffer_T B) {
-        struct timeval *tv = Event_get_collected(E);
         StringBuffer_append(B,
                             "<event>"
                             "<collected_sec>%lld</collected_sec>"
@@ -479,18 +478,17 @@ static void status_event(Event_T E, StringBuffer_T B) {
                             "<state>%d</state>"
                             "<action>%d</action>"
                             "<message><![CDATA[",
-                            (long long)tv->tv_sec,
-                            (long)tv->tv_usec,
-                            Event_get_id(E) == Event_Instance ? "Monit" : Event_get_source_name(E),
-                            Event_get_source_type(E),
-                            Event_get_id(E),
-                            Event_get_state(E),
+                            (long long)E->collected.tv_sec,
+                            (long)E->collected.tv_usec,
+                            E->id == Event_Instance ? "Monit" : E->source->name,
+                            E->type,
+                            E->id,
+                            E->state,
                             Event_get_action(E));
-        _escapeCDATA(B, Event_get_message(E));
+        _escapeCDATA(B, E->message);
         StringBuffer_append(B, "]]></message>");
-        Service_T s = Event_get_source(E);
-        if (s && s->token)
-                StringBuffer_append(B, "<token>%s</token>", s->token);
+        if (E->source->token)
+                StringBuffer_append(B, "<token>%s</token>", E->source->token);
         StringBuffer_append(B, "</event>");
 }
 

@@ -67,11 +67,11 @@ typedef enum {
 #define IS_EVENT_SET(value, mask) ((value & mask) != 0)
 
 typedef struct myeventtable {
-  int id;
-  char *description_failed;
-  char *description_succeeded;
-  char *description_changed;
-  char *description_changednot;
+        int id;
+        char *description_failed;
+        char *description_succeeded;
+        char *description_changed;
+        char *description_changednot;
 } EventTable_T;
 
 extern EventTable_T Event_Table[];
@@ -100,73 +100,6 @@ extern EventTable_T Event_Table[];
  * @param s Optional message describing the event
  */
 void Event_post(Service_T service, long id, State_Type state, EventAction_T action, char *s, ...) __attribute__((format (printf, 5, 6)));
-
-
-/**
- * Get the Service where the event orginated
- * @param E An event object
- * @return The Service where the event orginated
- */
-Service_T Event_get_source(Event_T E);
-
-
-/**
- * Get the Service name where the event orginated
- * @param E An event object
- * @return The Service name where the event orginated
- */
-char *Event_get_source_name(Event_T E);
-
-
-/**
- * Get the service type of the service where the event orginated
- * @param E An event object
- * @return The service type of the service where the event orginated
- */
-int Event_get_source_type(Event_T E);
-
-
-/**
- * Get the Event timestamp
- * @param E An event object
- * @return The Event timestamp
- */
-struct timeval *Event_get_collected(Event_T E);
-
-
-/**
- * Get the Event raw state
- * @param E An event object
- * @return The Event raw state
- */
-State_Type Event_get_state(Event_T E);
-
-
-/**
- * Return the actual event state based on event state bitmap
- * and event ratio needed to trigger the state change
- * @param E An event object
- * @param S Actual posted state
- * @return The Event state
- */
-boolean_t Event_check_state(Event_T E, State_Type S);
-
-
-/**
- * Get the Event type
- * @param E An event object
- * @return The Event type
- */
-long Event_get_id(Event_T E);
-
-
-/**
- * Get the optionally Event message describing why the event was
- * fired.
- * @param E An event object
- * @return The Event message. May be NULL
- */
-const char *Event_get_message(Event_T E);
 
 
 /**

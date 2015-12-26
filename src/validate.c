@@ -1294,7 +1294,7 @@ State_Type check_program(Service_T s) {
                         } else {
                                 // Defer test of exit value until program exit or timeout
                                 DEBUG("'%s' status check defered - waiting on program to exit\n", s->name);
-                                return true;
+                                return State_Init;
                         }
                 }
                 s->program->exitStatus = Process_exitStatus(P); // Save exit status for web-view display

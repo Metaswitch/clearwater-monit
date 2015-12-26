@@ -111,13 +111,260 @@ EventTable_T Event_Table[] = {
 };
 
 
-/* -------------------------------------------------------------- Prototypes */
+/* ----------------------------------------------------------------- Private */
 
 
-static void handle_event(Service_T, Event_T);
-static void handle_action(Event_T, Action_T);
-static void Event_queue_add(Event_T);
-static void Event_queue_update(Event_T, const char *);
+/**
+ * Return the actual event state based on event state bitmap and event ratio needed to trigger the state change
+ * @param E An event object
+ * @param S Actual posted state
+ * @return The event state
+ */
+static boolean_t _checkState(Event_T E, State_Type S) {
+        ASSERT(E);
+        int count = 0;
+        State_Type state = (S == State_Succeeded || S == State_ChangedNot) ? State_Succeeded : State_Failed; /* translate to 0/1 class */
+
+        /* Only failed/changed state condition can change the initial state */
+        if (! state && E->state == State_Init && ! (E->source->error & E->id))
+                return false;
+
+        Action_T action = ! state ? E->action->succeeded : E->action->failed;
+
+        /* Compare as many bits as cycles able to trigger the action */
+        for (int i = 0; i < action->cycles; i++) {
+                /* Check the state of the particular cycle given by the bit position */
+                long long flag = (E->state_map >> i) & 0x1;
+
+                /* Count occurences of the posted state */
+                if (flag == state)
+                        count++;
+        }
+
+        /* the internal instance and action events are handled as changed any time since we need to deliver alert whenever it occurs */
+        if (E->id == Event_Instance || E->id == Event_Action || (count >= action->count && (S != E->state || S == State_Changed))) {
+                memset(&(E->state_map), state, sizeof(E->state_map)); // Restart state map on state change, so we'll not flicker on multiple-failures condition (next state change requires full number of cycles to pass)
+                return true;
+        }
+
+        return false;
+}
+
+
+/**
+ * Add the partialy handled event to the global queue
+ * @param E An event object
+ */
+static void _queueAdd(Event_T E) {
+        ASSERT(E);
+        ASSERT(E->flag != Handler_Succeeded);
+
+        if (! file_checkQueueDirectory(Run.eventlist_dir)) {
+                LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
+                return;
+        }
+
+        if (! file_checkQueueLimit(Run.eventlist_dir, Run.eventlist_slots)) {
+                LogError("Aborting event - queue over quota\n");
+                return;
+        }
+
+        /* compose the file name of actual timestamp and service name */
+        char file_name[PATH_MAX];
+        snprintf(file_name, PATH_MAX, "%s/%lld_%lx", Run.eventlist_dir, (long long)Time_now(), (long unsigned)E->source->name);
+
+        LogInfo("Adding event to the queue file %s for later delivery\n", file_name);
+
+        FILE *file = fopen(file_name, "w");
+        if (! file) {
+                LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
+                return;
+        }
+
+        boolean_t  rv;
+
+        /* write event structure version */
+        int version = EVENT_VERSION;
+        if (! (rv = file_writeQueue(file, &version, sizeof(int))))
+                goto error;
+
+        /* write event structure */
+        if (! (rv = file_writeQueue(file, E, sizeof(*E))))
+                goto error;
+
+        /* write source */
+        if (! (rv = file_writeQueue(file, E->source->name, strlen(E->source->name) + 1)))
+                goto error;
+
+        /* write message */
+        if (! (rv = file_writeQueue(file, E->message, E->message ? strlen(E->message) + 1 : 0)))
+                goto error;
+
+        /* write event action */
+        Action_Type action = Event_get_action(E);
+        if (! (rv = file_writeQueue(file, &action, sizeof(Action_Type))))
+                goto error;
+
+error:
+        fclose(file);
+        if (! rv) {
+                LogError("Aborting event - unable to save event information to %s\n",  file_name);
+                if (unlink(file_name) < 0)
+                        LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
+        } else {
+                if (! (Run.flags & Run_HandlerInit) && E->flag & Handler_Alert)
+                        Run.handler_queue[Handler_Alert]++;
+                if (! (Run.flags & Run_HandlerInit) && E->flag & Handler_Mmonit)
+                        Run.handler_queue[Handler_Mmonit]++;
+        }
+
+        return;
+}
+
+
+/**
+ * Update the partialy handled event in the global queue
+ * @param E An event object
+ * @param file_name File name
+ */
+static void _queueUpdate(Event_T E, const char *file_name) {
+        int version = EVENT_VERSION;
+        Action_Type action = Event_get_action(E);
+        boolean_t rv;
+
+        ASSERT(E);
+        ASSERT(E->flag != Handler_Succeeded);
+
+        if (! file_checkQueueDirectory(Run.eventlist_dir)) {
+                LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
+                return;
+        }
+
+        DEBUG("Updating event in the queue file %s for later delivery\n", file_name);
+
+        FILE *file = fopen(file_name, "w");
+        if (! file) {
+                LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
+                return;
+        }
+
+        /* write event structure version */
+        if (! (rv = file_writeQueue(file, &version, sizeof(int))))
+                goto error;
+
+        /* write event structure */
+        if (! (rv = file_writeQueue(file, E, sizeof(*E))))
+                goto error;
+
+        /* write source */
+        if (! (rv = file_writeQueue(file, E->source->name, strlen(E->source->name) + 1)))
+                goto error;
+
+        /* write message */
+        if (! (rv = file_writeQueue(file, E->message, E->message ? strlen(E->message) + 1 : 0)))
+                goto error;
+
+        /* write event action */
+        if (! (rv = file_writeQueue(file, &action, sizeof(Action_Type))))
+                goto error;
+
+error:
+        fclose(file);
+        if (! rv) {
+                LogError("Aborting event - unable to update event information to %s\n", file_name);
+                if (unlink(file_name) < 0)
+                        LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
+        }
+}
+
+
+static void _handleAction(Event_T E, Action_T A) {
+        ASSERT(E);
+        ASSERT(A);
+
+        E->flag = Handler_Succeeded;
+
+        if (A->id == Action_Ignored)
+                return;
+
+        /* Alert and mmonit event notification are common actions */
+        E->flag |= handle_mmonit(E);
+        E->flag |= handle_alert(E);
+
+        /* In the case that some subhandler failed, enqueue the event for partial reprocessing */
+        if (E->flag != Handler_Succeeded) {
+                if (Run.eventlist_dir)
+                        _queueAdd(E);
+                else
+                        LogError("Aborting event\n");
+        }
+
+        /* Action event is handled already. For Instance events we don't want actions like stop to be executed to prevent the disabling of system service monitoring */
+        if (A->id == Action_Alert || E->id == Event_Instance) {
+                return;
+        } else if (A->id == Action_Exec) {
+                LogInfo("'%s' exec: %s\n", E->source->name, A->exec->arg[0]);
+                spawn(E->source, A->exec, E);
+                return;
+        } else {
+                if (E->source->actionratelist && (A->id == Action_Start || A->id == Action_Restart))
+                        E->source->nstart++;
+
+                if (E->source->mode == Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
+                        return;
+
+                control_service(E->source->name, A->id);
+        }
+}
+
+
+static void _handleEvent(Service_T S, Event_T E) {
+        ASSERT(E);
+        ASSERT(E->action);
+        ASSERT(E->action->failed);
+        ASSERT(E->action->succeeded);
+
+        /* We will handle only first succeeded event, recurrent succeeded events
+         * or insufficient succeeded events during failed service state are
+         * ignored. Failed events are handled each time. */
+        if (! E->state_changed && (E->state == State_Succeeded || E->state == State_ChangedNot || ((E->state_map & 0x1) ^ 0x1))) {
+                DEBUG("'%s' %s\n", S->name, E->message);
+                return;
+        }
+
+        if (E->message) {
+                /* In the case that the service state is initializing yet and error
+                 * occured, log it and exit. Succeeded events in init state are not
+                 * logged. Instance and action events are logged always with priority
+                 * info. */
+                if (E->state != State_Init || E->state_map & 0x1) {
+                        if (E->state == State_Succeeded || E->state == State_ChangedNot || E->id == Event_Instance || E->id == Event_Action)
+                                LogInfo("'%s' %s\n", S->name, E->message);
+                        else
+                                LogError("'%s' %s\n", S->name, E->message);
+                }
+                if (E->state == State_Init)
+                        return;
+        }
+
+        if (E->state == State_Failed || E->state == State_Changed) {
+                if (E->id != Event_Instance && E->id != Event_Action) { // We are not interested in setting error flag for instance and action events
+                        S->error |= E->id;
+                        /* The error hint provides second dimension for error bitmap and differentiates between failed/changed event states (failed=0, chaged=1) */
+                        if (E->state == State_Changed)
+                                S->error_hint |= E->id;
+                        else
+                                S->error_hint &= ~E->id;
+                }
+                _handleAction(E, E->action->failed);
+        } else {
+                S->error &= ~E->id;
+                _handleAction(E, E->action->succeeded);
+        }
+
+        /* Possible event state change was handled so we will reset the flag. */
+        E->state_changed = false;
+}
 
 
 /* ------------------------------------------------------------------ Public */
@@ -151,14 +398,14 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                         return;
                 }
 
-                /* Initialize event list and add first event. The manadatory informations
+                /* Initialize event list and add first event. The mandatory informations
                  * are cloned so the event is as standalone as possible and may be saved
                  * to the queue without the dependency on the original service, thus
                  * persistent and managable across monit restarts */
                 NEW(e);
                 e->id = id;
                 gettimeofday(&e->collected, NULL);
-                e->source = Str_dup(service->name);
+                e->source = service;
                 e->mode = service->mode;
                 e->type = service->type;
                 e->state = State_Init;
@@ -183,7 +430,6 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                         }
                         e = e->next;
                 } while (e);
-
                 if (! e) {
                         /* Only first failed/changed event can initialize the queue for given event type, thus succeeded events are ignored until first error. */
                         if (state == State_Succeeded || state == State_ChangedNot) {
@@ -200,7 +446,7 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                         NEW(e);
                         e->id = id;
                         gettimeofday(&e->collected, NULL);
-                        e->source = Str_dup(service->name);
+                        e->source = service;
                         e->mode = service->mode;
                         e->type = service->type;
                         e->state = State_Init;
@@ -211,149 +457,15 @@ void Event_post(Service_T service, long id, State_Type state, EventAction_T acti
                         service->eventlist = e;
                 }
         }
-
-        e->state_changed = Event_check_state(e, state);
-
+        e->state_changed = _checkState(e, state);
         /* In the case that the state changed, update it and reset the counter */
         if (e->state_changed) {
                 e->state = state;
                 e->count = 1;
-        } else
+        } else {
                 e->count++;
-
-        handle_event(service, e);
-}
-
-
-/* -------------------------------------------------------------- Properties */
-
-
-/**
- * Get the Service where the event orginated
- * @param E An event object
- * @return The Service where the event orginated
- */
-Service_T Event_get_source(Event_T E) {
-        Service_T s = NULL;
-
-        ASSERT(E);
-
-        if (! (s = Util_getService(E->source)))
-                LogError("Service %s not found in monit configuration\n", E->source);
-
-        return s;
-}
-
-
-/**
- * Get the Service name where the event orginated
- * @param E An event object
- * @return The Service name where the event orginated
- */
-char *Event_get_source_name(Event_T E) {
-        ASSERT(E);
-        return (E->source);
-}
-
-
-/**
- * Get the service type of the service where the event orginated
- * @param E An event object
- * @return The service type of the service where the event orginated
- */
-int Event_get_source_type(Event_T E) {
-        ASSERT(E);
-        return (E->type);
-}
-
-
-/**
- * Get the Event timestamp
- * @param E An event object
- * @return The Event timestamp
- */
-struct timeval *Event_get_collected(Event_T E) {
-        ASSERT(E);
-        return &E->collected;
-}
-
-
-/**
- * Get the Event raw state
- * @param E An event object
- * @return The Event raw state
- */
-State_Type Event_get_state(Event_T E) {
-        ASSERT(E);
-        return E->state;
-}
-
-
-/**
- * Return the actual event state based on event state bitmap
- * and event ratio needed to trigger the state change
- * @param E An event object
- * @param S Actual posted state
- * @return The event state
- */
-boolean_t Event_check_state(Event_T E, State_Type S) {
-        int        count = 0;
-        State_Type state = (S == State_Succeeded || S == State_ChangedNot) ? State_Succeeded : State_Failed; /* translate to 0/1 class */
-        Action_T   action;
-        Service_T  service;
-        long long  flag;
-
-        ASSERT(E);
-
-        if (! (service = Event_get_source(E)))
-                return true;
-
-        /* Only true failed/changed state condition can change the initial state */
-        if (! state && E->state == State_Init && ! (service->error & E->id))
-                return false;
-
-        action = ! state ? E->action->succeeded : E->action->failed;
-
-        /* Compare as many bits as cycles able to trigger the action */
-        for (int i = 0; i < action->cycles; i++) {
-                /* Check the state of the particular cycle given by the bit position */
-                flag = (E->state_map >> i) & 0x1;
-
-                /* Count occurences of the posted state */
-                if (flag == state)
-                        count++;
         }
-
-        /* the internal instance and action events are handled as changed any time since we need to deliver alert whenever it occurs */
-        if (E->id == Event_Instance || E->id == Event_Action || (count >= action->count && (S != E->state || S == State_Changed))) {
-                memset(&(E->state_map), state, sizeof(E->state_map)); // Restart state map on state change, so we'll not flicker on multiple-failures condition (next state change requires full number of cycles to pass)
-                return true;
-        }
-
-        return false;
-}
-
-
-/**
- * Get the Event type
- * @param E An event object
- * @return The Event type
- */
-long Event_get_id(Event_T E) {
-        ASSERT(E);
-        return E->id;
-}
-
-
-/**
- * Get the optionally Event message describing why the event was
- * fired.
- * @param E An event object
- * @return The Event message. May be NULL
- */
-const char *Event_get_message(Event_T E) {
-        ASSERT(E);
-        return E->message;
+        _handleEvent(service, e);
 }
 
 
@@ -364,10 +476,8 @@ const char *Event_get_message(Event_T E) {
  * event type is not found NULL is returned.
  */
 const char *Event_get_description(Event_T E) {
-        EventTable_T *et = Event_Table;
-
         ASSERT(E);
-
+        EventTable_T *et = Event_Table;
         while ((*et).id) {
                 if (E->id == (*et).id) {
                         switch (E->state) {
@@ -387,7 +497,6 @@ const char *Event_get_description(Event_T E) {
                 }
                 et++;
         }
-
         return NULL;
 }
 
@@ -399,7 +508,6 @@ const char *Event_get_description(Event_T E) {
  */
 Action_Type Event_get_action(Event_T E) {
         ASSERT(E);
-
         Action_T A = NULL;
         switch (E->state) {
                 case State_Succeeded:
@@ -507,19 +615,24 @@ void Event_queue_process() {
                                 goto error4;
 
                         /* read source */
-                        if (! (e->source = file_readQueue(file, &size)))
+                        char *service = file_readQueue(file, &size);
+                        if (! service)
                                 goto error4;
+                        if (! (e->source = Util_getService(service))) {
+                                LogError("Aborting queued event %s - service %s not found in monitor configuration\n", file_name, service);
+                                goto error4;
+                        }
 
                         /* read message */
                         if (! (e->message = file_readQueue(file, &size)))
-                                goto error5;
+                                goto error4;
 
                         /* read event action */
                         Action_Type *action = file_readQueue(file, &size);
                         if (! action)
-                                goto error6;
+                                goto error5;
                         if (size != sizeof(Action_Type))
-                                goto error7;
+                                goto error6;
                         a->id = *action;
                         switch (e->state) {
                                 case State_Succeeded:
@@ -533,7 +646,7 @@ void Event_queue_process() {
                                         break;
                                 default:
                                         LogError("Aborting queue event %s -- invalid state: %d\n", file_name, e->state);
-                                        goto error7;
+                                        goto error6;
                         }
                         e->action = ea;
 
@@ -578,15 +691,13 @@ void Event_queue_process() {
                                         LogError("Failed to remove queued event file '%s' -- %s\n", file_name, STRERROR);
                         } else if (handlers_passed > 0) {
                                 DEBUG("Updating queued event %s (some handlers passed)\n", file_name);
-                                Event_queue_update(e, file_name);
+                                _queueUpdate(e, file_name);
                         }
 
-                error7:
-                        FREE(action);
                 error6:
-                        FREE(e->message);
+                        FREE(action);
                 error5:
-                        FREE(e->source);
+                        FREE(e->message);
                 error4:
                         FREE(e);
                 error3:
@@ -601,241 +712,5 @@ void Event_queue_process() {
         closedir(dir);
         FREE(a);
         FREE(ea);
-        return;
-}
-
-
-/* ----------------------------------------------------------------- Private */
-
-
-/*
- * Handle the event
- * @param E An event
- */
-static void handle_event(Service_T S, Event_T E) {
-        ASSERT(E);
-        ASSERT(E->action);
-        ASSERT(E->action->failed);
-        ASSERT(E->action->succeeded);
-
-        /* We will handle only first succeeded event, recurrent succeeded events
-         * or insufficient succeeded events during failed service state are
-         * ignored. Failed events are handled each time. */
-        if (! E->state_changed && (E->state == State_Succeeded || E->state == State_ChangedNot || ((E->state_map & 0x1) ^ 0x1))) {
-                DEBUG("'%s' %s\n", S->name, E->message);
-                return;
-        }
-
-        if (E->message) {
-                /* In the case that the service state is initializing yet and error
-                 * occured, log it and exit. Succeeded events in init state are not
-                 * logged. Instance and action events are logged always with priority
-                 * info. */
-                if (E->state != State_Init || E->state_map & 0x1) {
-                        if (E->state == State_Succeeded || E->state == State_ChangedNot || E->id == Event_Instance || E->id == Event_Action)
-                                LogInfo("'%s' %s\n", S->name, E->message);
-                        else
-                                LogError("'%s' %s\n", S->name, E->message);
-                }
-                if (E->state == State_Init)
-                        return;
-        }
-
-        if (E->state == State_Failed || E->state == State_Changed) {
-                if (E->id != Event_Instance && E->id != Event_Action) { // We are not interested in setting error flag for instance and action events
-                        S->error |= E->id;
-                        /* The error hint provides second dimension for error bitmap and differentiates between failed/changed event states (failed=0, chaged=1) */
-                        if (E->state == State_Changed)
-                                S->error_hint |= E->id;
-                        else
-                                S->error_hint &= ~E->id;
-                }
-                handle_action(E, E->action->failed);
-        } else {
-                S->error &= ~E->id;
-                handle_action(E, E->action->succeeded);
-        }
-
-        /* Possible event state change was handled so we will reset the flag. */
-        E->state_changed = false;
-}
-
-
-static void handle_action(Event_T E, Action_T A) {
-        Service_T s;
-
-        ASSERT(E);
-        ASSERT(A);
-
-        E->flag = Handler_Succeeded;
-
-        if (A->id == Action_Ignored)
-                return;
-
-        /* Alert and mmonit event notification are common actions */
-        E->flag |= handle_mmonit(E);
-        E->flag |= handle_alert(E);
-
-        /* In the case that some subhandler failed, enqueue the event for
-         * partial reprocessing */
-        if (E->flag != Handler_Succeeded) {
-                if (Run.eventlist_dir)
-                        Event_queue_add(E);
-                else
-                        LogError("Aborting event\n");
-        }
-
-        if (! (s = Event_get_source(E))) {
-                LogError("Event action handling aborted\n");
-                return;
-        }
-
-        /* Action event is handled already. For Instance events
-         * we don't want actions like stop to be executed
-         * to prevent the disabling of system service monitoring */
-        if (A->id == Action_Alert || E->id == Event_Instance) {
-                return;
-        } else if (A->id == Action_Exec) {
-                LogInfo("'%s' exec: %s\n", s->name, A->exec->arg[0]);
-                spawn(s, A->exec, E);
-                return;
-        } else {
-                if (s->actionratelist && (A->id == Action_Start || A->id == Action_Restart))
-                        s->nstart++;
-
-                if (s->mode == Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
-                        return;
-
-                control_service(s->name, A->id);
-        }
-}
-
-
-/**
- * Add the partialy handled event to the global queue
- * @param E An event object
- */
-static void Event_queue_add(Event_T E) {
-        ASSERT(E);
-        ASSERT(E->flag != Handler_Succeeded);
-
-        if (! file_checkQueueDirectory(Run.eventlist_dir)) {
-                LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
-                return;
-        }
-
-        if (! file_checkQueueLimit(Run.eventlist_dir, Run.eventlist_slots)) {
-                LogError("Aborting event - queue over quota\n");
-                return;
-        }
-
-        /* compose the file name of actual timestamp and service name */
-        char file_name[PATH_MAX];
-        snprintf(file_name, PATH_MAX, "%s/%lld_%lx", Run.eventlist_dir, (long long)Time_now(), (long unsigned)E->source);
-
-        LogInfo("Adding event to the queue file %s for later delivery\n", file_name);
-
-        FILE *file = fopen(file_name, "w");
-        if (! file) {
-                LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
-                return;
-        }
-
-        boolean_t  rv;
-
-        /* write event structure version */
-        int version = EVENT_VERSION;
-        if (! (rv = file_writeQueue(file, &version, sizeof(int))))
-                goto error;
-
-        /* write event structure */
-        if (! (rv = file_writeQueue(file, E, sizeof(*E))))
-                goto error;
-
-        /* write source */
-        if (! (rv = file_writeQueue(file, E->source, E->source ? strlen(E->source) + 1 : 0)))
-                goto error;
-
-        /* write message */
-        if (! (rv = file_writeQueue(file, E->message, E->message ? strlen(E->message) + 1 : 0)))
-                goto error;
-
-        /* write event action */
-        Action_Type action = Event_get_action(E);
-        if (! (rv = file_writeQueue(file, &action, sizeof(Action_Type))))
-                goto error;
-
-error:
-        fclose(file);
-        if (! rv) {
-                LogError("Aborting event - unable to save event information to %s\n",  file_name);
-                if (unlink(file_name) < 0)
-                        LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
-        } else {
-                if (! (Run.flags & Run_HandlerInit) && E->flag & Handler_Alert)
-                        Run.handler_queue[Handler_Alert]++;
-                if (! (Run.flags & Run_HandlerInit) && E->flag & Handler_Mmonit)
-                        Run.handler_queue[Handler_Mmonit]++;
-        }
-
-        return;
-}
-
-
-/**
- * Update the partialy handled event in the global queue
- * @param E An event object
- * @param file_name File name
- */
-static void Event_queue_update(Event_T E, const char *file_name) {
-        int version = EVENT_VERSION;
-        Action_Type action = Event_get_action(E);
-        boolean_t rv;
-
-        ASSERT(E);
-        ASSERT(E->flag != Handler_Succeeded);
-
-        if (! file_checkQueueDirectory(Run.eventlist_dir)) {
-                LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
-                return;
-        }
-
-        DEBUG("Updating event in the queue file %s for later delivery\n", file_name);
-
-        FILE *file = fopen(file_name, "w");
-        if (! file) {
-                LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
-                return;
-        }
-
-        /* write event structure version */
-        if (! (rv = file_writeQueue(file, &version, sizeof(int))))
-                goto error;
-
-        /* write event structure */
-        if (! (rv = file_writeQueue(file, E, sizeof(*E))))
-                goto error;
-
-        /* write source */
-        if (! (rv = file_writeQueue(file, E->source, E->source ? strlen(E->source) + 1 : 0)))
-                goto error;
-
-        /* write message */
-        if (! (rv = file_writeQueue(file, E->message, E->message ? strlen(E->message) + 1 : 0)))
-                goto error;
-
-        /* write event action */
-        if (! (rv = file_writeQueue(file, &action, sizeof(Action_Type))))
-                goto error;
-
-error:
-        fclose(file);
-        if (! rv) {
-                LogError("Aborting event - unable to update event information to %s\n", file_name);
-                if (unlink(file_name) < 0)
-                        LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
-        }
-
-        return;
 }
 
