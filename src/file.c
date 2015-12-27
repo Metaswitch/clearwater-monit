@@ -81,10 +81,8 @@
 
 
 void file_init() {
-
         char pidfile[STRLEN];
         char buf[STRLEN];
-
         /* Check if the pidfile was already set during configfile parsing */
         if (Run.files.pid == NULL) {
                 /* Set the location of this programs pidfile */
@@ -95,14 +93,12 @@ void file_init() {
                 }
                 Run.files.pid = Str_dup(pidfile);
         }
-
         /* Set the location of monit's id file */
         if (Run.files.id == NULL) {
                 snprintf(buf, STRLEN, "%s/.%s", Run.Env.home, MYIDFILE);
                 Run.files.id = Str_dup(buf);
         }
         Util_monitId(Run.files.id);
-
         /* Set the location of monit's state file */
         if (Run.files.state == NULL) {
                 snprintf(buf, STRLEN, "%s/.%s", Run.Env.home, MYSTATEFILE);
@@ -118,11 +114,8 @@ void file_finalize() {
 
 
 time_t file_getTimestamp(char *object, mode_t type) {
-
-        struct stat buf;
-
         ASSERT(object);
-
+        struct stat buf;
         if (! stat(object, &buf)) {
                 if (((type == S_IFREG) && S_ISREG(buf.st_mode)) ||
                     ((type == S_IFDIR) && S_ISDIR(buf.st_mode)) ||
@@ -134,16 +127,12 @@ time_t file_getTimestamp(char *object, mode_t type) {
                         LogError("Invalid object type - %s\n", object);
                 }
         }
-
         return 0;
-
 }
 
 
 char *file_findControlFile() {
-
         char *rcfile = CALLOC(sizeof(char), STRLEN + 1);
-
         snprintf(rcfile, STRLEN, "%s/.%s", Run.Env.home, MONITRC);
         if (File_exist(rcfile)) {
                 return rcfile;
@@ -166,13 +155,11 @@ char *file_findControlFile() {
         }
         LogError("Cannot find the control file at ~/.%s, /etc/%s, %s/%s, /usr/local/etc/%s or at ./%s \n", MONITRC, MONITRC, SYSCONFDIR, MONITRC, MONITRC, MONITRC);
         exit(1);
-
 }
 
 
 boolean_t file_createPidFile(char *pidfile) {
         ASSERT(pidfile);
-
         unlink(pidfile);
         FILE *F = fopen(pidfile, "w");
         if (! F) {
@@ -181,16 +168,13 @@ boolean_t file_createPidFile(char *pidfile) {
         }
         fprintf(F, "%d\n", (int)getpid());
         fclose(F);
-
         return true;
-
 }
 
 
 boolean_t file_checkStat(char *filename, char *description, int permmask) {
         ASSERT(filename);
         ASSERT(description);
-
         errno = 0;
         struct stat buf;
         if (stat(filename, &buf) < 0) {
@@ -209,15 +193,12 @@ boolean_t file_checkStat(char *filename, char *description, int permmask) {
                 LogError("The %s '%s' permission 0%o is wrong, maximum 0%o allowed\n", description, filename, buf.st_mode & 0777, permmask & 0777);
                 return false;
         }
-
         return true;
-
 }
 
 
 boolean_t file_checkQueueDirectory(char *path) {
         struct stat st;
-
         if (stat(path, &st)) {
                 if (errno == ENOENT) {
                         if (mkdir(path, 0700)) {
@@ -237,43 +218,40 @@ boolean_t file_checkQueueDirectory(char *path) {
 
 
 boolean_t file_checkQueueLimit(char *path, int limit) {
-        if (limit < 0)
-                return true;
-        DIR *dir = opendir(path);
-        if (! dir) {
-                LogError("Cannot open the event queue directory %s -- %s\n", path, STRERROR);
-                return false;
-        }
-        int used = 0;
-        struct dirent *de = NULL;
-        while ((de = readdir(dir)) ) {
-                char buf[PATH_MAX];
-                snprintf(buf, sizeof(buf), "%s/%s", path, de->d_name);
-                if (File_isFile(buf) && ++used > limit) {
-                        LogError("Event queue is full\n");
-                        closedir(dir);
+        if (limit >= 0) {
+                DIR *dir = opendir(path);
+                if (! dir) {
+                        LogError("Cannot open the event queue directory %s -- %s\n", path, STRERROR);
                         return false;
                 }
+                int used = 0;
+                struct dirent *de = NULL;
+                while ((de = readdir(dir)) ) {
+                        char buf[PATH_MAX];
+                        snprintf(buf, sizeof(buf), "%s/%s", path, de->d_name);
+                        if (File_isFile(buf) && ++used > limit) {
+                                LogError("Event queue is full\n");
+                                closedir(dir);
+                                return false;
+                        }
+                }
+                closedir(dir);
         }
-        closedir(dir);
         return true;
 }
 
 
 boolean_t file_writeQueue(FILE *file, void *data, size_t size) {
-        size_t rv;
-
         ASSERT(file);
-
         /* write size */
-        if ((rv = fwrite(&size, 1, sizeof(size_t), file)) != sizeof(size_t)) {
+        size_t rv = fwrite(&size, 1, sizeof(size_t), file);
+        if (rv != sizeof(size_t)) {
                 if (feof(file) || ferror(file))
                         LogError("Queued event file: unable to write event size -- %s\n", feof(file) ? "end of file" : "stream error");
                 else
                         LogError("Queued event file: unable to write event size -- read returned %lu bytes\n", (unsigned long)rv);
                 return false;
         }
-
         /* write data if any */
         if (size > 0) {
                 if ((rv = fwrite(data, 1, size, file)) != size) {
@@ -284,27 +262,23 @@ boolean_t file_writeQueue(FILE *file, void *data, size_t size) {
                         return false;
                 }
         }
-
         return true;
 }
 
 
 void *file_readQueue(FILE *file, size_t *size) {
-        size_t rv;
-        void *data = NULL;
-
         ASSERT(file);
-
         /* read size */
-        if ((rv = fread(size, 1, sizeof(size_t), file)) != sizeof(size_t)) {
+        size_t rv = fread(size, 1, sizeof(size_t), file);
+        if (rv != sizeof(size_t)) {
                 if (feof(file) || ferror(file))
                         LogError("Queued event file: unable to read event size -- %s\n", feof(file) ? "end of file" : "stream error");
                 else
                         LogError("Queued event file: unable to read event size -- read returned %lu bytes\n", (unsigned long)rv);
                 return NULL;
         }
-
         /* read data if any (allow 1MB at maximum to prevent enormous memory allocation) */
+        void *data = NULL;
         if (*size > 0 && *size < 1048576) {
                 data = CALLOC(1, *size);
                 if ((rv = fread(data, 1, *size, file)) != *size) {
