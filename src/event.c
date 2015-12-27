@@ -181,7 +181,7 @@ static void _queueAdd(Event_T E) {
                 return;
         }
 
-        boolean_t  rv;
+        boolean_t rv;
 
         /* write event structure version */
         int version = EVENT_VERSION;
@@ -217,8 +217,6 @@ error:
                 if (! (Run.flags & Run_HandlerInit) && E->flag & Handler_Mmonit)
                         Run.handler_queue[Handler_Mmonit]++;
         }
-
-        return;
 }
 
 
@@ -284,36 +282,31 @@ static void _handleAction(Event_T E, Action_T A) {
 
         E->flag = Handler_Succeeded;
 
-        if (A->id == Action_Ignored)
-                return;
-
-        /* Alert and mmonit event notification are common actions */
-        E->flag |= handle_mmonit(E);
-        E->flag |= handle_alert(E);
-
-        /* In the case that some subhandler failed, enqueue the event for partial reprocessing */
-        if (E->flag != Handler_Succeeded) {
-                if (Run.eventlist_dir)
-                        _queueAdd(E);
-                else
-                        LogError("Aborting event\n");
-        }
-
-        /* Action event is handled already. For Instance events we don't want actions like stop to be executed to prevent the disabling of system service monitoring */
-        if (A->id == Action_Alert || E->id == Event_Instance) {
-                return;
-        } else if (A->id == Action_Exec) {
-                LogInfo("'%s' exec: %s\n", E->source->name, A->exec->arg[0]);
-                spawn(E->source, A->exec, E);
-                return;
-        } else {
-                if (E->source->actionratelist && (A->id == Action_Start || A->id == Action_Restart))
-                        E->source->nstart++;
-
-                if (E->source->mode == Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
+        if (A->id != Action_Ignored) {
+                /* Alert and mmonit event notification are common actions */
+                E->flag |= handle_mmonit(E);
+                E->flag |= handle_alert(E);
+                /* In the case that some subhandler failed, enqueue the event for partial reprocessing */
+                if (E->flag != Handler_Succeeded) {
+                        if (Run.eventlist_dir)
+                                _queueAdd(E);
+                        else
+                                LogError("Aborting event\n");
+                }
+                /* Action event is handled already. For Instance events we don't want actions like stop to be executed to prevent the disabling of system service monitoring */
+                if (A->id == Action_Alert || E->id == Event_Instance) {
                         return;
-
-                control_service(E->source->name, A->id);
+                } else if (A->id == Action_Exec) {
+                        LogInfo("'%s' exec: %s\n", E->source->name, A->exec->arg[0]);
+                        spawn(E->source, A->exec, E);
+                        return;
+                } else {
+                        if (E->source->actionratelist && (A->id == Action_Start || A->id == Action_Restart))
+                                E->source->nstart++;
+                        if (E->source->mode == Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
+                                return;
+                        control_service(E->source->name, A->id);
+                }
         }
 }
 
