@@ -70,6 +70,9 @@
 
 #include "monit.h"
 
+// libmonit
+#include "system/Time.h"
+
 
 /**
  *  Implementation of a logger that appends log messages to a file
@@ -107,7 +110,6 @@ static struct mylogpriority {
 
 
 static boolean_t open_log();
-static char *timefmt(char *t, int size);
 static const char *logPriorityDescription(int p);
 static void log_log(int priority, const char *s, va_list ap);
 static void log_backtrace();
@@ -136,10 +138,8 @@ boolean_t log_init() {
  * @param s A formated (printf-style) string to log
  */
 void LogEmergency(const char *s, ...) {
-        va_list ap;
-
         ASSERT(s);
-
+        va_list ap;
         va_start(ap, s);
         log_log(LOG_EMERG, s, ap);
         va_end(ap);
@@ -152,10 +152,8 @@ void LogEmergency(const char *s, ...) {
  * @param s A formated (printf-style) string to log
  */
 void LogAlert(const char *s, ...) {
-        va_list ap;
-
         ASSERT(s);
-
+        va_list ap;
         va_start(ap, s);
         log_log(LOG_ALERT, s, ap);
         va_end(ap);
@@ -168,10 +166,8 @@ void LogAlert(const char *s, ...) {
  * @param s A formated (printf-style) string to log
  */
 void LogCritical(const char *s, ...) {
-        va_list ap;
-
         ASSERT(s);
-
+        va_list ap;
         va_start(ap, s);
         log_log(LOG_CRIT, s, ap);
         va_end(ap);
@@ -183,8 +179,8 @@ void LogCritical(const char *s, ...) {
  * error and abort the application
  */
 void vLogAbortHandler(const char *s, va_list ap) {
-        va_list ap_copy;
         ASSERT(s);
+        va_list ap_copy;
         va_copy(ap_copy, ap);
         log_log(LOG_CRIT, s, ap);
         va_end(ap_copy);
@@ -199,10 +195,8 @@ void vLogAbortHandler(const char *s, va_list ap) {
  * @param s A formated (printf-style) string to log
  */
 void LogError(const char *s, ...) {
-        va_list ap;
-
         ASSERT(s);
-
+        va_list ap;
         va_start(ap, s);
         log_log(LOG_ERR, s, ap);
         va_end(ap);
@@ -215,8 +209,8 @@ void LogError(const char *s, ...) {
  * @param s A formated (printf-style) string to log
  */
 void vLogError(const char *s, va_list ap) {
-        va_list ap_copy;
         ASSERT(s);
+        va_list ap_copy;
         va_copy(ap_copy, ap);
         log_log(LOG_ERR, s, ap);
         va_end(ap_copy);
@@ -229,10 +223,8 @@ void vLogError(const char *s, va_list ap) {
  * @param s A formated (printf-style) string to log
  */
 void LogWarning(const char *s, ...) {
-        va_list ap;
-
         ASSERT(s);
-
+        va_list ap;
         va_start(ap, s);
         log_log(LOG_WARNING, s, ap);
         va_end(ap);
@@ -244,10 +236,8 @@ void LogWarning(const char *s, ...) {
  * @param s A formated (printf-style) string to log
  */
 void LogNotice(const char *s, ...) {
-        va_list ap;
-
         ASSERT(s);
-
+        va_list ap;
         va_start(ap, s);
         log_log(LOG_NOTICE, s, ap);
         va_end(ap);
@@ -259,10 +249,8 @@ void LogNotice(const char *s, ...) {
  * @param s A formated (printf-style) string to log
  */
 void LogInfo(const char *s, ...) {
-        va_list ap;
-
         ASSERT(s);
-
+        va_list ap;
         va_start(ap, s);
         log_log(LOG_INFO, s, ap);
         va_end(ap);
@@ -288,17 +276,13 @@ void LogDebug(const char *s, ...) {
  * Close the log file or syslog
  */
 void log_close() {
-
         if (Run.flags & Run_UseSyslog) {
                 closelog();
         }
-
         if (LOG  && (0 != fclose(LOG))) {
                 LogError("Error closing the log file -- %s\n", STRERROR);
         }
-
         LOG = NULL;
-
 }
 
 
@@ -306,7 +290,6 @@ void log_close() {
 #ifdef HAVE_SYSLOG
 void vsyslog (int facility_priority, const char *format, va_list arglist) {
         char msg[STRLEN+1];
-
         vsnprintf(msg, STRLEN, format, arglist);
         syslog(facility_priority, "%s", msg);
 }
@@ -321,7 +304,6 @@ void vsyslog (int facility_priority, const char *format, va_list arglist) {
  * Open a log file or syslog
  */
 static boolean_t open_log() {
-
         if (Run.flags & Run_UseSyslog) {
                 openlog(prog, LOG_PID, Run.facility);
         } else {
@@ -333,25 +315,7 @@ static boolean_t open_log() {
                 /* Set logger in unbuffered mode */
                 setvbuf(LOG, NULL, _IONBF, 0);
         }
-
         return true;
-
-}
-
-
-/**
- * Returns the current time as a formated string, see the TIMEFORMAT
- * macro in monit.h
- */
-static char *timefmt(char *t, int size) {
-        time_t now;
-        struct tm tm;
-
-        time(&now);
-        localtime_r(&now, &tm);
-        if ( ! strftime(t, size, TIMEFORMAT, &tm))
-                *t = 0;
-        return t;
 }
 
 
@@ -362,20 +326,14 @@ static char *timefmt(char *t, int size) {
  * priority is not found NULL is returned.
  */
 static const char *logPriorityDescription(int p) {
-
         struct mylogpriority *lp = logPriority;
-
-        while ((*lp).description)
-        {
-                if (p == (*lp).priority)
-                {
+        while ((*lp).description) {
+                if (p == (*lp).priority) {
                         return (*lp).description;
                 }
                 lp++;
         }
-
         return "unknown";
-
 }
 
 
@@ -385,12 +343,10 @@ static const char *logPriorityDescription(int p) {
  * @param s A formated (printf-style) string to log
  */
 static void log_log(int priority, const char *s, va_list ap) {
+        ASSERT(s);
 #ifdef HAVE_VA_COPY
         va_list ap_copy;
 #endif
-
-        ASSERT(s);
-
         LOCK(log_mutex)
         {
 
@@ -403,7 +359,6 @@ static void log_log(int priority, const char *s, va_list ap) {
                 vfprintf(output, s, ap);
 #endif
                 fflush(output);
-
                 if (Run.flags & Run_Log) {
                         if (Run.flags & Run_UseSyslog) {
 #ifdef HAVE_VA_COPY
@@ -415,7 +370,7 @@ static void log_log(int priority, const char *s, va_list ap) {
 #endif
                         } else if (LOG) {
                                 char datetime[STRLEN];
-                                fprintf(LOG, "[%s] %-8s : ", timefmt(datetime, STRLEN), logPriorityDescription(priority));
+                                fprintf(LOG, "[%s] %-8s : ", Time_fmt(datetime, sizeof(datetime), TIMEFORMAT, time(NULL)), logPriorityDescription(priority));
 #ifdef HAVE_VA_COPY
                                 va_copy(ap_copy, ap);
                                 vfprintf(LOG, s, ap_copy);
