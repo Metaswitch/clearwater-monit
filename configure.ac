@@ -122,6 +122,7 @@ AC_CHECK_HEADERS([ \
 	kstat.h \
 	zone.h \
 	sys/protosw.h \
+	libproc.h \
 	limits.h \
 	loadavg.h \
 	locale.h \

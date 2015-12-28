@@ -22,6 +22,9 @@ test.
 
 New: The port/socket test response time has microseconds precision now.
 
+Fixed: Provide process cpu and memory usage statistics on MacOSX 10.11 or newer
+even with System Integrity Protection enabled.
+
 Fixed: If monit daemon is running, the "monit validate" command will now pass the
 command to the daemon instead of running in its own context. The validate also
 respects the service monitoring state now.
