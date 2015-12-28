@@ -11,7 +11,7 @@ New: Issue #280: Timestamp test related events report the timestamp value now.
 
 New: Issue #299: Show last output of the program check in monit status CLI.
 
-New: Issue #275: monit -V displayes configure options.
+New: Issue #275: monit -V displays configure options.
 
 New: Issue #276: Allow specific source address for port and ping tests. Example:
         if failed ping via address "192.168.1.10" then alert
