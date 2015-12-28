@@ -583,8 +583,10 @@ void Event_queue_process() {
                                 goto error4;
                         if (! (e->source = Util_getService(service))) {
                                 LogError("Aborting queued event %s - service %s not found in monitor configuration\n", file_name, service);
+                                FREE(service);
                                 goto error4;
                         }
+                        FREE(service);
 
                         /* read message */
                         if (! (e->message = file_readQueue(file, &size)))
