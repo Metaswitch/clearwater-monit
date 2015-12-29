@@ -199,7 +199,8 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 struct proc_taskinfo tinfo;
                 int rv = proc_pidinfo(pt[i].pid, PROC_PIDTASKINFO, 0, &tinfo, sizeof(tinfo));
                 if (rv <= 0) {
-                        DEBUG("proc_pidinfo for pid %d failed -- %s\n", pt[i].pid, STRERROR);
+                        if (errno != EPERM)
+                                DEBUG("proc_pidinfo for pid %d failed -- %s\n", pt[i].pid, STRERROR);
                 } else if (rv < sizeof(tinfo)) {
                         LogError("proc_pidinfo for pid %d -- invalid result size\n", pt[i].pid);
                 } else {
