@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		521E7D701BD7EEDA00ADBB72 /* libsystem_kernel.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 521E7D6F1BD7EEDA00ADBB72 /* libsystem_kernel.tbd */; };
 		52A1311D13A7886800583257 /* libmonit.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 52A1311C13A7886800583257 /* libmonit.a */; };
 		52AE77CC14037DA300D2861D /* sha1.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE77CA14037DA300D2861D /* sha1.c */; };
 		52AE77CF14037E6A00D2861D /* md5_crypt.c in Sources */ = {isa = PBXBuildFile; fileRef = 52AE77CD14037E6A00D2861D /* md5_crypt.c */; };
@@ -166,6 +165,8 @@
 		520587A118CF7235006296CB /* monit.upstart.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = monit.upstart.in; sourceTree = "<group>"; };
 		520587A218CF7235006296CB /* rc.monit */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = rc.monit; sourceTree = "<group>"; };
 		521E7D6F1BD7EEDA00ADBB72 /* libsystem_kernel.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsystem_kernel.tbd; path = usr/lib/system/libsystem_kernel.tbd; sourceTree = SDKROOT; };
+		523AFAFB1C3313BC003B2C1C /* libSystem.B.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libSystem.B.tbd; path = usr/lib/libSystem.B.tbd; sourceTree = SDKROOT; };
+		523AFAFD1C3313DE003B2C1C /* libSystem.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libSystem.tbd; path = usr/lib/libSystem.tbd; sourceTree = SDKROOT; };
 		528EA77213A74E05003DA4BE /* monit */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = monit; sourceTree = BUILT_PRODUCTS_DIR; };
 		528F7DB318BCABC9004BF9B5 /* CONTRIBUTORS */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CONTRIBUTORS; sourceTree = "<group>"; };
 		52A1310B13A7882A00583257 /* libmonit.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = libmonit.xcodeproj; path = libmonit/libmonit.xcodeproj; sourceTree = "<group>"; };
@@ -298,7 +299,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				521E7D701BD7EEDA00ADBB72 /* libsystem_kernel.tbd in Frameworks */,
 				52F67BDD1BD7AC5A0092111B /* libpam.tbd in Frameworks */,
 				52F67BDB1BD7AC290092111B /* libssl.tbd in Frameworks */,
 				52F67BD91BD7AC1C0092111B /* libcrypto.tbd in Frameworks */,
@@ -380,6 +380,8 @@
 		528EA76713A74E05003DA4BE = {
 			isa = PBXGroup;
 			children = (
+				523AFAFD1C3313DE003B2C1C /* libSystem.tbd */,
+				523AFAFB1C3313BC003B2C1C /* libSystem.B.tbd */,
 				521E7D6F1BD7EEDA00ADBB72 /* libsystem_kernel.tbd */,
 				52A1310B13A7882A00583257 /* libmonit.xcodeproj */,
 				52D25EDC17C0E8680039D3E4 /* bootstrap */,
@@ -863,6 +865,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
@@ -877,6 +880,7 @@
 					/usr/local/lib,
 					"$(SDKROOT)/usr/lib/system",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
 					"-DDARWIN",
@@ -892,6 +896,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(NATIVE_ARCH_ACTUAL)";
 				CODE_SIGN_ENTITLEMENTS = "";
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Developer ID Application";
@@ -906,6 +911,7 @@
 					/usr/local/lib,
 					"$(SDKROOT)/usr/lib/system",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_CFLAGS = (
 					"-DDARWIN",
