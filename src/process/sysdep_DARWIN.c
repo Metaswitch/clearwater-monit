@@ -148,6 +148,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         }
         args = CALLOC(1, args_size + 1);
         size = args_size; // save for per-process sysctl loop
+        StringBuffer_T cmdline = StringBuffer_create(64);
 
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid       = pinfo[i].kp_proc.p_pid;
@@ -173,7 +174,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                          */
                         int  argc = *args;
                         char *p = args + sizeof(int); // arguments beginning
-                        StringBuffer_T cmdline = StringBuffer_create(64);
+                        StringBuffer_clear(cmdline);
                         p += strlen(p); // skip exename
                         while (argc && p < args + args_size) {
                                 if (*p == 0) { // skip terminating 0 and variable length 0 padding
@@ -185,7 +186,6 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         }
                         if (StringBuffer_length(cmdline))
                                 pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
-                        StringBuffer_free(&cmdline);
                 }
                 if (! pt[i].cmdline || ! *pt[i].cmdline) {
                         FREE(pt[i].cmdline);
@@ -209,9 +209,10 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         pt[i].cpu_percent = 0;
                 }
         }
+        StringBuffer_free(&cmdline);
         FREE(args);
         FREE(pinfo);
-        
+
         *reference = pt;
         
         return (int)treesize;
