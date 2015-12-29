@@ -1791,10 +1791,12 @@ boolean_t Util_hasServiceStatus(Service_T s) {
 
 
 char *Util_getHTTPHostHeader(Socket_T s, char *hostBuf, int len) {
-        if (Socket_getRemotePort(s) == 80)
-                snprintf(hostBuf, len, "%s", Socket_getRemoteHost(s));
+        int port = Socket_getRemotePort(s);
+        const char *host = Socket_getRemoteHost(s);
+        if (port == 80 || port == 443)
+                snprintf(hostBuf, len, "%s", host);
         else
-                snprintf(hostBuf, len, "%s:%d", Socket_getRemoteHost(s), Socket_getRemotePort(s));
+                snprintf(hostBuf, len, "%s:%d", host, port);
         return hostBuf;
 }
 
