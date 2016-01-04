@@ -164,9 +164,6 @@
 		5205879F18CF7235006296CB /* monit.service.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = monit.service.in; sourceTree = "<group>"; };
 		520587A118CF7235006296CB /* monit.upstart.in */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = monit.upstart.in; sourceTree = "<group>"; };
 		520587A218CF7235006296CB /* rc.monit */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = rc.monit; sourceTree = "<group>"; };
-		521E7D6F1BD7EEDA00ADBB72 /* libsystem_kernel.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsystem_kernel.tbd; path = usr/lib/system/libsystem_kernel.tbd; sourceTree = SDKROOT; };
-		523AFAFB1C3313BC003B2C1C /* libSystem.B.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libSystem.B.tbd; path = usr/lib/libSystem.B.tbd; sourceTree = SDKROOT; };
-		523AFAFD1C3313DE003B2C1C /* libSystem.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libSystem.tbd; path = usr/lib/libSystem.tbd; sourceTree = SDKROOT; };
 		528EA77213A74E05003DA4BE /* monit */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = monit; sourceTree = BUILT_PRODUCTS_DIR; };
 		528F7DB318BCABC9004BF9B5 /* CONTRIBUTORS */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CONTRIBUTORS; sourceTree = "<group>"; };
 		52A1310B13A7882A00583257 /* libmonit.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = libmonit.xcodeproj; path = libmonit/libmonit.xcodeproj; sourceTree = "<group>"; };
@@ -380,9 +377,6 @@
 		528EA76713A74E05003DA4BE = {
 			isa = PBXGroup;
 			children = (
-				523AFAFD1C3313DE003B2C1C /* libSystem.tbd */,
-				523AFAFB1C3313BC003B2C1C /* libSystem.B.tbd */,
-				521E7D6F1BD7EEDA00ADBB72 /* libsystem_kernel.tbd */,
 				52A1310B13A7882A00583257 /* libmonit.xcodeproj */,
 				52D25EDC17C0E8680039D3E4 /* bootstrap */,
 				52D25EDD17C0E8680039D3E4 /* CHANGES */,
