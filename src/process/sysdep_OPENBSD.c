@@ -178,6 +178,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 return 0;
         }
 
+        StringBuffer_T cmdline = StringBuffer_create(64);;
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid         = pinfo[i].p_pid;
                 pt[i].ppid        = pinfo[i].p_ppid;
@@ -197,17 +198,18 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
 #else
                 if ((args = kvm_getargv(kvm_handle, &pinfo[i], 0))) {
 #endif
-                        StringBuffer_T cmdline = StringBuffer_create(64);;
+                        StringBuffer_clear(cmdline);
                         for (int j = 0; args[j]; j++)
                                 StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
-                        pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
-                        StringBuffer_free(&cmdline);
+                        if (StringBuffer_length(cmdline))
+                                pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
                 }
                 if (! pt[i].cmdline || ! *pt[i].cmdline) {
                         FREE(pt[i].cmdline);
                         pt[i].cmdline = Str_dup(pinfo[i].p_comm);
                 }
         }
+        StringBuffer_free(&cmdline);
         FREE(pinfo);
         kvm_close(kvm_handle);
 
