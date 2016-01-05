@@ -93,11 +93,13 @@ void check_generic(Socket_T socket) {
                          timeout seconds on EOF we first read one byte to fill the socket's read
                          buffer and then set a low timeout on next read which reads remaining bytes
                          as well as wait on EOF */
-                        *buf = Socket_readByte(socket);
-                        if ((int8_t)*buf < 0) {
+                        int first_byte = Socket_readByte(socket);
+                        if (first_byte < 0) {
                                 FREE(buf);
                                 THROW(IOException, "GENERIC: error receiving data -- %s", STRERROR);
                         }
+                        *buf = first_byte;
+
                         int timeout = Socket_getTimeout(socket);
                         Socket_setTimeout(socket, 200);
                         int n = Socket_read(socket, buf + 1, Run.expectbuffer - 1) + 1;
