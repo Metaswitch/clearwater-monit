@@ -51,6 +51,9 @@ if the group doesn't exist.
 Fixed: Issue #305: don't set the port in the HTTP Host header for default HTTPS URL
 scheme port (443).
 
+Fixed: Issue #308: Generic protocol cannot handle responses starting with bytes >0x7F.
+Thanks to Robert Nelson for fix.
+
 Fixed: Warn if the monit configuration include pattern didn't match any file or the
 path doesn't exist.
 
