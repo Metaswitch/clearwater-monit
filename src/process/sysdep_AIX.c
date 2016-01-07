@@ -109,8 +109,8 @@
  *  @file
  */
 
-/* There is no prototype for getprocs64 in AIX <= 5.3 */
 int getprocs64(void *, int, void *, int, pid_t *, int);
+int getargs(struct procentry64 *processBuffer, int bufferLen, char *argsBuffer, int argsLen);
 
 static int                page_size;
 static int                cpu_initialized = 0;
@@ -215,13 +215,30 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
                         if (close(fd) < 0)
                                 LogError("Socket close failed -- %s\n", STRERROR);
-                        return 0;
+                        continue;
                 }
                 if (close(fd) < 0)
                         LogError("Socket close failed -- %s\n", STRERROR);
-                pt[i].uid       = ps.pr_uid;
-                pt[i].gid       = ps.pr_gid;
-                pt[i].cmdline = (ps.pr_psargs && *ps.pr_psargs) ? Str_dup(ps.pr_psargs) : Str_dup(procs[i].pi_comm);
+                pt[i].uid = ps.pr_uid;
+                pt[i].gid = ps.pr_gid;
+                if (ps.pr_argc == 0) {
+                        pt[i].cmdline = Str_dup(procs[i].pi_comm); // Kernel thread
+                } else {
+                        char command[4096];
+                        if (! getargs(&procs[i], sizeof(struct procentry64), command, sizeof(command))) {
+                                // The arguments are separated with '\0' with the last one terminated by '\0\0' -> merge arguments into one string
+                                for (int i = 0; i < sizeof(command) - 1; i++) {
+                                        if (command[i] == '\0') {
+                                                if (command[i + 1] == '\0')
+                                                        break;
+                                                command[i] = ' ';
+                                        }
+                                }
+                                pt[i].cmdline = Str_dup(command);
+                        } else {
+                                pt[i].cmdline = Str_dup(procs[i].pi_comm);
+                        }
+                }
         }
 
         FREE(procs);

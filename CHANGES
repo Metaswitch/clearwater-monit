@@ -70,6 +70,8 @@ scheme port (443).
 Fixed: Issue #308: Generic protocol cannot handle responses starting with bytes >0x7F.
 Thanks to Robert Nelson for fix.
 
+Fixed: Issue #309: AIX: The check process by pattern was limited to 80 characters.
+
 Fixed: Warn if the monit configuration include pattern didn't match any file or the
 path doesn't exist.
 
