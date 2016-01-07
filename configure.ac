@@ -580,12 +580,9 @@ then
 elif test "$architecture" = "AIX"
 then
    ARCH="AIX"
+   CFLAGS=`echo $CFLAGS|sed 's/-g//'`
    CFLAGS="$CFLAGS -D_THREAD_SAFE -D_REENTRANT"
-   LIBS="$LIBS -lodm"	
-   # AIX v. 5.2
-   LIBS="$LIBS -lcfg"	
-   # AIX v. 5.3
-   LIBS="$LIBS -lperfstat"	
+   LIBS="$LIBS -lodm -lperfstat"
    AC_DEFINE([HAVE_CPU_WAIT], [1], [Define to 1 if CPU wait information is available.])
 else
    AC_MSG_WARN([Architecture not supported: ${architecture}])
