@@ -144,7 +144,7 @@ static void print_service_rules_uploadpackets(HttpResponse, Service_T);
 static void print_service_rules_downloadbytes(HttpResponse, Service_T);
 static void print_service_rules_downloadpackets(HttpResponse, Service_T);
 static void print_service_rules_uptime(HttpResponse, Service_T);
-static void print_service_rules_match(HttpResponse, Service_T);
+static void print_service_rules_content(HttpResponse, Service_T);
 static void print_service_rules_checksum(HttpResponse, Service_T);
 static void print_service_rules_pid(HttpResponse, Service_T);
 static void print_service_rules_ppid(HttpResponse, Service_T);
@@ -165,7 +165,7 @@ static void print_service_status_filesystem_blocksize(HttpResponse, Service_T);
 static void print_service_status_filesystem_inodestotal(HttpResponse, Service_T);
 static void print_service_status_filesystem_inodesfree(HttpResponse, Service_T);
 static void print_service_status_file_size(HttpResponse, Service_T);
-static void print_service_status_file_match(HttpResponse, Service_T);
+static void print_service_status_file_content(HttpResponse, Service_T);
 static void print_service_status_file_checksum(HttpResponse, Service_T);
 static void print_service_status_process_pid(HttpResponse, Service_T);
 static void print_service_status_process_ppid(HttpResponse, Service_T);
@@ -882,7 +882,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                         print_service_status_gid(res, s, s->inf->priv.file.gid);
                         print_service_status_timestamp(res, s, s->inf->priv.file.timestamp);
                         print_service_status_file_size(res, s);
-                        print_service_status_file_match(res, s);
+                        print_service_status_file_content(res, s);
                         print_service_status_file_checksum(res, s);
                         break;
                 case Service_Process:
@@ -952,7 +952,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         print_service_rules_downloadbytes(res, s);
         print_service_rules_downloadpackets(res, s);
         print_service_rules_uptime(res, s);
-        print_service_rules_match(res, s);
+        print_service_rules_content(res, s);
         print_service_rules_checksum(res, s);
         print_service_rules_pid(res, s);
         print_service_rules_ppid(res, s);
@@ -1877,16 +1877,16 @@ static void print_service_rules_uptime(HttpResponse res, Service_T s) {
         }
 }
 
-static void print_service_rules_match(HttpResponse res, Service_T s) {
+static void print_service_rules_content(HttpResponse res, Service_T s) {
         if (s->type != Service_Process) {
                 for (Match_T ml = s->matchignorelist; ml; ml = ml->next) {
-                        StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Ignore pattern</td><td>");
-                        Util_printRule(res->outputbuffer, ml->action, "If %smatch \"%s\"", ml->not ? "not " : "", ml->match_string);
+                        StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Ignore content</td><td>");
+                        Util_printRule(res->outputbuffer, ml->action, "If content %s \"%s\"", ml->not ? "!=" : "=", ml->match_string);
                         StringBuffer_append(res->outputbuffer, "</td></tr>");
                 }
                 for (Match_T ml = s->matchlist; ml; ml = ml->next) {
-                        StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Pattern</td><td>");
-                        Util_printRule(res->outputbuffer, ml->action, "If %smatch \"%s\"", ml->not ? "not " : "", ml->match_string);
+                        StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Content</td><td>");
+                        Util_printRule(res->outputbuffer, ml->action, "If content %s \"%s\"", ml->not ? "!=" : "=", ml->match_string);
                         StringBuffer_append(res->outputbuffer, "</td></tr>");
                 }
         }
@@ -2291,8 +2291,9 @@ static void print_service_status_file_size(HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer, "</tr>");
 }
 
-static void print_service_status_file_match(HttpResponse res, Service_T s) {
-        StringBuffer_append(res->outputbuffer, "<tr><td>Match regex</td>");
+
+static void print_service_status_file_content(HttpResponse res, Service_T s) {
+        StringBuffer_append(res->outputbuffer, "<tr><td>Content regex</td>");
         if (! Util_hasServiceStatus(s))
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else

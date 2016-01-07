@@ -2272,7 +2272,38 @@ permission      : IF FAILED PERMISSION NUMBER rate1 THEN action1 recovery {
                   }
                 ;
 
-match           : IF matchflagnot MATCH PATH rate1 THEN action1 {
+match           : IF CONTENT urloperator PATH rate1 THEN action1 {
+                    matchset.not = $<number>3 == Operator_Equal ? false : true;
+                    matchset.ignore = false;
+                    matchset.match_path = $4;
+                    matchset.match_string = NULL;
+                    addmatchpath(&matchset, $<number>7);
+                    FREE($4);
+                  }
+                | IF CONTENT urloperator STRING rate1 THEN action1 {
+                    matchset.not = $<number>3 == Operator_Equal ? false : true;
+                    matchset.ignore = false;
+                    matchset.match_path = NULL;
+                    matchset.match_string = $4;
+                    addmatch(&matchset, $<number>7, 0);
+                  }
+                | IGNORE CONTENT urloperator PATH {
+                    matchset.not = $<number>3 == Operator_Equal ? false : true;
+                    matchset.ignore = true;
+                    matchset.match_path = $4;
+                    matchset.match_string = NULL;
+                    addmatchpath(&matchset, Action_Ignored);
+                    FREE($4);
+                  }
+                | IGNORE CONTENT urloperator STRING {
+                    matchset.not = $<number>3 == Operator_Equal ? false : true;
+                    matchset.ignore = true;
+                    matchset.match_path = NULL;
+                    matchset.match_string = $4;
+                    addmatch(&matchset, Action_Ignored, 0);
+                  }
+                /* The bellow MATCH statement is deprecated (replaced by CONTENT) */
+                | IF matchflagnot MATCH PATH rate1 THEN action1 {
                     matchset.ignore = false;
                     matchset.match_path = $4;
                     matchset.match_string = NULL;

@@ -31,6 +31,10 @@ possible options with their default values:
      networkTimeout:    5 seconds # timeout for network I/O
  }
 
+New: The file content test syntax has changed from "IF [NOT] MATCH <pattern>" to
+"IF CONTENT < "=" | "!=" > <pattern>". The old syntax is deprecated, but still
+supported for backward compatibility.
+
 Fixed: Provide process cpu and memory usage statistics on MacOSX 10.11 or newer
 even with System Integrity Protection enabled.
 

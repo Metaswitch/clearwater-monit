@@ -1952,12 +1952,14 @@ For example to send an alert if the file is too large:
 
 =head2 FILE CONTENT TESTING
 
-The match statement can be used to incrementally test the content of a
+The content statement can be used to incrementally test the content of a
 text file by using regular expressions.
 
 Syntax:
 
- IF [NOT] MATCH <regex|path> THEN action
+ IF CONTENT <operator> <regex|path> THEN action
+
+I<operator> is either a "=" for match or "!=" for no-match.
 
 I<regex> is a string containing the extended regular expression.
 See also regex(7).
@@ -1968,8 +1970,6 @@ regular expression on every line. See also regex(7).
 I<action> is a choice of "ALERT", "RESTART", "START", "STOP",
 "EXEC" or "UNMONITOR".
 
-You can use the I<NOT> statement to invert a match.
-
 On startup the read position is set to the end of the file
 and Monit continues to scan to the end of the file on each cycle.
 
@@ -1978,23 +1978,24 @@ position is set to the start of the file.
 
 Only lines ending with a newline character are inspected.
 
-Only the first 511 characters of a line are inspected.
+By default only the first 511 characters of a line are inspected. You can
+increase the limit using the L<set limits|"LIMITS"> statement.
 
- IGNORE [NOT] MATCH <regex|path>
+ IGNORE CONTENT <operator> <regex|path>
 
 Lines matching an I<IGNORE> are not inspected during later
-evaluations. I<IGNORE MATCH> has always precedence over
-I<IF MATCH>.
+evaluations. I<IGNORE CONTENT> has always precedence over
+I<IF CONTENT>.
 
-All I<IGNORE MATCH> statements are evaluated first, in the
-order of their appearance. Thereafter, all the I<IF MATCH>
+All I<IGNORE CONTENT> statements are evaluated first, in the
+order of their appearance. Thereafter, all the I<IF CONTENT>
 statements are evaluated.
 
 For example:
 
   check file syslog with path /var/log/syslog
-        ignore match "^monit"
-        if match "^mrcoffee" then alert
+        ignore content = "^monit"
+        if content = "^mrcoffee" then alert
 
 
 =head2 FILESYSTEM FLAGS TESTING
@@ -2756,15 +2757,7 @@ protocols used over Internet do).
 
 Monit will by default read up to 255 bytes from the server and
 use this string when comparing the EXPECT string. You can override
-the default value by using this statement at the top of the Monit
-configuration file:
-
- SET EXPECTBUFFER <number> ["b"|"kb"]
-
-Max value for the expect buffer is 100 kb. For example, to set
-the expect buffer to read 10 kilobytes:
-
- set expectbuffer 10 kb
+the default value using the L<set limits|"LIMITS"> statement.
 
 You can use non-printable characters in a SEND string if needed.
 Use the hex notation, \0xHEXHEX to send any char in the range
@@ -2890,6 +2883,9 @@ and must come before I<request> as in the example above.
 I<CONTENT> option sets the pattern which is expected in the data
 returned by the server. If the pattern doesn't match, event is
 triggered.
+
+By default at maximum 1MB is inspected. You can increase the limit
+using the L<set limits|"LIMITS"> statement.
 
 For example:
 

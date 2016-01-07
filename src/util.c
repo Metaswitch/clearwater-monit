@@ -1185,11 +1185,11 @@ void Util_printService(Service_T s) {
         if (s->type != Service_Process) {
                 for (Match_T o = s->matchignorelist; o; o = o->next) {
                         StringBuffer_clear(buf);
-                        printf(" %-20s = %s\n", "Ignore pattern", StringBuffer_toString(Util_printRule(buf, o->action, "if%s match \"%s\"", o->not ? " not" : "", o->match_string)));
+                        printf(" %-20s = %s\n", "Ignore content", StringBuffer_toString(Util_printRule(buf, o->action, "if content %s \"%s\"", o->not ? "!=" : "=", o->match_string)));
                 }
                 for (Match_T o = s->matchlist; o; o = o->next) {
                         StringBuffer_clear(buf);
-                        printf(" %-20s = %s\n", "Pattern", StringBuffer_toString(Util_printRule(buf, o->action, "if%s match \"%s\"", o->not ? " not" : "", o->match_string)));
+                        printf(" %-20s = %s\n", "Content", StringBuffer_toString(Util_printRule(buf, o->action, "if content %s \"%s\"", o->not ? "!=" : "=", o->match_string)));
                 }
         }
 
