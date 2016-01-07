@@ -119,8 +119,6 @@ static unsigned long long cpu_user_old  = 0ULL;
 static unsigned long long cpu_syst_old  = 0ULL;
 static unsigned long long cpu_wait_old  = 0ULL;
 
-struct procentry64 *procs = NULL;
-
 
 boolean_t init_process_info_sysdep(void) {
         perfstat_memory_total_t mem;
@@ -174,19 +172,14 @@ int getloadavg_sysdep (double *loadv, int nelem) {
  * @return treesize>0 if succeeded otherwise =0.
  */
 int initprocesstree_sysdep(ProcessTree_T ** reference) {
-        int             treesize;
-        struct userinfo user;
-        ProcessTree_T  *pt;
-        pid_t           firstproc = 0;
-
-        memset(&user, 0, sizeof(struct userinfo));
-
+        int treesize;
+        pid_t firstproc = 0;
         if ((treesize = getprocs64(NULL, 0, NULL, 0, &firstproc, PID_MAX)) < 0) {
                 LogError("system statistic error -- getprocs64 failed: %s\n", STRERROR);
                 return 0;
         }
 
-        procs = CALLOC(sizeof(struct procentry64), treesize);
+        struct procentry64 *procs = CALLOC(sizeof(struct procentry64), treesize);
 
         firstproc = 0;
         if ((treesize = getprocs64(procs, sizeof(struct procentry64), NULL, 0, &firstproc, treesize)) < 0) {
@@ -195,32 +188,29 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 return 0;
         }
 
-        pt = CALLOC(sizeof(ProcessTree_T), treesize);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         for (int i = 0; i < treesize; i++) {
-                int fd;
-                struct psinfo ps;
-                char filename[STRLEN];
 
                 pt[i].cputime     = 0;
                 pt[i].cpu_percent = 0;
                 pt[i].mem_kbyte   = 0;
                 pt[i].pid         = procs[i].pi_pid;
                 pt[i].ppid        = procs[i].pi_ppid;
+                pt[i].euid        = procs[i].pi_uid;
                 pt[i].starttime   = procs[i].pi_start;
+                pt[i].mem_kbyte   = (procs[i].pi_drss + procs[i].pi_trss) * (page_size / 1024);
+                pt[i].cputime     = (procs[i].pi_ru.ru_utime.tv_sec + procs[i].pi_ru.ru_utime.tv_usec * 1.0e-6 + procs[i].pi_ru.ru_stime.tv_sec + procs[i].pi_ru.ru_stime.tv_usec * 1.0e-6) * 10;
+                pt[i].zombie      = procs[i].pi_state == SZOMB ? true: false;
 
-                if (procs[i].pi_state == SZOMB) {
-                        pt[i].zombie = true;
-                } else if (getuser(&(procs[i]), sizeof(struct procinfo), &user, sizeof(struct userinfo)) != -1) {
-                        pt[i].mem_kbyte = (user.ui_drss + user.ui_trss) * (page_size / 1024);
-                        pt[i].cputime   = (user.ui_ru.ru_utime.tv_sec + user.ui_ru.ru_utime.tv_usec * 1.0e-6 + user.ui_ru.ru_stime.tv_sec + user.ui_ru.ru_stime.tv_usec * 1.0e-6) * 10;
-                }
-
+                char filename[STRLEN];
                 snprintf(filename, sizeof(filename), "/proc/%d/psinfo", pt[i].pid);
-                if ((fd = open(filename, O_RDONLY)) < 0) {
+                int fd = open(filename, O_RDONLY);
+                if (fd < 0) {
                         DEBUG("Cannot open proc file %s -- %s\n", filename, STRERROR);
                         continue;
                 }
+                struct psinfo ps;
                 if (read(fd, &ps, sizeof(ps)) < 0) {
                         DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
                         if (close(fd) < 0)
@@ -229,9 +219,8 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 }
                 if (close(fd) < 0)
                         LogError("Socket close failed -- %s\n", STRERROR);
-                pt[i].uid     = ps.pr_uid;
-                pt[i].euid    = ps.pr_euid;
-                pt[i].gid     = ps.pr_gid;
+                pt[i].uid       = ps.pr_uid;
+                pt[i].gid       = ps.pr_gid;
                 pt[i].cmdline = (ps.pr_psargs && *ps.pr_psargs) ? Str_dup(ps.pr_psargs) : Str_dup(procs[i].pi_comm);
         }
 
