@@ -1581,6 +1581,34 @@ control file.
 
 =head1 SERVICE TESTS
 
+=head3 LIMITS
+
+Monit applies default limits on various tests, to limit the ammount of
+data during testing.
+
+Syntax:
+
+ SET LIMIT {
+   SENDEXPECTBUFFER:  <number> <unit>,
+   FILECONTENTBUFFER: <number> <unit>,
+   HTTPCONTENTBUFFER: <number> <unit>,
+   NETWORKTIMEOUT:    <number> SECONDS
+ }
+
+Where the I<unit> is "B" (byte), "kB" (kilobyte) or "MB" (megabyte).
+
+Options legend:
+
+ ---------------------------------------------------------------------
+ | Option            | Description                         | Default |
+ ---------------------------------------------------------------------
+ | sendExpectBuffer  | limit for send/expect protocol test | 256 B   |
+ | fileContentBuffer | limit for file content test         | 512 B   |
+ | httpContentBuffer | limit for HTTP content test         | 1 MB    |
+ | networkTimeout    | timeout for network I/O             | 5 sec   |
+ ---------------------------------------------------------------------
+
+
 =head3 GENERAL SYNTAX
 
 Monit provides several tests you can use in a 'check' statement to test
@@ -1591,7 +1619,7 @@ actions if the value changed.
 
 General syntax for testing a specific value or range:
 
- IF <TEST> THEN ACTION [ELSE IF SUCCEEDED THEN ACTION]
+ IF <test> THEN <action> [ELSE IF SUCCEEDED THEN <action>]
 
 The action is evaluated each time the <TEST> condition is true. Success
 action is optional and executed only when the state changes from
@@ -1600,7 +1628,7 @@ recovery alert by default.
 
 General syntax for a value change test:
 
- IF CHANGED <TEST> THEN ACTION
+ IF CHANGED <test> THEN <action>
 
 The action is executed each time the value changes. Monit will remember
 the new value and will trigger event if the value change again.
@@ -1719,7 +1747,7 @@ checks and is if not defined, it defaults to a restart action.
 
 You can override the default action with the following statement:
 
- IF [DOES] NOT EXIST THEN action
+ IF [DOES] NOT EXIST THEN <action>
 
 I<action> is a choice of "ALERT", "RESTART", "START", "STOP", "EXEC" or
 "UNMONITOR".
@@ -1745,7 +1773,7 @@ The full syntax for a resource-statement used for resource
 testing is as follows (keywords are in capital and optional
 statements in [brackets]),
 
- IF resource operator value THEN action
+ IF <resource> <operator> <value> THEN <action>
 
 
 I<resource> is a choice of "CPU", "TOTAL CPU",

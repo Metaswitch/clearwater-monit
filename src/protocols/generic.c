@@ -39,7 +39,7 @@
 
 /* Escape zero i.e. '\0' in expect buffer with "\0" so zero can be tested in expect strings as "\0". If there are no '\0' in the buffer it is returned as it is */
 static char *_escapeZeroInExpectBuffer(char *s, int n) {
-        assert(n < EXPECT_BUFFER_MAX);
+        assert(n < Run.limits.sendExpectBuffer);
         int i, j;
         char t[n]; // VLA
         for (i = 0, j = 0; j < n; i++, j++) {
@@ -71,7 +71,7 @@ void check_generic(Socket_T socket) {
         if (Socket_getPort(socket))
                 g = ((Port_T)(Socket_getPort(socket)))->parameters.generic.sendexpect;
 
-        char *buf = CALLOC(sizeof(char), Run.expectbuffer + 1);
+        char *buf = CALLOC(sizeof(char), Run.limits.sendExpectBuffer + 1);
 
         while (g != NULL) {
 
@@ -102,7 +102,7 @@ void check_generic(Socket_T socket) {
 
                         int timeout = Socket_getTimeout(socket);
                         Socket_setTimeout(socket, 200);
-                        int n = Socket_read(socket, buf + 1, Run.expectbuffer - 1) + 1;
+                        int n = Socket_read(socket, buf + 1, Run.limits.sendExpectBuffer - 1) + 1;
                         buf[n] = 0;
                         if (n > 0)
                                 _escapeZeroInExpectBuffer(buf, n);

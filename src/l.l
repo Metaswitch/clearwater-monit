@@ -352,6 +352,11 @@ echo              { return ICMPECHO; }
 send              { return SEND; }
 expect            { return EXPECT; }
 expectbuffer      { return EXPECTBUFFER; }
+limits            { return LIMITS; }
+sendexpectbuffer  { return SENDEXPECTBUFFER; }
+filecontentbuffer { return FILECONTENTBUFFER; }
+httpcontentbuffer { return HTTPCONTENTBUFFER; }
+networktimeout    { return NETWORKTIMEOUT; }
 cleartext         { return CLEARTEXT; }
 md5               { return MD5HASH; }
 sha1              { return SHA1HASH; }

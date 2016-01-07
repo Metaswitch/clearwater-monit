@@ -333,11 +333,15 @@ typedef enum {
 #define ICMP_ATTEMPT_COUNT 3
 
 
-#define EXPECT_BUFFER_MAX (Unit_Kilobyte * 100 + 1)
-
-
 #define LEVEL_NAME_FULL    "full"
 #define LEVEL_NAME_SUMMARY "summary"
+
+
+/* Default limits */
+#define LIMIT_SENDEXPECTBUFFER  256
+#define LIMIT_FILECONTENTBUFFER 512
+#define LIMIT_HTTPCONTENTBUFFER 1048576
+#define LIMIT_NETWORKTIMEOUT    5000
 
 
 #include "socket.h"
@@ -383,6 +387,15 @@ Sigfunc *signal(int signo, Sigfunc * func);
 
 /** Message Digest type with size for the longest digest we will compute */
 typedef char MD_T[MD_SIZE];
+
+
+/** Defines monit limits object */
+typedef struct mylimits {
+        uint32_t sendExpectBuffer;  /**< Maximum send/expect response length [B] */
+        uint32_t fileContentBuffer;  /**< Maximum tested file content length [B] */
+        uint32_t httpContentBuffer;  /**< Maximum tested HTTP content length [B] */
+        uint32_t networkTimeout;               /**< Default network timeout [ms] */
+} Limits_T;
 
 
 /**
@@ -1099,12 +1112,12 @@ struct myrun {
         } files;
         char *mygroup;                              /**< Group Name of the Service */
         MD_T id;                                              /**< Unique monit id */
+        Limits_T limits;                                       /**< Default limits */
         SslOptions_T ssl;                                 /**< Default SSL options */
         int  polltime;        /**< In deamon mode, the sleeptime (sec) between run */
         int  startdelay;                    /**< the sleeptime (sec) after startup */
         int  facility;              /** The facility to use when running openlog() */
         int  eventlist_slots;          /**< The event queue size - number of slots */
-        int  expectbuffer; /**< Generic protocol expect buffer - STRLEN by default */
         int mailserver_timeout; /**< Connect and read timeout ms for a SMTP server */
         time_t incarnation;              /**< Unique ID for running monit instance */
         int  handler_queue[Handler_Max + 1];       /**< The handlers queue counter */

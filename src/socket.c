@@ -394,7 +394,7 @@ T Socket_createAccepted(int socket, struct sockaddr *addr, socklen_t addrlen, vo
         T S;
         NEW(S);
         S->socket = socket;
-        S->timeout = NET_TIMEOUT;
+        S->timeout = Run.limits.networkTimeout;
         S->connection_type = Connection_Server;
         S->type = Socket_Tcp;
         if (addr->sa_family == AF_INET) {

@@ -774,6 +774,7 @@ boolean_t Util_existService(const char *name) {
 
 
 void Util_printRunList() {
+        char buf[10];
         printf("Runtime constants:\n");
         printf(" %-18s = %s\n", "Control file", is_str_defined(Run.files.control));
         printf(" %-18s = %s\n", "Log file", is_str_defined(Run.files.log));
@@ -785,8 +786,13 @@ void Util_printRunList() {
         printf(" %-18s = %s\n", "Use syslog", (Run.flags & Run_UseSyslog) ? "True" : "False");
         printf(" %-18s = %s\n", "Is Daemon", (Run.flags & Run_Daemon) ? "True" : "False");
         printf(" %-18s = %s\n", "Use process engine", (Run.flags & Run_ProcessEngineEnabled) ? "True" : "False");
+        printf(" %-18s = {\n", "Limits");
+        printf(" %-18s =   sendExpectBuffer:  %s\n", " ", Str_bytesToSize(Run.limits.sendExpectBuffer, buf));
+        printf(" %-18s =   fileContentBuffer: %s\n", " ", Str_bytesToSize(Run.limits.fileContentBuffer, buf));
+        printf(" %-18s =   httpContentBuffer: %s\n", " ", Str_bytesToSize(Run.limits.httpContentBuffer, buf));
+        printf(" %-18s =   networkTimeout:    %s\n", " ", Str_milliToTime(Run.limits.networkTimeout, (char[23]){}));
+        printf(" %-18s = }\n", " ");
         printf(" %-18s = %d seconds with start delay %d seconds\n", "Poll time", Run.polltime, Run.startdelay);
-        printf(" %-18s = %d bytes\n", "Expect buffer", Run.expectbuffer);
 
         if (Run.eventlist_dir) {
                 char slots[STRLEN];

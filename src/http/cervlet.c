@@ -443,7 +443,8 @@ static void do_getid(HttpRequest req, HttpResponse res) {
 }
 
 static void do_runtime(HttpRequest req, HttpResponse res) {
-        int pid =  exist_daemon();
+        int pid = exist_daemon();
+        char buf[STRLEN];
 
         do_head(res, "_runtime", "Runtime", 1000);
         StringBuffer_append(res->outputbuffer,
@@ -476,11 +477,10 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                             "<tr><td>Use syslog</td><td>%s</td></tr>",
                             (Run.flags & Run_UseSyslog) ? "True" : "False");
         if (Run.eventlist_dir) {
-                char slots[STRLEN];
                 if (Run.eventlist_slots < 0)
-                        snprintf(slots, STRLEN, "unlimited");
+                        snprintf(buf, STRLEN, "unlimited");
                 else
-                        snprintf(slots, STRLEN, "%d", Run.eventlist_slots);
+                        snprintf(buf, STRLEN, "%d", Run.eventlist_slots);
                 StringBuffer_append(res->outputbuffer,
                                     "<tr><td>Event queue</td>"
                                     "<td>base directory %s with %d slots</td></tr>",
@@ -547,6 +547,10 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr><td>Default mail message</td><td>%s</td></tr>",
                                     Run.MailFormat.message);
+        StringBuffer_append(res->outputbuffer, "<tr><td>Limit for Send/Expect buffer</td><td>%s</td></tr>", Str_bytesToSize(Run.limits.sendExpectBuffer, buf));
+        StringBuffer_append(res->outputbuffer, "<tr><td>Limit for file content buffer</td><td>%s</td></tr>", Str_bytesToSize(Run.limits.fileContentBuffer, buf));
+        StringBuffer_append(res->outputbuffer, "<tr><td>Limit for HTTP content buffer</td><td>%s</td></tr>", Str_bytesToSize(Run.limits.httpContentBuffer, buf));
+        StringBuffer_append(res->outputbuffer, "<tr><td>Limit for network timeout</td><td>%s</td></tr>", Str_milliToTime(Run.limits.networkTimeout, (char[23]){}));
         StringBuffer_append(res->outputbuffer,
                             "<tr><td>Poll time</td><td>%d seconds with start delay %d seconds</td></tr>",
                             Run.polltime, Run.startdelay);

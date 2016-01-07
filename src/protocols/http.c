@@ -54,13 +54,6 @@
  */
 
 
-
-/* ------------------------------------------------------------- Definitions */
-
-
-#define HTTP_CONTENT_MAX 1048576
-
-
 /* ----------------------------------------------------------------- Private */
 
 
@@ -82,8 +75,8 @@ static void do_regex(Socket_T socket, int content_length, Request_T R) {
 
         if (content_length == 0)
                 THROW(IOException, "HTTP error: No content returned from server");
-        else if (content_length < 0 || content_length > HTTP_CONTENT_MAX) /* content_length < 0 if no Content-Length header was found */
-                content_length = HTTP_CONTENT_MAX;
+        else if (content_length < 0 || content_length > Run.limits.httpContentBuffer) /* content_length < 0 if no Content-Length header was found */
+                content_length = Run.limits.httpContentBuffer;
 
         char error[STRLEN];
         int size = 0, length = content_length, buflen = content_length + 1;

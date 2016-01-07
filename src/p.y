@@ -306,7 +306,8 @@ static int verifyMaxForward(int);
 %token READONLY CLEARTEXT MD5HASH SHA1HASH CRYPT DELAY
 %token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CERTIFICATE CACERTIFICATEFILE CACERTIFICATEPATH VALID
 %token INTERFACE LINK PACKET BYTEIN BYTEOUT PACKETIN PACKETOUT SPEED SATURATION UPLOAD DOWNLOAD TOTAL
-%token IDFILE STATEFILE SEND EXPECT EXPECTBUFFER CYCLE COUNT REMINDER
+%token IDFILE STATEFILE SEND EXPECT CYCLE COUNT REMINDER
+%token LIMITS SENDEXPECTBUFFER EXPECTBUFFER FILECONTENTBUFFER HTTPCONTENTBUFFER NETWORKTIMEOUT
 %token PIDFILE START STOP PATHTOK
 %token HOST HOSTNAME PORT IPV4 IPV6 TYPE UDP TCP TCPSSL PROTOCOL CONNECTION
 %token ALERT NOALERT MAILFORMAT UNIXSOCKET SIGNATURE
@@ -363,6 +364,7 @@ statement       : setalert
                 | setstatefile
                 | setexpectbuffer
                 | setinit
+                | setlimits
                 | setfips
                 | checkproc optproclist
                 | checkfile optfilelist
@@ -579,20 +581,40 @@ startdelay      : /* EMPTY */        { $<number>$ = START_DELAY; }
                 | START DELAY NUMBER { $<number>$ = $3; }
                 ;
 
-setexpectbuffer : SET EXPECTBUFFER NUMBER unit {
-                    Run.expectbuffer = $3 * $<number>4;
-                    if (Run.expectbuffer > EXPECT_BUFFER_MAX)
-                        yyerror("Maximum value for expect buffer is 100 KB");
+setinit         : SET INIT {
+                        Run.flags |= Run_Foreground;
                   }
                 ;
 
-setinit         : SET INIT {
-                    Run.flags |= Run_Foreground;
+setexpectbuffer : SET EXPECTBUFFER NUMBER unit {
+                        // Note: deprecated (replaced by "set limits" statement's "sendExpectBuffer" option)
+                        Run.limits.sendExpectBuffer = $3 * $<number>4;
+                  }
+                ;
+
+setlimits       : SET LIMITS '{' limitlist '}'
+                ;
+
+limitlist       : /* EMPTY */
+                | limitlist limit
+                ;
+
+limit           : SENDEXPECTBUFFER ':' NUMBER unit {
+                        Run.limits.sendExpectBuffer = $3 * $<number>4;
+                  }
+                | FILECONTENTBUFFER ':' NUMBER unit {
+                        Run.limits.fileContentBuffer = $3 * $<number>4;
+                  }
+                | HTTPCONTENTBUFFER ':' NUMBER unit {
+                        Run.limits.httpContentBuffer = $3 * $<number>4;
+                  }
+                | NETWORKTIMEOUT ':' NUMBER SECOND {
+                        Run.limits.networkTimeout= $3 * 1000;
                   }
                 ;
 
 setfips         : SET FIPS {
-                    Run.flags |= Run_FipsEnabled;
+                        Run.flags |= Run_FipsEnabled;
                   }
                 ;
 
@@ -1743,7 +1765,7 @@ programtimeout  : /* EMPTY */ {
                 ;
 
 nettimeout      : /* EMPTY */ {
-                   $<number>$ = NET_TIMEOUT; // timeout is in milliseconds
+                   $<number>$ = Run.limits.networkTimeout;
                   }
                 | TIMEOUT NUMBER SECOND {
                    $<number>$ = $2 * 1000; // net timeout is in milliseconds internally
@@ -2616,27 +2638,31 @@ static void preparse() {
         argcurrentfile              = NULL;
         argyytext                   = NULL;
         /* Reset parser */
-        Run.mmonitcredentials       = NULL;
-        Run.httpd.flags             = Httpd_Disabled | Httpd_Signature;
-        Run.httpd.credentials       = NULL;
+        Run.limits.sendExpectBuffer  = LIMIT_SENDEXPECTBUFFER;
+        Run.limits.fileContentBuffer = LIMIT_FILECONTENTBUFFER;
+        Run.limits.httpContentBuffer = LIMIT_HTTPCONTENTBUFFER;
+        Run.limits.networkTimeout    = LIMIT_NETWORKTIMEOUT;
+        Run.mmonitcredentials        = NULL;
+        Run.httpd.flags              = Httpd_Disabled | Httpd_Signature;
+        Run.httpd.credentials        = NULL;
         memset(&(Run.httpd.socket), 0, sizeof(Run.httpd.socket));
-        Run.mailserver_timeout      = SMTP_TIMEOUT;
-        Run.eventlist               = NULL;
-        Run.eventlist_dir           = NULL;
-        Run.eventlist_slots         = -1;
-        Run.system                  = NULL;
-        Run.expectbuffer            = STRLEN;
-        Run.mmonits                 = NULL;
-        Run.maillist                = NULL;
-        Run.mailservers             = NULL;
-        Run.MailFormat.from         = NULL;
-        Run.MailFormat.replyto      = NULL;
-        Run.MailFormat.subject      = NULL;
-        Run.MailFormat.message      = NULL;
-        depend_list                 = NULL;
+        Run.mailserver_timeout       = SMTP_TIMEOUT;
+        Run.eventlist                = NULL;
+        Run.eventlist_dir            = NULL;
+        Run.eventlist_slots          = -1;
+        Run.system                   = NULL;
+        Run.mmonits                  = NULL;
+        Run.maillist                 = NULL;
+        Run.mailservers              = NULL;
+        Run.MailFormat.from          = NULL;
+        Run.MailFormat.replyto       = NULL;
+        Run.MailFormat.subject       = NULL;
+        Run.MailFormat.message       = NULL;
+        depend_list                  = NULL;
         Run.flags |= Run_HandlerInit | Run_MmonitCredentials;
         for (i = 0; i <= Handler_Max; i++)
                 Run.handler_queue[i] = 0;
+
         /*
          * Initialize objects
          */
@@ -4146,7 +4172,7 @@ static void reset_mailserverset() {
  */
 static void reset_mmonitset() {
         memset(&mmonitset, 0, sizeof(struct mymmonit));
-        mmonitset.timeout = NET_TIMEOUT;
+        mmonitset.timeout = Run.limits.networkTimeout;
 }
 
 
@@ -4158,7 +4184,7 @@ static void reset_portset() {
         portset.socket = -1;
         portset.type = Socket_Tcp;
         portset.family = Socket_Ip;
-        portset.timeout = NET_TIMEOUT;
+        portset.timeout = Run.limits.networkTimeout;
         portset.retry = 1;
         portset.protocol = Protocol_get(Protocol_DEFAULT);
         urlrequest = NULL;
@@ -4346,7 +4372,7 @@ static void reset_icmpset() {
         icmpset.type = ICMP_ECHO;
         icmpset.size = ICMP_SIZE;
         icmpset.count = ICMP_ATTEMPT_COUNT;
-        icmpset.timeout = NET_TIMEOUT;
+        icmpset.timeout = Run.limits.networkTimeout;
         icmpset.action = NULL;
 }
 

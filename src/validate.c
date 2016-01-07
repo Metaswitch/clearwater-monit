@@ -115,12 +115,6 @@
  */
 
 
-/* ------------------------------------------------------------- Definitions */
-
-
-#define MATCH_LINE_LENGTH 512
-
-
 /* ----------------------------------------------------------------- Private */
 
 
@@ -689,16 +683,14 @@ static int _checkPattern(Match_T pattern, const char *line) {
  * In the case that line with missing \n is read, the test stops, as we suppose that the file contains only partial line and the rest of it is yet stored in the buffer of the application which writes to the file.
  * The test will resume at the beginning of the incomplete line during the next cycle, allowing the writer to finish the write.
  *
- * We test only MATCH_LINE_LENGTH at maximum (512 bytes) - in the case that the line is bigger, we read the rest of the line (till '\n') but ignore the characters past the maximum (512+).
+ * We test only Run.limits.fileContentBuffer at maximum - in the case that the line is bigger, we read the rest of the line (till '\n') but ignore the characters past the maximum
  */
 static State_Type _checkMatch(Service_T s) {
         ASSERT(s);
         State_Type rv = State_Succeeded;
         if (s->matchlist) {
-                Match_T ml;
-                FILE *file;
-                char line[MATCH_LINE_LENGTH];
-                if (! (file = fopen(s->path, "r"))) {
+                FILE *file = fopen(s->path, "r");
+                if (! file) {
                         LogError("'%s' cannot open file %s: %s\n", s->name, s->path, STRERROR);
                         return State_Failed;
                 }
@@ -715,50 +707,51 @@ static State_Type _checkMatch(Service_T s) {
                         /* Do we need to match? Even if not, go to final, so we can reset the content match error flags in this cycle */
                         if (s->inf->priv.file.readpos == s->inf->priv.file.size) {
                                 DEBUG("'%s' content match skipped - file size nor inode has not changed since last test\n", s->name);
-                                goto final;
+                                goto final1;
                         }
                 }
+                char *line = CALLOC(sizeof(unsigned char), Run.limits.fileContentBuffer);
                 while (true) {
 next:
                         /* Seek to the read position */
                         if (fseek(file, (long)s->inf->priv.file.readpos, SEEK_SET)) {
                                 rv = State_Failed;
                                 LogError("'%s' cannot seek file %s: %s\n", s->name, s->path, STRERROR);
-                                goto final;
+                                goto final2;
                         }
-                        if (! fgets(line, MATCH_LINE_LENGTH, file)) {
+                        if (! fgets(line, Run.limits.fileContentBuffer, file)) {
                                 if (! feof(file)) {
                                         rv = State_Failed;
                                         LogError("'%s' cannot read file %s: %s\n", s->name, s->path, STRERROR);
                                 }
-                                goto final;
+                                goto final2;
                         }
                         size_t length = strlen(line);
                         if (length == 0) {
                                 /* No content: shouldn't happen - empty line will contain at least '\n' */
-                                goto final;
-                        } else if (line[length-1] != '\n') {
-                                if (length < MATCH_LINE_LENGTH-1) {
+                                goto final2;
+                        } else if (line[length - 1] != '\n') {
+                                if (length < Run.limits.fileContentBuffer - 1) {
                                         /* Incomplete line: we gonna read it next time again, allowing the writer to complete the write */
                                         DEBUG("'%s' content match: incomplete line read - no new line at end. (retrying next cycle)\n", s->name);
-                                        goto final;
-                                } else if (length == MATCH_LINE_LENGTH-1) {
-                                        /* Our read buffer is full: ignore the content past the MATCH_LINE_LENGTH */
+                                        goto final2;
+                                } else if (length >= Run.limits.fileContentBuffer - 1) {
+                                        /* Our read buffer is full: ignore the content past the Run.limits.fileContentBuffer */
                                         int rv;
                                         do {
                                                 if ((rv = fgetc(file)) == EOF)
-                                                        goto final;
+                                                        goto final2;
                                                 length++;
                                         } while (rv != '\n');
                                 }
                         } else {
-                                /* Remove appending newline */
+                                /* Remove trailing newline */
                                 line[length - 1] = 0;
                         }
                         /* Set read position to the end of last read */
                         s->inf->priv.file.readpos += length;
                         /* Check ignores */
-                        for (ml = s->matchignorelist; ml; ml = ml->next) {
+                        for (Match_T ml = s->matchignorelist; ml; ml = ml->next) {
                                 if ((_checkPattern(ml, line) == 0) ^ (ml->not)) {
                                         /* We match! -> line is ignored! */
                                         DEBUG("'%s' Ignore pattern %s'%s' match on content line\n", s->name, ml->not ? "not " : "", ml->match_string);
@@ -766,15 +759,15 @@ next:
                                 }
                         }
                         /* Check non ignores */
-                        for (ml = s->matchlist; ml; ml = ml->next) {
+                        for (Match_T ml = s->matchlist; ml; ml = ml->next) {
                                 if ((_checkPattern(ml, line) == 0) ^ (ml->not)) {
                                         DEBUG("'%s' Pattern %s'%s' match on content line [%s]\n", s->name, ml->not ? "not " : "", ml->match_string, line);
-                                        /* Save the line: we limit the content showed in the event roughly to MATCH_LINE_LENGTH (we allow exceed to not break the line) */
+                                        /* Save the line for Event_post */
                                         if (! ml->log)
-                                                ml->log = StringBuffer_create(MATCH_LINE_LENGTH);
-                                        if (StringBuffer_length(ml->log) < MATCH_LINE_LENGTH) {
+                                                ml->log = StringBuffer_create(Run.limits.fileContentBuffer);
+                                        if (StringBuffer_length(ml->log) < Run.limits.fileContentBuffer) {
                                                 StringBuffer_append(ml->log, "%s\n", line);
-                                                if (StringBuffer_length(ml->log) >= MATCH_LINE_LENGTH)
+                                                if (StringBuffer_length(ml->log) >= Run.limits.fileContentBuffer)
                                                         StringBuffer_append(ml->log, "...\n");
                                         }
                                 } else {
@@ -782,13 +775,15 @@ next:
                                 }
                         }
                 }
-final:
+final2:
+                FREE(line);
+final1:
                 if (fclose(file)) {
                         rv = State_Failed;
                         LogError("'%s' cannot close file %s: %s\n", s->name, s->path, STRERROR);
                 }
                 /* Post process the matches: generate events for particular patterns */
-                for (ml = s->matchlist; ml; ml = ml->next) {
+                for (Match_T ml = s->matchlist; ml; ml = ml->next) {
                         if (ml->log) {
                                 rv = State_Changed;
                                 Event_post(s, Event_Content, State_Changed, ml->action, "content match:\n%s", StringBuffer_toString(ml->log));

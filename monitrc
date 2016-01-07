@@ -48,6 +48,16 @@ set logfile syslog
 # set statefile /var/.monit.state
 #
 #
+
+## Set limits for various tests. The following example shows the default values:
+##
+# set limits {
+#     sendExpectBuffer:  256 B,    # limit for send/expect protocol test
+#     fileContentBuffer: 512 B,    # limit for file content test
+#     httpContentBuffer: 1 MB,     # limit for HTTP content test
+#     networkTimeout:    5 seconds # timeout for network I/O
+# }
+
 ## Set global SSL options (just most common options showed, see manual for
 ## full list).
 #

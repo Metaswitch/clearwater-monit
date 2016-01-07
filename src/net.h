@@ -38,13 +38,6 @@
 
 
 /**
- * Standard milliseconds to wait for a socket connection or for socket read
- * i/o before aborting
- */
-#define NET_TIMEOUT 5000
-
-
-/**
  * Check if the hostname resolves
  * @param hostname The host to check
  * @return true if hostname resolves, otherwise false

@@ -22,6 +22,15 @@ test.
 
 New: The port/socket test response time has microseconds precision now.
 
+New: Statement for overriding default limits added. The following example lists all
+possible options with their default values:
+ set limits {
+     sendExpectBuffer:  256 B,    # limit for send/expect protocol test
+     fileContentBuffer: 512 B,    # limit for file content test
+     httpContentBuffer: 1 MB,     # limit for HTTP content test
+     networkTimeout:    5 seconds # timeout for network I/O
+ }
+
 Fixed: Provide process cpu and memory usage statistics on MacOSX 10.11 or newer
 even with System Integrity Protection enabled.
 
@@ -47,6 +56,9 @@ Fixed: Issue #291: Use monit version in manual page footer rather then build dat
 
 Fixed: Issue #293: monit CLI command with service group option will return an error
 if the group doesn't exist.
+
+Fixed: Issue #303: Support more then 511 characters in file content match test. See
+the new "set limits" statement for details.
 
 Fixed: Issue #305: don't set the port in the HTTP Host header for default HTTPS URL
 scheme port (443).
