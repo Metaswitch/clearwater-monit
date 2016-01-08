@@ -686,7 +686,7 @@ AC_ARG_WITH(pam,
 )
 
 if test "$use_pam" = "1"; then
-        AC_CHECK_LIB([pam], [pam_start], [AC_DEFINE([HAVE_PAM], 1, [Define to 1 if you have PAM support])], [AC_MSG_ERROR([PAM enabled but headers or library not found, install the PAM development support or run configure --without-pam])])
+        AC_CHECK_LIB([pam], [pam_start], [], [AC_MSG_ERROR([PAM enabled but headers or library not found, install the PAM development support or run configure --without-pam])])
 fi
 
 

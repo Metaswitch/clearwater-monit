@@ -829,7 +829,7 @@ static void version() {
         printf("no ");
 #endif
         printf("ssl, ");
-#ifndef HAVE_PAM
+#ifndef HAVE_LIBPAM
         printf("no ");
 #endif
         printf("pam and ");

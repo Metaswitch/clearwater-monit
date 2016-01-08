@@ -1501,23 +1501,21 @@ char *Util_getUptime(time_t delta, char *sep) {
         long rest_d;
         long rest_h;
         long rest_m;
-        char buf[STRLEN];
+        char buf[STRLEN] = {};
         char *p = buf;
 
-        *buf = 0;
         if (delta < 0)
                 return(Str_dup(""));
-        if ((rest_d = delta/day)>0) {
-                p += snprintf(p, STRLEN-(p-buf), "%ldd%s", rest_d,sep);
-                delta -= rest_d*day;
+        if ((rest_d = delta / day)>0) {
+                p += snprintf(p, STRLEN - (p - buf), "%ldd%s", rest_d, sep);
+                delta -= rest_d * day;
         }
-        if ((rest_h = delta/hour)>0 || (rest_d > 0)) {
-                p += snprintf(p, STRLEN-(p-buf), "%ldh%s", rest_h,sep);
-                delta -= rest_h*hour;
+        if ((rest_h = delta / hour) > 0 || (rest_d > 0)) {
+                p += snprintf(p, STRLEN - (p - buf), "%ldh%s", rest_h, sep);
+                delta -= rest_h * hour;
         }
-        rest_m = delta/min;
+        rest_m = delta / min;
         snprintf(p, STRLEN - (p - buf), "%ldm%s", rest_m, sep);
-
         return Str_dup(buf);
 }
 

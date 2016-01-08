@@ -69,6 +69,10 @@
 #include <glob.h>
 #endif
 
+#ifdef HAVE_SYS_SYSINFO_H
+#include <sys/sysinfo.h>
+#endif
+
 #ifndef HZ
 # define HZ sysconf(_SC_CLK_TCK)
 #endif
@@ -114,20 +118,12 @@ static int                page_shift_to_kb = 0;
  * @return seconds since unix epoch
  */
 static time_t get_starttime() {
-        char   buf[STRLEN];
-        double up = 0;
-
-        if (! read_proc_file(buf, sizeof(buf), "uptime", -1, NULL)) {
-                LogError("system statistic error -- cannot get system uptime\n");
+        struct sysinfo info;
+        if (sysinfo(&info) < 0) {
+                LogError("system statistic error -- cannot get system uptime: %s\n", STRERROR);
                 return 0;
         }
-
-        if (sscanf(buf, "%lf", &up) != 1) {
-                LogError("system statistic error -- invalid uptime\n");
-                return 0;
-        }
-
-        return Time_now() - (time_t)up;
+        return Time_now() - info.uptime;
 }
 
 
@@ -200,7 +196,6 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         unsigned long       stat_item_utime = 0;
         unsigned long       stat_item_stime = 0;
         unsigned long long  stat_item_starttime = 0ULL;
-        ProcessTree_T      *pt = NULL;
 
         ASSERT(reference);
 
@@ -212,9 +207,10 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
 
         treesize = globbuf.gl_pathc;
 
-        pt = CALLOC(sizeof(ProcessTree_T), treesize);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         /* Insert data from /proc directory */
+        time_t starttime = get_starttime();
         for (int i = 0; i < treesize; i++) {
                 stat_pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
 
@@ -288,7 +284,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].uid = stat_uid;
                 pt[i].euid = stat_euid;
                 pt[i].gid = stat_gid;
-                pt[i].starttime = get_starttime() + (time_t)(stat_item_starttime / HZ);
+                pt[i].starttime = starttime > 0 ? (starttime + (time_t)(stat_item_starttime / HZ)) : 0;
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].cputime = ((float)(stat_item_utime + stat_item_stime) * 10.0) / HZ; // jiffies -> seconds = 1 / HZ. HZ is defined in "asm/param.h" and it is usually 1/100s but on alpha system it is 1/1024s
                 pt[i].cpu_percent = 0;
