@@ -200,7 +200,6 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         unsigned long       stat_item_utime = 0;
         unsigned long       stat_item_stime = 0;
         unsigned long long  stat_item_starttime = 0ULL;
-        ProcessTree_T      *pt = NULL;
 
         ASSERT(reference);
 
@@ -212,9 +211,10 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
 
         treesize = globbuf.gl_pathc;
 
-        pt = CALLOC(sizeof(ProcessTree_T), treesize);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         /* Insert data from /proc directory */
+        time_t starttime = get_starttime();
         for (int i = 0; i < treesize; i++) {
                 stat_pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
 
@@ -288,7 +288,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].uid = stat_uid;
                 pt[i].euid = stat_euid;
                 pt[i].gid = stat_gid;
-                pt[i].starttime = get_starttime() + (time_t)(stat_item_starttime / HZ);
+                pt[i].starttime = starttime + (time_t)(stat_item_starttime / HZ);
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].cputime = ((float)(stat_item_utime + stat_item_stime) * 10.0) / HZ; // jiffies -> seconds = 1 / HZ. HZ is defined in "asm/param.h" and it is usually 1/100s but on alpha system it is 1/1024s
                 pt[i].cpu_percent = 0;
