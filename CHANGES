@@ -74,6 +74,9 @@ Thanks to Robert Nelson for fix.
 
 Fixed: Issue #309: AIX: The check process by pattern was limited to 80 characters.
 
+Fixed: Issue #311: Linux CLX container: the connection test was skipped and port status
+showed a failure.
+
 Fixed: Warn if the monit configuration include pattern didn't match any file or the
 path doesn't exist.
 
