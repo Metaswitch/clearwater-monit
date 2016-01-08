@@ -545,11 +545,11 @@ static void _testUnix(Port_T p) {
 
 static void _testIp(Port_T p) {
         char error[STRLEN];
-        boolean_t is_available = false;
+        Connection_State is_available = Connection_Failed;
         struct addrinfo *result = _resolve(p->hostname, p->target.net.port, p->type, p->family);
         if (result) {
                 // The host may resolve to multiple IPs and if at least one succeeded, we have no problem and don't have to flood the log with partial errors => log only the last error
-                for (struct addrinfo *r = result; r && ! is_available; r = r->ai_next) {
+                for (struct addrinfo *r = result; r && is_available != Connection_Ok; r = r->ai_next) {
                         if (p->outgoing.addrlen == 0 || p->outgoing.addrlen == r->ai_addrlen) {
                                 const struct sockaddr *localaddr = p->outgoing.addrlen ? (struct sockaddr *)&(p->outgoing.addr) : NULL;
                                 volatile T S = NULL;
@@ -558,7 +558,7 @@ static void _testIp(Port_T p) {
                                         S = _createIpSocket(p->hostname, r->ai_addr, r->ai_addrlen, localaddr, p->outgoing.addrlen, r->ai_family, r->ai_socktype, r->ai_protocol, p->target.net.ssl, p->timeout);
                                         S->Port = p;
                                         p->protocol->check(S);
-                                        is_available = true;
+                                        is_available = Connection_Ok;
                                 }
                                 ELSE
                                 {
@@ -576,7 +576,7 @@ static void _testIp(Port_T p) {
                         }
                 }
                 freeaddrinfo(result);
-                if (! is_available)
+                if (is_available != Connection_Ok)
                         THROW(IOException, "%s", error);
         } else {
                 THROW(IOException, "Cannot resolve [%s]:%d", p->hostname, p->target.net.port);
@@ -607,11 +607,11 @@ void Socket_test(void *P) {
                                 break;
                 }
                 p->response = (double)(Time_micro() - start) / 1000.; // Convert microseconds to milliseconds
-                p->is_available = true;
+                p->is_available = Connection_Ok;
         }
         ELSE
         {
-                p->is_available = false;
+                p->is_available = Connection_Failed;
                 p->response = -1.;
                 RETHROW;
         }

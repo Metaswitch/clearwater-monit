@@ -250,6 +250,13 @@ typedef enum {
 
 
 typedef enum {
+        Connection_Failed = 0,
+        Connection_Ok,
+        Connection_Init
+} __attribute__((__packed__)) Connection_State;
+
+
+typedef enum {
         Service_Filesystem = 0,
         Service_Directory,
         Service_File,
@@ -599,7 +606,7 @@ typedef struct myport {
         double response;                 /**< Socket connection response time [ms] */
         Socket_Type type;           /**< Socket type used for connection (UDP/TCP) */
         Socket_Family family;    /**< Socket family used for connection (NET/UNIX) */
-        boolean_t is_available;          /**< true if the server/port is available */
+        Connection_State is_available;               /**< Server/port availability */
         EventAction_T action;  /**< Description of the action upon event occurence */
         /** Protocol specific parameters */
         union {
@@ -669,7 +676,7 @@ typedef struct myicmp {
         int size;                                     /**< ICMP echo requests size */
         int count;                                   /**< ICMP echo requests count */
         int timeout;         /**< The timeout in milliseconds to wait for response */
-        boolean_t is_available;               /**< true if the server is available */
+        Connection_State is_available;    /**< Flag for the server is availability */
         Socket_Family family;                 /**< ICMP family used for connection */
         double response;                         /**< ICMP ECHO response time [ms] */
         Outgoing_T outgoing;                                 /**< Outgoing address */

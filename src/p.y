@@ -3004,6 +3004,7 @@ static void addport(Port_T *list, Port_T port) {
 
         Port_T p;
         NEW(p);
+        p->is_available       = Connection_Init;
         p->type               = port->type;
         p->socket             = port->socket;
         p->family             = port->family;
@@ -3607,7 +3608,7 @@ static void addicmp(Icmp_T is) {
         icmp->timeout      = is->timeout;
         icmp->action       = is->action;
         icmp->outgoing     = is->outgoing;
-        icmp->is_available = false;
+        icmp->is_available = Connection_Init;
         icmp->response     = -1;
 
         icmp->next         = current->icmplist;

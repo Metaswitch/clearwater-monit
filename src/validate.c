@@ -1099,7 +1099,7 @@ State_Type check_process(Service_T s) {
                                 if (_checkConnection(s, pp) == State_Failed)
                                         rv = State_Failed;
                 } else {
-                        DEBUG("'%s' connection test paused for %d seconds while the process is starting\n", s->name, s->start->timeout);
+                        DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - s->inf->priv.process.uptime));
                 }
         }
         if (s->socketlist) {
@@ -1109,7 +1109,7 @@ State_Type check_process(Service_T s) {
                                 if (_checkConnection(s, pp) == State_Failed)
                                         rv = State_Failed;
                 } else {
-                        DEBUG("'%s' connection test paused for %d seconds while the process is starting\n", s->name, s->start->timeout);
+                        DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - s->inf->priv.process.uptime));
                 }
         }
         return rv;
@@ -1359,7 +1359,7 @@ State_Type check_remote_host(Service_T s) {
                         case ICMP_ECHO:
                                 icmp->response = icmp_echo(s->path, icmp->family, &(icmp->outgoing), icmp->size, icmp->timeout, icmp->count);
                                 if (icmp->response == -2) {
-                                        icmp->is_available = true;
+                                        icmp->is_available = Connection_Init;
 #ifdef SOLARIS
                                         DEBUG("'%s' ping test skipped -- the monit user has no permission to create raw socket, please add net_icmpaccess privilege\n", s->name);
 #else
@@ -1367,10 +1367,10 @@ State_Type check_remote_host(Service_T s) {
 #endif
                                 } else if (icmp->response == -1) {
                                         rv = State_Failed;
-                                        icmp->is_available = false;
+                                        icmp->is_available = Connection_Failed;
                                         Event_post(s, Event_Icmp, State_Failed, icmp->action, "ping test failed");
                                 } else {
-                                        icmp->is_available = true;
+                                        icmp->is_available = Connection_Ok;
                                         Event_post(s, Event_Icmp, State_Succeeded, icmp->action, "ping test succeeded [response time %s]", Str_milliToTime(icmp->response, (char[23]){}));
                                 }
                                 last_ping = icmp;
@@ -1381,7 +1381,7 @@ State_Type check_remote_host(Service_T s) {
                 }
         }
         /* If we could not ping the host we assume it's down and do not continue to check any port connections  */
-        if (last_ping && ! last_ping->is_available) {
+        if (last_ping && last_ping->is_available == Connection_Failed) {
                 DEBUG("'%s' icmp ping failed, skipping any port connection tests\n", s->name);
                 return State_Failed;
         }
