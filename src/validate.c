@@ -1094,17 +1094,23 @@ State_Type check_process(Service_T s) {
         }
         if (s->portlist) {
                 /* pause port tests in the start timeout timeframe while the process is starting (it may take some time to the process before it starts accepting connections) */
-                if (! s->start || s->inf->priv.process.uptime > s->start->timeout)
+                if (! s->start || s->inf->priv.process.uptime > s->start->timeout) {
                         for (Port_T pp = s->portlist; pp; pp = pp->next)
                                 if (_checkConnection(s, pp) == State_Failed)
                                         rv = State_Failed;
+                } else {
+                        DEBUG("'%s' connection test paused for %d seconds while the process is starting\n", s->name, s->start->timeout);
+                }
         }
         if (s->socketlist) {
                 /* pause socket tests in the start timeout timeframe while the process is starting (it may take some time to the process before it starts accepting connections) */
-                if (! s->start || s->inf->priv.process.uptime > s->start->timeout)
+                if (! s->start || s->inf->priv.process.uptime > s->start->timeout) {
                         for (Port_T pp = s->socketlist; pp; pp = pp->next)
                                 if (_checkConnection(s, pp) == State_Failed)
                                         rv = State_Failed;
+                } else {
+                        DEBUG("'%s' connection test paused for %d seconds while the process is starting\n", s->name, s->start->timeout);
+                }
         }
         return rv;
 }
