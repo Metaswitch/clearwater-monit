@@ -1092,23 +1092,23 @@ State_Type check_process(Service_T s) {
                         rv = State_Failed;
                 }
         }
-        if (s->portlist) {
+        for (Port_T pp = s->portlist; pp; pp = pp->next) {
                 /* pause port tests in the start timeout timeframe while the process is starting (it may take some time to the process before it starts accepting connections) */
                 if (! s->start || s->inf->priv.process.uptime > s->start->timeout) {
-                        for (Port_T pp = s->portlist; pp; pp = pp->next)
-                                if (_checkConnection(s, pp) == State_Failed)
-                                        rv = State_Failed;
+                        if (_checkConnection(s, pp) == State_Failed)
+                                rv = State_Failed;
                 } else {
+                        pp->is_available = Connection_Init;
                         DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - s->inf->priv.process.uptime));
                 }
         }
-        if (s->socketlist) {
+        for (Port_T pp = s->socketlist; pp; pp = pp->next) {
                 /* pause socket tests in the start timeout timeframe while the process is starting (it may take some time to the process before it starts accepting connections) */
                 if (! s->start || s->inf->priv.process.uptime > s->start->timeout) {
-                        for (Port_T pp = s->socketlist; pp; pp = pp->next)
-                                if (_checkConnection(s, pp) == State_Failed)
-                                        rv = State_Failed;
+                        if (_checkConnection(s, pp) == State_Failed)
+                                rv = State_Failed;
                 } else {
+                        pp->is_available = Connection_Init;
                         DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - s->inf->priv.process.uptime));
                 }
         }

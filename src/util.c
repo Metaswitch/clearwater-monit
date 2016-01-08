@@ -1456,6 +1456,7 @@ int Util_isProcessRunning(Service_T s, boolean_t refresh) {
         ASSERT(s);
         errno = 0;
         if (s->matchlist) {
+//FIXME: try cached pid first, if not found, search the tree using pattern ... look always for parent process (=> reduce CPU overhead when searching processes by match)
                 if (refresh || ! ptree || ! ptreesize)
                         initprocesstree(&ptree, &ptreesize, &oldptree, &oldptreesize);
                 /* The process table read may sporadically fail during read, because we're using glob on some platforms which may fail if the proc filesystem
