@@ -35,6 +35,8 @@ New: The file content test syntax has changed from "IF [NOT] MATCH <pattern>" to
 "IF CONTENT < "=" | "!=" > <pattern>". The old syntax is deprecated, but still
 supported for backward compatibility.
 
+New: Reduced CPU usage.
+
 Fixed: Provide process cpu and memory usage statistics on MacOSX 10.11 or newer
 even with System Integrity Protection enabled.
 
