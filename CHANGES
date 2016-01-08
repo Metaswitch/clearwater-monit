@@ -26,8 +26,8 @@ New: Statement for overriding default limits added. The following example lists 
 possible options with their default values:
  set limits {
      sendExpectBuffer:  256 B,    # limit for send/expect protocol test
-     fileContentBuffer: 512 B,    # limit for file content test
-     httpContentBuffer: 1 MB,     # limit for HTTP content test
+     fileContentBuffer: 512 B,    # limit for file content test (line)
+     httpContentBuffer: 1 MB,     # limit for HTTP content test (response body)
      networkTimeout:    5 seconds # timeout for network I/O
  }
 

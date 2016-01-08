@@ -1599,14 +1599,14 @@ Where the I<unit> is "B" (byte), "kB" (kilobyte) or "MB" (megabyte).
 
 Options legend:
 
- ---------------------------------------------------------------------
- | Option            | Description                         | Default |
- ---------------------------------------------------------------------
- | sendExpectBuffer  | limit for send/expect protocol test | 256 B   |
- | fileContentBuffer | limit for file content test         | 512 B   |
- | httpContentBuffer | limit for HTTP content test         | 1 MB    |
- | networkTimeout    | timeout for network I/O             | 5 sec   |
- ---------------------------------------------------------------------
+ -----------------------------------------------------------------------------
+ | Option            | Description                                 | Default |
+ -----------------------------------------------------------------------------
+ | sendExpectBuffer  | limit for send/expect protocol test         | 256 B   |
+ | fileContentBuffer | limit for file content test (line)          | 512 B   |
+ | httpContentBuffer | limit for HTTP content test (response body) | 1 MB    |
+ | networkTimeout    | timeout for network I/O                     | 5 sec   |
+ -----------------------------------------------------------------------------
 
 
 =head3 GENERAL SYNTAX
