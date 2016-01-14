@@ -118,27 +118,21 @@ boolean_t init_process_info_sysdep(void) {
  * @return treesize>0 if succeeded otherwise =0.
  */
 int initprocesstree_sysdep(ProcessTree_T ** reference) {
-        int                        treesize;
-        size_t                     size = sizeof(maxslp);
-        char                       buf[_POSIX2_LINE_MAX];
-        int                        mib_proc2[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_ALL, 0, sizeof(struct kinfo_proc2), 0};
-        static int                 mib_maxslp[] = {CTL_VM, VM_MAXSLP};
-        ProcessTree_T             *pt;
-        kvm_t                     *kvm_handle;
-        static struct kinfo_proc2 *pinfo;
-
+        size_t size = sizeof(maxslp);
+        static int mib_maxslp[] = {CTL_VM, VM_MAXSLP};
         if (sysctl(mib_maxslp, 2, &maxslp, &size, NULL, 0) < 0) {
                 LogError("system statistic error -- vm.maxslp failed\n");
                 return 0;
         }
 
+        int mib_proc2[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_ALL, 0, sizeof(struct kinfo_proc2), 0};
         if (sysctl(mib_proc2, 6, NULL, &size, NULL, 0) == -1) {
                 LogError("system statistic error -- kern.proc2 #1 failed\n");
                 return 0;
         }
 
         size *= 2; // Add reserve for new processes which were created between calls of sysctl
-        pinfo = CALLOC(1, size);
+        struct kinfo_proc2 *pinfo = CALLOC(1, size);
         mib_proc2[5] = (int)(size / sizeof(struct kinfo_proc2));
         if (sysctl(mib_proc2, 6, pinfo, &size, NULL, 0) == -1) {
                 FREE(pinfo);
@@ -146,11 +140,13 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 return 0;
         }
 
-        treesize = (int)(size / sizeof(struct kinfo_proc2));
+        int treesize = (int)(size / sizeof(struct kinfo_proc2));
 
-        pt = CALLOC(sizeof(ProcessTree_T), treesize);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
-        if (! (kvm_handle = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, buf))) {
+        char buf[_POSIX2_LINE_MAX];
+        kvm_t *kvm_handle = kvm_openfiles(NULL, NULL, NULL, KVM_NO_FILES, buf);
+        if (! kvm_handle) {
                 FREE(pinfo);
                 FREE(pt);
                 LogError("system statistic error -- kvm_openfiles failed: %s\n", buf);
