@@ -181,7 +181,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         continue;
                 }
 
-                pt[i].mem = psinfo->pr_rssize * page_size;
+                pt[i].mem = psinfo->pr_rssize * 1024;
 
                 pt[i].cmdline  = Str_dup(psinfo->pr_psargs);
                 if (! pt[i].cmdline || ! *pt[i].cmdline) {
