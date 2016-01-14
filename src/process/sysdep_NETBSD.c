@@ -220,7 +220,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 return false;
         }
         si->total_mem = (vm.active + vm.wired) * vm.pagesize;
-        si->swap = vm.swpages * vm.pagesize;
+        si->swap_max = vm.swpages * vm.pagesize;
         si->total_swap = vm.swpginuse * vm.pagesize;
         return true;
 }
