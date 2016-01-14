@@ -134,6 +134,11 @@ boolean_t init_process_info_sysdep(void) {
         char *ptr;
         char  buf[2048];
 
+        if ((page_size = sysconf(_SC_PAGESIZE)) <= 0) {
+                DEBUG("system statistic error -- cannot get page size: %s\n", STRERROR);
+                return false;
+        }
+
         if (! read_proc_file(buf, sizeof(buf), "meminfo", -1, NULL)) {
                 DEBUG("system statistic error -- cannot read /proc/meminfo\n");
                 return false;
@@ -146,6 +151,7 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
+        systeminfo.mem_max *= 1024;
 
         if ((systeminfo.cpus = sysconf(_SC_NPROCESSORS_CONF)) < 0) {
                 DEBUG("system statistic error -- cannot get cpu count: %s\n", STRERROR);
@@ -153,11 +159,6 @@ boolean_t init_process_info_sysdep(void) {
         } else if (systeminfo.cpus == 0) {
                 DEBUG("system reports cpu count 0, setting dummy cpu count 1\n");
                 systeminfo.cpus = 1;
-        }
-
-        if ((page_size = sysconf(_SC_PAGESIZE)) <= 0) {
-                DEBUG("system statistic error -- cannot get page size: %s\n", STRERROR);
-                return false;
         }
 
         return true;
@@ -224,10 +225,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 }
                 tmp += 2;
                 if (sscanf(tmp,
-                           "%c %d %*d %*d %*d %*d %*u %*u"
-                           "%*u %*u %*u %lu %lu %ld %ld %*d %*d %*d "
-                           "%*u %llu %*u %ld %*u %*u %*u %*u %*u "
-                           "%*u %*u %*u %*u %*u %*u %*u %*u %*d %*d\n",
+                           "%c %d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %ld %ld %*d %*d %*d %*u %llu %*u %ld %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d\n",
                            &stat_item_state,
                            &stat_ppid,
                            &stat_item_utime,
