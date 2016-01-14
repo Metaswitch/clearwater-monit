@@ -165,7 +165,7 @@ void fillprocesstree(ProcessTree_T *pt, int index) {
 
         pt[index].visited         = true;
         pt[index].children_sum    = pt[index].children_num;
-        pt[index].mem_kbyte_sum   = pt[index].mem_kbyte;
+        pt[index].mem_sum         = pt[index].mem;
         pt[index].cpu_percent_sum = pt[index].cpu_percent;
 
         for (int i = 0; i < pt[index].children_num; i++)
@@ -174,9 +174,9 @@ void fillprocesstree(ProcessTree_T *pt, int index) {
         if (pt[index].parent != -1 && pt[index].parent != index) {
                 parent_pt                   = &pt[pt[index].parent];
                 parent_pt->children_sum    += pt[index].children_sum;
-                parent_pt->mem_kbyte_sum   += pt[index].mem_kbyte_sum;
+                parent_pt->mem_sum         += pt[index].mem_sum;
                 parent_pt->cpu_percent_sum += pt[index].cpu_percent_sum;
-                parent_pt->cpu_percent_sum  = (pt[index].cpu_percent_sum > 1000) ? 1000 : parent_pt->cpu_percent_sum;
+                parent_pt->cpu_percent_sum  = (pt[index].cpu_percent_sum > 100.) ? 100. : parent_pt->cpu_percent_sum;
         }
 }
 

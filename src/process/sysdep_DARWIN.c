@@ -67,7 +67,7 @@
 /* ----------------------------------------------------------------- Private */
 
 
-static int  pagesize_kbyte;
+static int  pagesize;
 static long total_old    = 0;
 static long cpu_user_old = 0;
 static long cpu_syst_old = 0;
@@ -84,22 +84,19 @@ boolean_t init_process_info_sysdep(void) {
                 return false;
         }
 
-        uint64_t memsize = 0LL;
         mib[1] = HW_MEMSIZE;
-        len = sizeof(memsize);
-        if (sysctl(mib, 2, &memsize, &len, NULL, 0 ) == -1) {
+        len = sizeof(systeminfo.mem_max);
+        if (sysctl(mib, 2, &systeminfo.mem_max, &len, NULL, 0 ) == -1) {
                 DEBUG("system statistic error -- cannot get real memory amount: %s\n", STRERROR);
                 return false;
         }
-        systeminfo.mem_kbyte_max = (memsize / 1024);
 
         mib[1] = HW_PAGESIZE;
-        len    = sizeof(pagesize_kbyte);
-        if (sysctl(mib, 2, &pagesize_kbyte, &len, NULL, 0) == -1) {
+        len    = sizeof(pagesize);
+        if (sysctl(mib, 2, &pagesize, &len, NULL, 0) == -1) {
                 DEBUG("system statistic error -- cannot get memory page size: %s\n", STRERROR);
                 return false;
         }
-        pagesize_kbyte /= 1024;
 
         return true;
 }
@@ -204,9 +201,9 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 } else if (rv < sizeof(tinfo)) {
                         LogError("proc_pidinfo for pid %d -- invalid result size\n", pt[i].pid);
                 } else {
-                        pt[i].mem_kbyte   = (unsigned long)(tinfo.pti_resident_size / 1024.);
+                        pt[i].mem         = tinfo.pti_resident_size;
                         pt[i].cputime     = (long)((tinfo.pti_total_user + tinfo.pti_total_system) / 100000000.); // The time is in nanoseconds, we store it as 1/10s
-                        pt[i].cpu_percent = 0;
+                        pt[i].cpu_percent = 0.;
                 }
         }
         StringBuffer_free(&cmdline);
@@ -232,7 +229,7 @@ int getloadavg_sysdep (double *loadv, int nelem) {
 
 
 /**
- * This routine returns kbyte of real memory in use.
+ * This routine returns real memory in use.
  * @return: true if successful, false if failed (or not available)
  */
 boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
@@ -244,7 +241,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 DEBUG("system statistic error -- cannot get memory usage\n");
                 return false;
         }
-        si->total_mem_kbyte = (page_info.wire_count + page_info.active_count) * pagesize_kbyte;
+        si->total_mem = (page_info.wire_count + page_info.active_count) * pagesize;
 
         /* Swap */
         int mib[2] = {CTL_VM, VM_SWAPUSAGE};
@@ -252,11 +249,11 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
         struct xsw_usage swap;
         if (sysctl(mib, 2, &swap, &len, NULL, 0) == -1) {
                 DEBUG("system statistic error -- cannot get swap usage: %s\n", STRERROR);
-                si->swap_kbyte_max = 0;
+                si->swap_max = 0ULL;
                 return false;
         }
-        si->swap_kbyte_max   = (unsigned long)(double)(swap.xsu_total) / 1024.;
-        si->total_swap_kbyte = (unsigned long)(double)(swap.xsu_used) / 1024.;
+        si->swap_max   = swap.xsu_total;
+        si->total_swap = swap.xsu_used;
 
         return true;
 }
@@ -281,9 +278,9 @@ boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
                 total     = total_new - total_old;
                 total_old = total_new;
 
-                si->total_cpu_user_percent = (total > 0) ? (int)(1000 * (double)(cpu_info.cpu_ticks[CPU_STATE_USER] - cpu_user_old) / total) : -10;
-                si->total_cpu_syst_percent = (total > 0) ? (int)(1000 * (double)(cpu_info.cpu_ticks[CPU_STATE_SYSTEM] - cpu_syst_old) / total) : -10;
-                si->total_cpu_wait_percent = 0; /* there is no wait statistic available */
+                si->total_cpu_user_percent = (total > 0) ? (100. * (double)(cpu_info.cpu_ticks[CPU_STATE_USER] - cpu_user_old) / total) : -1.;
+                si->total_cpu_syst_percent = (total > 0) ? (100. * (double)(cpu_info.cpu_ticks[CPU_STATE_SYSTEM] - cpu_syst_old) / total) : -1.;
+                si->total_cpu_wait_percent = 0.; /* there is no wait statistic available */
 
                 cpu_user_old = cpu_info.cpu_ticks[CPU_STATE_USER];
                 cpu_syst_old = cpu_info.cpu_ticks[CPU_STATE_SYSTEM];

@@ -83,9 +83,9 @@ boolean_t init_process_info(void) {
                 return false;
         }
 
-        systeminfo.total_cpu_user_percent = -10;
-        systeminfo.total_cpu_syst_percent = -10;
-        systeminfo.total_cpu_wait_percent = -10;
+        systeminfo.total_cpu_user_percent = -1.;
+        systeminfo.total_cpu_syst_percent = -1.;
+        systeminfo.total_cpu_wait_percent = -1.;
 
         return (init_process_info_sysdep());
 }
@@ -100,7 +100,7 @@ boolean_t init_process_info(void) {
  */
 boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_t pid) {
         ASSERT(s);
-        ASSERT(systeminfo.mem_kbyte_max > 0);
+        ASSERT(systeminfo.mem_max > 0);
 
         /* save the previous pid and set actual one */
         s->inf->priv.process._pid = s->inf->priv.process.pid;
@@ -116,17 +116,17 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                 s->inf->priv.process.gid               = pt[leaf].gid;
                 s->inf->priv.process.uptime            = Time_now() - pt[leaf].starttime;
                 s->inf->priv.process.children          = pt[leaf].children_sum;
-                s->inf->priv.process.mem_kbyte         = pt[leaf].mem_kbyte;
+                s->inf->priv.process.mem               = pt[leaf].mem;
                 s->inf->priv.process.zombie            = pt[leaf].zombie;
-                s->inf->priv.process.total_mem_kbyte   = pt[leaf].mem_kbyte_sum;
+                s->inf->priv.process.total_mem         = pt[leaf].mem_sum;
                 s->inf->priv.process.cpu_percent       = pt[leaf].cpu_percent;
                 s->inf->priv.process.total_cpu_percent = pt[leaf].cpu_percent_sum;
-                if (systeminfo.mem_kbyte_max == 0) {
-                        s->inf->priv.process.total_mem_percent = 0;
-                        s->inf->priv.process.mem_percent       = 0;
+                if (systeminfo.mem_max == 0) {
+                        s->inf->priv.process.total_mem_percent = 0.;
+                        s->inf->priv.process.mem_percent       = 0.;
                 } else {
-                        s->inf->priv.process.total_mem_percent = (int)((double)pt[leaf].mem_kbyte_sum * 1000.0 / systeminfo.mem_kbyte_max);
-                        s->inf->priv.process.mem_percent       = (int)((double)pt[leaf].mem_kbyte * 1000.0 / systeminfo.mem_kbyte_max);
+                        s->inf->priv.process.total_mem_percent = 100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max;
+                        s->inf->priv.process.mem_percent       = 100. * (double)pt[leaf].mem / (double)systeminfo.mem_max;
                 }
         } else {
                 s->inf->priv.process.ppid              = -1;
@@ -135,12 +135,12 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                 s->inf->priv.process.gid               = -1;
                 s->inf->priv.process.uptime            = 0;
                 s->inf->priv.process.children          = 0;
-                s->inf->priv.process.total_mem_kbyte   = 0;
-                s->inf->priv.process.total_mem_percent = 0;
-                s->inf->priv.process.mem_kbyte         = 0;
-                s->inf->priv.process.mem_percent       = 0;
-                s->inf->priv.process.cpu_percent       = 0;
-                s->inf->priv.process.total_cpu_percent = 0;
+                s->inf->priv.process.total_mem         = 0ULL;
+                s->inf->priv.process.total_mem_percent = 0.;
+                s->inf->priv.process.mem               = 0ULL;
+                s->inf->priv.process.mem_percent       = 0.;
+                s->inf->priv.process.cpu_percent       = 0.;
+                s->inf->priv.process.total_cpu_percent = 0.;
         }
         return true;
 }
@@ -152,7 +152,7 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
  */
 boolean_t update_system_load() {
         if (Run.flags & Run_ProcessEngineEnabled) {
-                ASSERT(systeminfo.mem_kbyte_max > 0);
+                ASSERT(systeminfo.mem_max > 0);
 
                 /** Get load average triplet */
                 if (getloadavg_sysdep(systeminfo.loadavg, 3) == -1) {
@@ -165,8 +165,8 @@ boolean_t update_system_load() {
                         LogError("'%s' statistic error -- memory usage gathering failed\n", Run.system->name);
                         goto error2;
                 }
-                systeminfo.total_mem_percent  = (int)(1000 * (double)systeminfo.total_mem_kbyte / (double)systeminfo.mem_kbyte_max);
-                systeminfo.total_swap_percent = systeminfo.swap_kbyte_max ? (int)(1000 * (double)systeminfo.total_swap_kbyte / (double)systeminfo.swap_kbyte_max) : 0;
+                systeminfo.total_mem_percent  = systeminfo.mem_max ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
+                systeminfo.total_swap_percent = systeminfo.swap_max ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
 
                 /** Get CPU usage statistic */
                 if (! used_system_cpu_sysdep(&systeminfo)) {
@@ -182,12 +182,12 @@ error1:
         systeminfo.loadavg[1] = 0;
         systeminfo.loadavg[2] = 0;
 error2:
-        systeminfo.total_mem_kbyte   = 0;
-        systeminfo.total_mem_percent = 0;
+        systeminfo.total_mem = 0ULL;
+        systeminfo.total_mem_percent = 0.;
 error3:
-        systeminfo.total_cpu_user_percent = 0;
-        systeminfo.total_cpu_syst_percent = 0;
-        systeminfo.total_cpu_wait_percent = 0;
+        systeminfo.total_cpu_user_percent = 0.;
+        systeminfo.total_cpu_syst_percent = 0.;
+        systeminfo.total_cpu_wait_percent = 0.;
 
         return false;
 }
@@ -232,15 +232,15 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
                         pt[i].time_prev    = oldpt[oldentry].time;
 
                         /* The cpu_percent may be set already (for example by HPUX module) */
-                        if (pt[i].cpu_percent  == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
-                                pt[i].cpu_percent = (int)((1000 * (double)(pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus);
-                                if (pt[i].cpu_percent > 1000)
-                                        pt[i].cpu_percent = 1000;
+                        if (pt[i].cpu_percent == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
+                                pt[i].cpu_percent = (100. * (double)(pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
+                                if (pt[i].cpu_percent > 100.)
+                                        pt[i].cpu_percent = 100.;
                         }
                 } else {
                         pt[i].cputime_prev = 0;
-                        pt[i].time_prev    = 0.0;
-                        pt[i].cpu_percent  = 0;
+                        pt[i].time_prev    = 0.;
+                        pt[i].cpu_percent  = 0.;
                 }
 
                 if (pt[i].pid == pt[i].ppid) {

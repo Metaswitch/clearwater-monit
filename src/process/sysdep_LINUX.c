@@ -110,8 +110,8 @@ static unsigned long long old_cpu_user     = 0;
 static unsigned long long old_cpu_syst     = 0;
 static unsigned long long old_cpu_wait     = 0;
 static unsigned long long old_cpu_total    = 0;
-static int                page_shift_to_kb = 0;
 
+static long page_size = 0;
 
 /**
  * Get system start time
@@ -133,8 +133,6 @@ static time_t get_starttime() {
 boolean_t init_process_info_sysdep(void) {
         char *ptr;
         char  buf[2048];
-        long  page_size;
-        int   page_shift;
 
         if (! read_proc_file(buf, sizeof(buf), "meminfo", -1, NULL)) {
                 DEBUG("system statistic error -- cannot read /proc/meminfo\n");
@@ -144,7 +142,7 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
-        if (sscanf(ptr+strlen(MEMTOTAL), "%ld", &systeminfo.mem_kbyte_max) != 1) {
+        if (sscanf(ptr+strlen(MEMTOTAL), "%ld", &systeminfo.mem_max) != 1) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
@@ -161,10 +159,6 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system statistic error -- cannot get page size: %s\n", STRERROR);
                 return false;
         }
-
-        for (page_shift = 0; page_size != 1; page_size >>= 1, page_shift++)
-                ;
-        page_shift_to_kb = page_shift - 10;
 
         return true;
 }
@@ -288,7 +282,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].cputime = ((float)(stat_item_utime + stat_item_stime) * 10.0) / HZ; // jiffies -> seconds = 1 / HZ. HZ is defined in "asm/param.h" and it is usually 1/100s but on alpha system it is 1/1024s
                 pt[i].cpu_percent = 0;
-                pt[i].mem_kbyte = (page_shift_to_kb < 0) ? (stat_item_rss >> abs(page_shift_to_kb)) : (stat_item_rss << abs(page_shift_to_kb));
+                pt[i].mem = stat_item_rss * page_size;
                 if (stat_item_state == 'Z') // State is Zombie -> then we are a Zombie ... clear or? (-:
                         pt[i].zombie = true;
         }
@@ -327,7 +321,7 @@ int getloadavg_sysdep(double *loadv, int nelem) {
 
 
 /**
- * This routine returns kbyte of real memory in use.
+ * This routine returns real memory in use.
  * @return: true if successful, false if failed
  */
 boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
@@ -356,7 +350,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 DEBUG("system statistic error -- cannot get real memory cache amount\n");
         if (! (ptr = strstr(buf, SLABRECLAIMABLE)) || sscanf(ptr + strlen(SLABRECLAIMABLE), "%ld", &slabreclaimable) != 1)
                 DEBUG("system statistic error -- cannot get slab reclaimable memory amount\n");
-        si->total_mem_kbyte = systeminfo.mem_kbyte_max - mem_free - buffers - cached - slabreclaimable;
+        si->total_mem = systeminfo.mem_max - mem_free - buffers - cached - slabreclaimable;
 
         /* Swap */
         if (! (ptr = strstr(buf, SWAPTOTAL)) || sscanf(ptr + strlen(SWAPTOTAL), "%ld", &swap_total) != 1) {
@@ -367,14 +361,14 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- cannot get swap free amount\n");
                 goto error;
         }
-        si->swap_kbyte_max   = swap_total;
-        si->total_swap_kbyte = swap_total - swap_free;
+        si->swap_max   = swap_total;
+        si->total_swap = swap_total - swap_free;
 
         return true;
 
 error:
-        si->total_mem_kbyte = 0;
-        si->swap_kbyte_max = 0;
+        si->total_mem = 0ULL;
+        si->swap = 0ULL;
         return false;
 }
 
@@ -422,15 +416,15 @@ boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
         cpu_user  = cpu_user + cpu_nice;
 
         if (old_cpu_total == 0) {
-                si->total_cpu_user_percent = -10;
-                si->total_cpu_syst_percent = -10;
-                si->total_cpu_wait_percent = -10;
+                si->total_cpu_user_percent = -1.;
+                si->total_cpu_syst_percent = -1.;
+                si->total_cpu_wait_percent = -1.;
         } else {
                 unsigned long long delta = cpu_total - old_cpu_total;
 
-                si->total_cpu_user_percent = (int)(1000 * (double)(cpu_user - old_cpu_user) / delta);
-                si->total_cpu_syst_percent = (int)(1000 * (double)(cpu_syst - old_cpu_syst) / delta);
-                si->total_cpu_wait_percent = (int)(1000 * (double)(cpu_wait - old_cpu_wait) / delta);
+                si->total_cpu_user_percent = 100. * (double)(cpu_user - old_cpu_user) / delta;
+                si->total_cpu_syst_percent = 100. * (double)(cpu_syst - old_cpu_syst) / delta;
+                si->total_cpu_wait_percent = 100. * (double)(cpu_wait - old_cpu_wait) / delta;
         }
 
         old_cpu_user  = cpu_user;
@@ -440,9 +434,9 @@ boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
         return true;
 
 error:
-        si->total_cpu_user_percent = 0;
-        si->total_cpu_syst_percent = 0;
-        si->total_cpu_wait_percent = 0;
+        si->total_cpu_user_percent = 0.;
+        si->total_cpu_syst_percent = 0.;
+        si->total_cpu_wait_percent = 0.;
         return false;
 }
 

@@ -1971,19 +1971,19 @@ resourcesystemopt  : resourceload
 resourcecpuproc : CPU operator NUMBER PERCENT {
                     resourceset.resource_id = Resource_CpuPercent;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = ($3 * 10);
+                    resourceset.limit = $3;
                   }
                 | TOTALCPU operator NUMBER PERCENT {
                     resourceset.resource_id = Resource_CpuPercentTotal;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = ($3 * 10);
+                    resourceset.limit = $3;
                   }
                 ;
 
 resourcecpu     : resourcecpuid operator NUMBER PERCENT {
                     resourceset.resource_id = $<number>1;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = ($3 * 10);
+                    resourceset.limit = $3;
                   }
                 ;
 
@@ -1996,34 +1996,34 @@ resourcecpuid   : CPUUSER   { $<number>$ = Resource_CpuUser; }
 resourcemem     : MEMORY operator value unit {
                     resourceset.resource_id = Resource_MemoryKbyte;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = (int) ($<real>3 * ($<number>4 / 1024.0));
+                    resourceset.limit = $<real>3 * $<number>4;
                   }
                 | MEMORY operator NUMBER PERCENT {
                     resourceset.resource_id = Resource_MemoryPercent;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = ($3 * 10);
+                    resourceset.limit = $3;
                   }
                 | TOTALMEMORY operator value unit {
                     resourceset.resource_id = Resource_MemoryKbyteTotal;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = (int) ($<real>3 * ($<number>4 / 1024.0));
+                    resourceset.limit = $<real>3 * $<number>4;
                   }
                 | TOTALMEMORY operator NUMBER PERCENT  {
                     resourceset.resource_id = Resource_MemoryPercentTotal;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = ($3 * 10);
+                    resourceset.limit = $3;
                   }
                 ;
 
 resourceswap    : SWAP operator value unit {
                     resourceset.resource_id = Resource_SwapKbyte;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = (int) ($<real>3 * ($<number>4 / 1024.0));
+                    resourceset.limit = $<real>3 * $<number>4;
                   }
                 | SWAP operator NUMBER PERCENT {
                     resourceset.resource_id = Resource_SwapPercent;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = ($3 * 10);
+                    resourceset.limit = $3;
                   }
                 ;
 
@@ -2037,7 +2037,7 @@ resourcechild   : CHILDREN operator NUMBER {
 resourceload    : resourceloadavg operator value {
                     resourceset.resource_id = $<number>1;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = (int) ($<real>3 * 10.0);
+                    resourceset.limit = $<real>3;
                   }
                 ;
 
@@ -2193,7 +2193,7 @@ inode           : IF INODE operator NUMBER rate1 THEN action1 recovery {
                 | IF INODE operator NUMBER PERCENT rate1 THEN action1 recovery {
                     filesystemset.resource = Resource_Inode;
                     filesystemset.operator = $<number>3;
-                    filesystemset.limit_percent = (int)($4 * 10);
+                    filesystemset.limit_percent = $4;
                     addeventaction(&(filesystemset).action, $<number>8, $<number>9);
                     addfilesystem(&filesystemset);
                   }
@@ -2207,7 +2207,7 @@ inode           : IF INODE operator NUMBER rate1 THEN action1 recovery {
                 | IF INODE TFREE operator NUMBER PERCENT rate1 THEN action1 recovery {
                     filesystemset.resource = Resource_InodeFree;
                     filesystemset.operator = $<number>4;
-                    filesystemset.limit_percent = (int)($5 * 10);
+                    filesystemset.limit_percent = $5;
                     addeventaction(&(filesystemset).action, $<number>9, $<number>10);
                     addfilesystem(&filesystemset);
                   }
@@ -2225,7 +2225,7 @@ space           : IF SPACE operator value unit rate1 THEN action1 recovery {
                 | IF SPACE operator NUMBER PERCENT rate1 THEN action1 recovery {
                     filesystemset.resource = Resource_Space;
                     filesystemset.operator = $<number>3;
-                    filesystemset.limit_percent = (int)($4 * 10);
+                    filesystemset.limit_percent = $4;
                     addeventaction(&(filesystemset).action, $<number>8, $<number>9);
                     addfilesystem(&filesystemset);
                   }
@@ -2241,7 +2241,7 @@ space           : IF SPACE operator value unit rate1 THEN action1 recovery {
                 | IF SPACE TFREE operator NUMBER PERCENT rate1 THEN action1 recovery {
                     filesystemset.resource = Resource_SpaceFree;
                     filesystemset.operator = $<number>4;
-                    filesystemset.limit_percent = (int)($5 * 10);
+                    filesystemset.limit_percent = $5;
                     addeventaction(&(filesystemset).action, $<number>9, $<number>10);
                     addfilesystem(&filesystemset);
                   }
@@ -4392,7 +4392,7 @@ static void reset_filesystemset() {
         filesystemset.resource = 0;
         filesystemset.operator = Operator_Equal;
         filesystemset.limit_absolute = -1;
-        filesystemset.limit_percent = -1;
+        filesystemset.limit_percent = -1.;
         filesystemset.action = NULL;
 }
 

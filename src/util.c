@@ -1201,7 +1201,7 @@ void Util_printService(Service_T s) {
                                ?
                                StringBuffer_toString(Util_printRule(buf, o->action, "if %s %lld", operatornames[o->operator], o->limit_absolute))
                                :
-                               StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent / 10.))
+                               StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent))
                                );
                 } else if (o->resource == Resource_InodeFree) {
                         printf(" %-20s = %s\n", "Inodes free limit",
@@ -1209,7 +1209,7 @@ void Util_printService(Service_T s) {
                                ?
                                StringBuffer_toString(Util_printRule(buf, o->action, "if %s %lld", operatornames[o->operator], o->limit_absolute))
                                :
-                               StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent / 10.))
+                               StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent))
                                );
                 } else if (o->resource == Resource_Space) {
                         if (o->limit_absolute > -1) {
@@ -1218,7 +1218,7 @@ void Util_printService(Service_T s) {
                                 else
                                        printf(" %-20s = %s\n", "Space usage limit", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %lld blocks", operatornames[o->operator], o->limit_absolute)));
                         } else {
-                               printf(" %-20s = %s\n", "Space usage limit", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent / 10.)));
+                               printf(" %-20s = %s\n", "Space usage limit", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent)));
                         }
                 } else if (o->resource == Resource_SpaceFree) {
                         if (o->limit_absolute > -1) {
@@ -1227,7 +1227,7 @@ void Util_printService(Service_T s) {
                                 else
                                        printf(" %-20s = %s\n", "Space free limit", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %lld blocks", operatornames[o->operator], o->limit_absolute)));
                         } else {
-                               printf(" %-20s = %s\n", "Space free limit", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent / 10.)));
+                               printf(" %-20s = %s\n", "Space free limit", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit_percent)));
                         }
                 }
         }
@@ -1306,19 +1306,19 @@ void Util_printService(Service_T s) {
                         case Resource_CpuWait:
                         case Resource_MemoryPercent:
                         case Resource_SwapPercent:
-                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit / 10.0)));
+                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f%%", operatornames[o->operator], o->limit)));
                                 break;
 
                         case Resource_MemoryKbyte:
                         case Resource_SwapKbyte:
                         case Resource_MemoryKbyteTotal:
-                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %s", operatornames[o->operator], Str_bytesToSize(o->limit * 1024., buffer))));
+                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %s", operatornames[o->operator], Str_bytesToSize(o->limit, buffer))));
                                 break;
 
                         case Resource_LoadAverage1m:
                         case Resource_LoadAverage5m:
                         case Resource_LoadAverage15m:
-                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f", operatornames[o->operator], o->limit / 10.0)));
+                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f", operatornames[o->operator], o->limit)));
                                 break;
 
                         case Resource_Children:
@@ -1730,9 +1730,9 @@ void Util_resetInfo(Service_T s) {
                         s->inf->priv.filesystem.f_blocksfreetotal = 0LL;
                         s->inf->priv.filesystem.f_files = 0LL;
                         s->inf->priv.filesystem.f_filesfree = 0LL;
-                        s->inf->priv.filesystem.inode_percent = 0;
+                        s->inf->priv.filesystem.inode_percent = 0.;
                         s->inf->priv.filesystem.inode_total = 0LL;
-                        s->inf->priv.filesystem.space_percent = 0;
+                        s->inf->priv.filesystem.space_percent = 0.;
                         s->inf->priv.filesystem.space_total = 0LL;
                         s->inf->priv.filesystem._flags = -1;
                         s->inf->priv.filesystem.flags = -1;
@@ -1772,12 +1772,12 @@ void Util_resetInfo(Service_T s) {
                         s->inf->priv.process.gid = -1;
                         s->inf->priv.process.zombie = false;
                         s->inf->priv.process.children = 0;
-                        s->inf->priv.process.mem_kbyte = 0L;
-                        s->inf->priv.process.total_mem_kbyte = 0L;
-                        s->inf->priv.process.mem_percent = 0;
-                        s->inf->priv.process.total_mem_percent = 0;
-                        s->inf->priv.process.cpu_percent = 0;
-                        s->inf->priv.process.total_cpu_percent = 0;
+                        s->inf->priv.process.mem = 0ULL;
+                        s->inf->priv.process.total_mem = 0ULL;
+                        s->inf->priv.process.mem_percent = 0.;
+                        s->inf->priv.process.total_mem_percent = 0.;
+                        s->inf->priv.process.cpu_percent = 0.;
+                        s->inf->priv.process.total_cpu_percent = 0.;
                         s->inf->priv.process.uptime = 0;
                         break;
                 case Service_Net:

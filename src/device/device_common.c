@@ -111,8 +111,8 @@ boolean_t filesystem_usage(Service_T s) {
                 s->inf->priv.filesystem.mode = sb.st_mode;
                 s->inf->priv.filesystem.uid = sb.st_uid;
                 s->inf->priv.filesystem.gid = sb.st_gid;
-                s->inf->priv.filesystem.inode_percent = s->inf->priv.filesystem.f_files > 0 ? (int)((1000.0 * (s->inf->priv.filesystem.f_files - s->inf->priv.filesystem.f_filesfree)) / (float)s->inf->priv.filesystem.f_files) : 0;
-                s->inf->priv.filesystem.space_percent = s->inf->priv.filesystem.f_blocks > 0 ? (int)((1000.0 * (s->inf->priv.filesystem.f_blocks - s->inf->priv.filesystem.f_blocksfreetotal)) / (float)s->inf->priv.filesystem.f_blocks) : 0;
+                s->inf->priv.filesystem.inode_percent = s->inf->priv.filesystem.f_files > 0 ? ((100.0 * (s->inf->priv.filesystem.f_files - s->inf->priv.filesystem.f_filesfree)) / (float)s->inf->priv.filesystem.f_files) : 0.;
+                s->inf->priv.filesystem.space_percent = s->inf->priv.filesystem.f_blocks > 0 ? ((100.0 * (s->inf->priv.filesystem.f_blocks - s->inf->priv.filesystem.f_blocksfreetotal)) / (float)s->inf->priv.filesystem.f_blocks) : 0.;
                 s->inf->priv.filesystem.inode_total = s->inf->priv.filesystem.f_files - s->inf->priv.filesystem.f_filesfree;
                 s->inf->priv.filesystem.space_total = s->inf->priv.filesystem.f_blocks - s->inf->priv.filesystem.f_blocksfreetotal;
                 return true;

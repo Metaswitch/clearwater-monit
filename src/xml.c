@@ -129,16 +129,16 @@ static void document_head(StringBuffer_T B, int V, const char *myip) {
                             "<version>%s</version>"
                             "<machine>%s</machine>"
                             "<cpu>%d</cpu>"
-                            "<memory>%lu</memory>"
-                            "<swap>%lu</swap>"
+                            "<memory>%llu</memory>"
+                            "<swap>%llu</swap>"
                             "</platform>",
                             systeminfo.uname.sysname,
                             systeminfo.uname.release,
                             systeminfo.uname.version,
                             systeminfo.uname.machine,
                             systeminfo.cpus,
-                            systeminfo.mem_kbyte_max,
-                            systeminfo.swap_kbyte_max);
+                            (unsigned long long)((double)systeminfo.mem_max / 1024.),   // Send as kB for backward compatibility
+                            (unsigned long long)((double)systeminfo.swap_max / 1024.)); // Send as kB for backward compatibility
 }
 
 
@@ -245,7 +245,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                 (int)S->inf->priv.filesystem.uid,
                                                 (int)S->inf->priv.filesystem.gid,
                                                 S->inf->priv.filesystem.flags,
-                                                S->inf->priv.filesystem.space_percent/10.,
+                                                S->inf->priv.filesystem.space_percent,
                                                 S->inf->priv.filesystem.f_bsize > 0 ? (double)S->inf->priv.filesystem.space_total / 1048576. * (double)S->inf->priv.filesystem.f_bsize : 0.,
                                                 S->inf->priv.filesystem.f_bsize > 0 ? (double)S->inf->priv.filesystem.f_blocks / 1048576. * (double)S->inf->priv.filesystem.f_bsize : 0.);
                                         if (S->inf->priv.filesystem.f_files > 0) {
@@ -255,7 +255,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                         "<usage>%lld</usage>"
                                                         "<total>%lld</total>"
                                                         "</inode>",
-                                                        S->inf->priv.filesystem.inode_percent/10.,
+                                                        S->inf->priv.filesystem.inode_percent,
                                                         S->inf->priv.filesystem.inode_total,
                                                         S->inf->priv.filesystem.f_files);
                                         }
@@ -333,20 +333,20 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                         "<memory>"
                                                         "<percent>%.1f</percent>"
                                                         "<percenttotal>%.1f</percenttotal>"
-                                                        "<kilobyte>%ld</kilobyte>"
-                                                        "<kilobytetotal>%ld</kilobytetotal>"
+                                                        "<kilobyte>%llu</kilobyte>"
+                                                        "<kilobytetotal>%llu</kilobytetotal>"
                                                         "</memory>"
                                                         "<cpu>"
                                                         "<percent>%.1f</percent>"
                                                         "<percenttotal>%.1f</percenttotal>"
                                                         "</cpu>",
                                                         S->inf->priv.process.children,
-                                                        S->inf->priv.process.mem_percent/10.0,
-                                                        S->inf->priv.process.total_mem_percent/10.0,
-                                                        S->inf->priv.process.mem_kbyte,
-                                                        S->inf->priv.process.total_mem_kbyte,
-                                                        S->inf->priv.process.cpu_percent/10.0,
-                                                        S->inf->priv.process.total_cpu_percent/10.0);
+                                                        S->inf->priv.process.mem_percent,
+                                                        S->inf->priv.process.total_mem_percent,
+                                                        (unsigned long long)((double)S->inf->priv.process.mem / 1024.),       // Send as kB for backward compatibility
+                                                        (unsigned long long)((double)S->inf->priv.process.total_mem / 1024.), // Send as kB for backward compatibility
+                                                        S->inf->priv.process.cpu_percent,
+                                                        S->inf->priv.process.total_cpu_percent);
                                         }
                                         break;
 
@@ -407,25 +407,25 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                     "</cpu>"
                                                     "<memory>"
                                                     "<percent>%.1f</percent>"
-                                                    "<kilobyte>%ld</kilobyte>"
+                                                    "<kilobyte>%llu</kilobyte>"
                                                     "</memory>"
                                                     "<swap>"
                                                     "<percent>%.1f</percent>"
-                                                    "<kilobyte>%ld</kilobyte>"
+                                                    "<kilobyte>%llu</kilobyte>"
                                                     "</swap>"
                                                     "</system>",
                                                     systeminfo.loadavg[0],
                                                     systeminfo.loadavg[1],
                                                     systeminfo.loadavg[2],
-                                                    systeminfo.total_cpu_user_percent > 0 ? systeminfo.total_cpu_user_percent/10. : 0,
-                                                    systeminfo.total_cpu_syst_percent > 0 ? systeminfo.total_cpu_syst_percent/10. : 0,
+                                                    systeminfo.total_cpu_user_percent > 0. ? systeminfo.total_cpu_user_percent : 0.,
+                                                    systeminfo.total_cpu_syst_percent > 0. ? systeminfo.total_cpu_syst_percent : 0.,
 #ifdef HAVE_CPU_WAIT
-                                                    systeminfo.total_cpu_wait_percent > 0 ? systeminfo.total_cpu_wait_percent/10. : 0,
+                                                    systeminfo.total_cpu_wait_percent > 0. ? systeminfo.total_cpu_wait_percent : 0.,
 #endif
-                                                    systeminfo.total_mem_percent/10.,
-                                                    systeminfo.total_mem_kbyte,
-                                                    systeminfo.total_swap_percent/10.,
-                                                    systeminfo.total_swap_kbyte);
+                                                    systeminfo.total_mem_percent,
+                                                    (unsigned long long)((double)systeminfo.total_mem / 1024.),               // Send as kB for backward compatibility
+                                                    systeminfo.total_swap_percent,
+                                                    (unsigned long long)((double)systeminfo.total_swap / 1024.));             // Send as kB for backward compatibility
                         }
                         if (S->type == Service_Program && S->program->started) {
                                 StringBuffer_append(B,
