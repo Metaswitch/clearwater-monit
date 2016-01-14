@@ -128,9 +128,9 @@ boolean_t init_process_info_sysdep(void) {
                 return false;
         }
 
-        page_size                = getpagesize();
-        systeminfo.mem_kbyte_max = (unsigned long)(mem.real_total * (page_size / 1024));
-        systeminfo.cpus          = sysconf(_SC_NPROCESSORS_ONLN);
+        page_size          = getpagesize();
+        systeminfo.mem_max = mem.real_total * page_size;
+        systeminfo.cpus    = sysconf(_SC_NPROCESSORS_ONLN);
 
         return true;
 }
@@ -193,13 +193,12 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         for (int i = 0; i < treesize; i++) {
 
                 pt[i].cputime     = 0;
-                pt[i].cpu_percent = 0;
-                pt[i].mem_kbyte   = 0;
+                pt[i].cpu_percent = 0.;
                 pt[i].pid         = procs[i].pi_pid;
                 pt[i].ppid        = procs[i].pi_ppid;
                 pt[i].euid        = procs[i].pi_uid;
                 pt[i].starttime   = procs[i].pi_start;
-                pt[i].mem_kbyte   = (procs[i].pi_drss + procs[i].pi_trss) * (page_size / 1024);
+                pt[i].mem         = (procs[i].pi_drss + procs[i].pi_trss) * page_size;
                 pt[i].cputime     = (procs[i].pi_ru.ru_utime.tv_sec + procs[i].pi_ru.ru_utime.tv_usec * 1.0e-6 + procs[i].pi_ru.ru_stime.tv_sec + procs[i].pi_ru.ru_stime.tv_usec * 1.0e-6) * 10;
                 pt[i].zombie      = procs[i].pi_state == SZOMB ? true: false;
 
@@ -260,11 +259,11 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- perfstat_memory_total failed: %s\n", STRERROR);
                 return false;
         }
-        si->total_mem_kbyte = (unsigned long)((mem.real_total - mem.real_free - mem.numperm) * (page_size / 1024));
+        si->total_mem = (mem.real_total - mem.real_free - mem.numperm) * page_size;
 
         /* Swap */
-        si->swap_kbyte_max   = (unsigned long)(mem.pgsp_total * 4);                   /* 4kB blocks */
-        si->total_swap_kbyte = (unsigned long)((mem.pgsp_total - mem.pgsp_free) * 4); /* 4kB blocks */
+        si->swap_max   = mem.pgsp_total * 4096;                   /* 4kB blocks */
+        si->total_swap = (mem.pgsp_total - mem.pgsp_free) * 4096; /* 4kB blocks */
 
         return true;
 }
@@ -296,13 +295,13 @@ boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
 
         if (cpu_initialized) {
                 if (cpu_total > 0) {
-                        si->total_cpu_user_percent = 1000 * ((double)(cpu_user - cpu_user_old) / (double)cpu_total);
-                        si->total_cpu_syst_percent = 1000 * ((double)(cpu_syst - cpu_syst_old) / (double)cpu_total);
-                        si->total_cpu_wait_percent = 1000 * ((double)(cpu_wait - cpu_wait_old) / (double)cpu_total);
+                        si->total_cpu_user_percent = 100. * ((double)(cpu_user - cpu_user_old) / (double)cpu_total);
+                        si->total_cpu_syst_percent = 100. * ((double)(cpu_syst - cpu_syst_old) / (double)cpu_total);
+                        si->total_cpu_wait_percent = 100. * ((double)(cpu_wait - cpu_wait_old) / (double)cpu_total);
                 } else {
-                        si->total_cpu_user_percent = 0;
-                        si->total_cpu_syst_percent = 0;
-                        si->total_cpu_wait_percent = 0;
+                        si->total_cpu_user_percent = 0.;
+                        si->total_cpu_syst_percent = 0.;
+                        si->total_cpu_wait_percent = 0.;
                 }
         }
 

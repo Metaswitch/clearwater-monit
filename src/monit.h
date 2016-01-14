@@ -525,10 +525,10 @@ typedef struct myprocesstree {
         int           gid;
         int           children_num;
         int           children_sum;
-        short         cpu_percent;
-        short         cpu_percent_sum;
-        unsigned long mem_kbyte;
-        unsigned long mem_kbyte_sum;
+        float         cpu_percent;
+        float         cpu_percent_sum;
+        uint64_t      mem;
+        uint64_t      mem_sum;
         time_t        starttime;
         char         *cmdline;
 
@@ -545,15 +545,15 @@ typedef struct myprocesstree {
 /** Defines data for systemwide statistic */
 typedef struct mysysteminfo {
         int cpus;                                              /**< Number of CPUs */
-        short total_mem_percent;       /**< Total real memory in use in the system */
-        short total_swap_percent;             /**< Total swap in use in the system */
-        short total_cpu_user_percent;    /**< Total CPU in use in user space (pct.)*/
-        short total_cpu_syst_percent;  /**< Total CPU in use in kernel space (pct.)*/
-        short total_cpu_wait_percent;       /**< Total CPU in use in waiting (pct.)*/
-        unsigned long mem_kbyte_max;               /**< Maximal system real memory */
-        unsigned long swap_kbyte_max;                               /**< Swap size */
-        unsigned long total_mem_kbyte; /**< Total real memory in use in the system */
-        unsigned long total_swap_kbyte;       /**< Total swap in use in the system */
+        float total_mem_percent;       /**< Total real memory in use in the system */
+        float total_swap_percent;             /**< Total swap in use in the system */
+        float total_cpu_user_percent;    /**< Total CPU in use in user space (pct.)*/
+        float total_cpu_syst_percent;  /**< Total CPU in use in kernel space (pct.)*/
+        float total_cpu_wait_percent;       /**< Total CPU in use in waiting (pct.)*/
+        uint64_t mem_max;                          /**< Maximal system real memory */
+        uint64_t swap_max;                                          /**< Swap size */
+        uint64_t total_mem;            /**< Total real memory in use in the system */
+        uint64_t total_swap;                  /**< Total swap in use in the system */
         double loadavg[3];                                /**< Load average triple */
         struct utsname uname;        /**< Platform information provided by uname() */
         struct timeval collected;                    /**< When were data collected */
@@ -699,7 +699,7 @@ typedef struct mydependant {
 typedef struct myresource {
         Resource_Type resource_id;                     /**< Which value is checked */
         Operator_Type operator;                           /**< Comparison operator */
-        long limit;                                     /**< Limit of the resource */
+        double limit;                                   /**< Limit of the resource */
         EventAction_T action;  /**< Description of the action upon event occurence */
 
         /** For internal use */
@@ -911,7 +911,7 @@ typedef struct myfilesystem {
         Resource_Type resource;               /**< Whether to check inode or space */
         Operator_Type operator;                           /**< Comparison operator */
         long long limit_absolute;                          /**< Watermark - blocks */
-        short limit_percent;                              /**< Watermark - percent */
+        float limit_percent;                              /**< Watermark - percent */
         EventAction_T action;  /**< Description of the action upon event occurence */
 
         /** For internal use */
@@ -931,8 +931,8 @@ typedef struct myinfo {
                         long long  f_filesfree;             /**< Free file nodes in filesystem */
                         long long  inode_total;                  /**< Used inode total objects */
                         long long  space_total;                   /**< Used space total blocks */
-                        short inode_percent;                   /**< Used inode percentage * 10 */
-                        short space_percent;                   /**< Used space percentage * 10 */
+                        float inode_percent;                        /**< Used inode percentage */
+                        float space_percent;                        /**< Used space percentage */
                         int _flags;                      /**< Filesystem flags from last cycle */
                         int flags;                     /**< Filesystem flags from actual cycle */
                         int uid;                                              /**< Owner's uid */
@@ -976,12 +976,12 @@ typedef struct myinfo {
                         int gid;                                              /**< Process GID */
                         boolean_t zombie;
                         int children;
-                        long mem_kbyte;
-                        long total_mem_kbyte;
-                        short mem_percent;                                /**< percentage * 10 */
-                        short total_mem_percent;                          /**< percentage * 10 */
-                        short cpu_percent;                                /**< percentage * 10 */
-                        short total_cpu_percent;                          /**< percentage * 10 */
+                        uint64_t mem;
+                        uint64_t total_mem;
+                        float mem_percent;                                     /**< percentage */
+                        float total_mem_percent;                               /**< percentage */
+                        float cpu_percent;                                     /**< percentage */
+                        float total_cpu_percent;                               /**< percentage */
                         time_t uptime;                                     /**< Process uptime */
                 } process;
 

@@ -76,7 +76,7 @@
 /* ----------------------------------------------------------------- Private */
 
 
-static int      pagesize_kbyte;
+static int      pagesize;
 static long     total_old    = 0;
 static long     cpu_user_old = 0;
 static long     cpu_syst_old = 0;
@@ -95,20 +95,18 @@ boolean_t init_process_info_sysdep(void) {
         }
 
         mib[1] = HW_PHYSMEM;
-        len    = sizeof(systeminfo.mem_kbyte_max);
-        if (sysctl(mib, 2, &systeminfo.mem_kbyte_max, &len, NULL, 0) == -1) {
+        len    = sizeof(systeminfo.mem_max);
+        if (sysctl(mib, 2, &systeminfo.mem_max, &len, NULL, 0) == -1) {
                 DEBUG("system statistic error -- cannot get real memory amount: %s\n", STRERROR);
                 return false;
         }
-        systeminfo.mem_kbyte_max /= 1024;
 
         mib[1] = HW_PAGESIZE;
-        len    = sizeof(pagesize_kbyte);
-        if (sysctl(mib, 2, &pagesize_kbyte, &len, NULL, 0) == -1) {
+        len    = sizeof(pagesize);
+        if (sysctl(mib, 2, &pagesize, &len, NULL, 0) == -1) {
                 DEBUG("system statistic error -- cannot get memory page size: %s\n", STRERROR);
                 return false;
         }
-        pagesize_kbyte /= 1024;
 
         return true;
 }
@@ -164,8 +162,8 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].gid         = pinfo[i].p_rgid;
                 pt[i].starttime   = pinfo[i].p_ustart_sec;
                 pt[i].cputime     = (long)((pinfo[i].p_rtime_sec * 10) + (pinfo[i].p_rtime_usec / 100000));
-                pt[i].cpu_percent = 0;
-                pt[i].mem_kbyte   = (unsigned long)(pinfo[i].p_vm_rssize * pagesize_kbyte);
+                pt[i].cpu_percent = 0.;
+                pt[i].mem         = pinfo[i].p_vm_rssize * pagesize;
                 if (pinfo[i].p_stat == SZOMB)
                         pt[i].zombie = true;
                 pt[i].time = get_float_time();
@@ -214,12 +212,12 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
         size_t len = sizeof(struct uvmexp_sysctl);
         if (sysctl(mib, 2, &vm, &len, NULL, 0) == -1) {
                 LogError("system statistic error -- cannot get memory usage: %s\n", STRERROR);
-                si->swap_kbyte_max = 0;
+                si->swap_max = 0ULL;
                 return false;
         }
-        si->total_mem_kbyte = (long)((double)(vm.active + vm.wired) * ((double)vm.pagesize / 1024.));
-        si->swap_kbyte_max = (unsigned long)((double)vm.swpages * ((double)vm.pagesize / 1024.));
-        si->total_swap_kbyte = (unsigned long)((double)vm.swpginuse * ((double)vm.pagesize / 1024.));
+        si->total_mem = (vm.active + vm.wired) * vm.pagesize;
+        si->swap_max = vm.swpages * vm.pagesize;
+        si->total_swap = vm.swpginuse * vm.pagesize;
         return true;
 }
 
@@ -246,8 +244,8 @@ boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
         total     = total_new - total_old;
         total_old = total_new;
 
-        si->total_cpu_user_percent = (total > 0) ? (int)(1000 * (double)(cp_time[CP_USER] - cpu_user_old) / total) : -10;
-        si->total_cpu_syst_percent = (total > 0) ? (int)(1000 * (double)(cp_time[CP_SYS] - cpu_syst_old) / total) : -10;
+        si->total_cpu_user_percent = (total > 0) ? (100. * (double)(cp_time[CP_USER] - cpu_user_old) / total) : -1.;
+        si->total_cpu_syst_percent = (total > 0) ? (100. * (double)(cp_time[CP_SYS] - cpu_syst_old) / total) : -1.;
         si->total_cpu_wait_percent = 0; /* there is no wait statistic available */
 
         cpu_user_old = cp_time[CP_USER];

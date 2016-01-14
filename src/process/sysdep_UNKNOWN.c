@@ -37,7 +37,6 @@
 
 
 int init_process_info_sysdep(void) {
-        systeminfo.mem_kbyte_max = 0;
         return false;
 }
 
