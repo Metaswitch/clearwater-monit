@@ -348,7 +348,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 DEBUG("system statistic error -- cannot get real memory cache amount\n");
         if (! (ptr = strstr(buf, SLABRECLAIMABLE)) || sscanf(ptr + strlen(SLABRECLAIMABLE), "%ld", &slabreclaimable) != 1)
                 DEBUG("system statistic error -- cannot get slab reclaimable memory amount\n");
-        si->total_mem = systeminfo.mem_max - mem_free - buffers - cached - slabreclaimable;
+        si->total_mem = systeminfo.mem_max - (mem_free + buffers + cached + slabreclaimable) * 1024;
 
         /* Swap */
         if (! (ptr = strstr(buf, SWAPTOTAL)) || sscanf(ptr + strlen(SWAPTOTAL), "%ld", &swap_total) != 1) {
@@ -359,8 +359,8 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- cannot get swap free amount\n");
                 goto error;
         }
-        si->swap_max   = swap_total;
-        si->total_swap = swap_total - swap_free;
+        si->swap_max = swap_total * 1024;
+        si->total_swap = (swap_total - swap_free) * 1024;
 
         return true;
 
