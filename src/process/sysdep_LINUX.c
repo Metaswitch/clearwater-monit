@@ -147,11 +147,12 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
-        if (sscanf(ptr+strlen(MEMTOTAL), "%ld", &systeminfo.mem_max) != 1) {
+        long mem_max;
+        if (sscanf(ptr+strlen(MEMTOTAL), "%ld", &mem_max) != 1) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
-        systeminfo.mem_max *= 1024;
+        systeminfo.mem_max = mem_max * 1024;
 
         if ((systeminfo.cpus = sysconf(_SC_NPROCESSORS_CONF)) < 0) {
                 DEBUG("system statistic error -- cannot get cpu count: %s\n", STRERROR);
