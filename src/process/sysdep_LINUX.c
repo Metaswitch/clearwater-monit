@@ -368,7 +368,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
 
 error:
         si->total_mem = 0ULL;
-        si->swap = 0ULL;
+        si->swap_max = 0ULL;
         return false;
 }
 
