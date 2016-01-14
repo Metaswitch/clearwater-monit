@@ -46,7 +46,7 @@ Fixed: Support connection parameters preceding send/expect test.
 
 Fixed: Issue #60: The process match check may report false positive.
 
-Fixed: Issue #214: The process match check has high CPU requirements on low power
+Fixed: Issue #214: The process match check had high CPU requirements on low power
 systems.
 
 Fixed: Issue #279: Monit CLI status displayed file size for timestamp.
