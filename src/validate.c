@@ -190,7 +190,6 @@ static State_Type _checkProcessState(Service_T s) {
  */
 static State_Type _checkProcessPid(Service_T s) {
         ASSERT(s);
-        ASSERT(s->inf);
         if (s->inf->priv.process._pid < 0 || s->inf->priv.process.pid < 0) // process pid was not initialized yet
                 return State_Init;
         if (s->inf->priv.process._pid != s->inf->priv.process.pid) {
@@ -209,7 +208,6 @@ static State_Type _checkProcessPid(Service_T s) {
  */
 static State_Type _checkProcessPpid(Service_T s) {
         ASSERT(s);
-        ASSERT(s->inf);
         if (s->inf->priv.process._ppid < 0 || s->inf->priv.process.ppid < 0) // process ppid was not initialized yet
                 return State_Init;
         if (s->inf->priv.process._ppid != s->inf->priv.process.ppid) {
@@ -484,28 +482,31 @@ static State_Type _checkChecksum(Service_T s) {
 /**
  * Test for associated path permission change
  */
-static State_Type _checkPerm(Service_T s, mode_t mode) {
+static State_Type _checkPerm(Service_T s, int mode) {
         ASSERT(s);
         if (s->perm) {
-                mode_t m = mode & 07777;
-                if (m != s->perm->perm) {
-                        if (s->perm->test_changes) {
-                                Event_post(s, Event_Permission, State_Changed, s->perm->action, "permission for %s changed from %04o to %04o", s->path, s->perm->perm, m);
-                                s->perm->perm = m;
-                                return State_Changed;
+                if (mode >= 0) {
+                        mode_t m = mode & 07777;
+                        if (m != s->perm->perm) {
+                                if (s->perm->test_changes) {
+                                        Event_post(s, Event_Permission, State_Changed, s->perm->action, "permission for %s changed from %04o to %04o", s->path, s->perm->perm, m);
+                                        s->perm->perm = m;
+                                        return State_Changed;
+                                } else {
+                                        Event_post(s, Event_Permission, State_Failed, s->perm->action, "permission test failed for %s [current permission %04o]", s->path, m);
+                                        return State_Failed;
+                                }
                         } else {
-                                Event_post(s, Event_Permission, State_Failed, s->perm->action, "permission test failed for %s [current permission %04o]", s->path, m);
-                                return State_Failed;
-                        }
-                } else {
-                        if (s->perm->test_changes) {
-                                Event_post(s, Event_Permission, State_ChangedNot, s->perm->action, "permission not changed for %s", s->path);
-                                return State_ChangedNot;
-                        } else {
-                                Event_post(s, Event_Permission, State_Succeeded, s->perm->action, "permission test succeeded [current permission %04o]", m);
-                                return State_Succeeded;
+                                if (s->perm->test_changes) {
+                                        Event_post(s, Event_Permission, State_ChangedNot, s->perm->action, "permission not changed for %s", s->path);
+                                        return State_ChangedNot;
+                                } else {
+                                        Event_post(s, Event_Permission, State_Succeeded, s->perm->action, "permission test succeeded [current permission %04o]", m);
+                                        return State_Succeeded;
+                                }
                         }
                 }
+                return State_Init;
         }
         return State_Succeeded;
 }
@@ -526,6 +527,7 @@ static State_Type _checkUid(Service_T s, int uid) {
                                 return State_Succeeded;
                         }
                 }
+                return State_Init;
         }
         return State_Succeeded;
 }
@@ -546,6 +548,7 @@ static State_Type _checkEuid(Service_T s, int euid) {
                                 return State_Succeeded;
                         }
                 }
+                return State_Init;
         }
         return State_Succeeded;
 }
@@ -566,6 +569,7 @@ static State_Type _checkGid(Service_T s, int gid) {
                                 return State_Succeeded;
                         }
                 }
+                return State_Init;
         }
         return State_Succeeded;
 }
@@ -802,18 +806,17 @@ final1:
  */
 static State_Type _checkFilesystemFlags(Service_T s) {
         ASSERT(s);
-        ASSERT(s->inf);
-        /* filesystem flags were not initialized yet */
-        if (s->inf->priv.filesystem._flags == -1)
-                return State_Init;
-        if (s->inf->priv.filesystem._flags != s->inf->priv.filesystem.flags) {
+        if (s->inf->priv.filesystem._flags >= 0) {
+                if (s->inf->priv.filesystem._flags != s->inf->priv.filesystem.flags) {
+                        for (Fsflag_T l = s->fsflaglist; l; l = l->next)
+                                Event_post(s, Event_Fsflag, State_Changed, l->action, "filesytem flags changed to %#x", s->inf->priv.filesystem.flags);
+                        return State_Changed;
+                }
                 for (Fsflag_T l = s->fsflaglist; l; l = l->next)
-                        Event_post(s, Event_Fsflag, State_Changed, l->action, "filesytem flags changed to %#x", s->inf->priv.filesystem.flags);
-                return State_Changed;
+                        Event_post(s, Event_Fsflag, State_ChangedNot, l->action, "filesytem flags has not changed");
+                return State_ChangedNot;
         }
-        for (Fsflag_T l = s->fsflaglist; l; l = l->next)
-                Event_post(s, Event_Fsflag, State_ChangedNot, l->action, "filesytem flags has not changed");
-        return State_ChangedNot;
+        return State_Init;
 }
 
 
@@ -1052,6 +1055,7 @@ int validate() {
  */
 State_Type check_process(Service_T s) {
         ASSERT(s);
+        ASSERT(s->inf);
         State_Type rv = State_Succeeded;
         pid_t pid = Util_isProcessRunning(s, false);
         if (! pid) {
@@ -1122,6 +1126,7 @@ State_Type check_process(Service_T s) {
  */
 State_Type check_filesystem(Service_T s) {
         ASSERT(s);
+        ASSERT(s->inf);
         State_Type rv = State_Succeeded;
         if (! filesystem_usage(s)) {
                 Event_post(s, Event_Data, State_Failed, s->action_DATA, "unable to read filesystem '%s' state", s->path);
@@ -1149,6 +1154,7 @@ State_Type check_filesystem(Service_T s) {
  */
 State_Type check_file(Service_T s) {
         ASSERT(s);
+        ASSERT(s->inf);
         struct stat stat_buf;
         State_Type rv = State_Succeeded;
         if (stat(s->path, &stat_buf) != 0) {
@@ -1203,6 +1209,7 @@ State_Type check_file(Service_T s) {
  */
 State_Type check_directory(Service_T s) {
         ASSERT(s);
+        ASSERT(s->inf);
         struct stat stat_buf;
         State_Type rv = State_Succeeded;
         if (stat(s->path, &stat_buf) != 0) {
@@ -1241,6 +1248,7 @@ State_Type check_directory(Service_T s) {
  */
 State_Type check_fifo(Service_T s) {
         ASSERT(s);
+        ASSERT(s->inf);
         struct stat stat_buf;
         State_Type rv = State_Succeeded;
         if (stat(s->path, &stat_buf) != 0) {

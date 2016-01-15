@@ -1736,30 +1736,30 @@ void Util_resetInfo(Service_T s) {
                         s->inf->priv.filesystem.space_total = 0LL;
                         s->inf->priv.filesystem._flags = -1;
                         s->inf->priv.filesystem.flags = -1;
-                        s->inf->priv.filesystem.mode = 0;
-                        s->inf->priv.filesystem.uid = 0;
-                        s->inf->priv.filesystem.gid = 0;
+                        s->inf->priv.filesystem.mode = -1;
+                        s->inf->priv.filesystem.uid = -1;
+                        s->inf->priv.filesystem.gid = -1;
                         break;
                 case Service_File:
                         // persistent: st_inode, readpos
                         s->inf->priv.file.size  = 0;
                         s->inf->priv.file.inode_prev = 0;
-                        s->inf->priv.file.mode = 0;
-                        s->inf->priv.file.uid = 0;
-                        s->inf->priv.file.gid = 0;
+                        s->inf->priv.file.mode = -1;
+                        s->inf->priv.file.uid = -1;
+                        s->inf->priv.file.gid = -1;
                         s->inf->priv.file.timestamp = 0;
                         *s->inf->priv.file.cs_sum = 0;
                         break;
                 case Service_Directory:
-                        s->inf->priv.directory.mode = 0;
-                        s->inf->priv.directory.uid = 0;
-                        s->inf->priv.directory.gid = 0;
+                        s->inf->priv.directory.mode = -1;
+                        s->inf->priv.directory.uid = -1;
+                        s->inf->priv.directory.gid = -1;
                         s->inf->priv.directory.timestamp = 0;
                         break;
                 case Service_Fifo:
-                        s->inf->priv.fifo.mode = 0;
-                        s->inf->priv.fifo.uid = 0;
-                        s->inf->priv.fifo.gid = 0;
+                        s->inf->priv.fifo.mode = -1;
+                        s->inf->priv.fifo.uid = -1;
+                        s->inf->priv.fifo.gid = -1;
                         s->inf->priv.fifo.timestamp = 0;
                         break;
                 case Service_Process:

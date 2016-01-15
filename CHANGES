@@ -80,6 +80,11 @@ Fixed: Issue #309: AIX: The check process by pattern was limited to 80 character
 Fixed: Issue #310: Linux LXC container: the connection test was skipped and port status
 showed a failure.
 
+Fixed: Issue #315: If some file, filesystem, directory or fifo test triggered unmonitor,
+stop or restart, the tests which followed the one which performed that action may fail
+as the collected data were reset to zero during unmonitor/stop/restart action. The status
+also showed wrong values for uid, gid, permission and timestamp during that cycle.
+
 Fixed: If restart action was used with the "if changed checksum" test, the test didn't
 reset the checksum expectation for next cycle properly and failed in every cycle past
 the first detected change.

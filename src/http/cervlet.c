@@ -153,9 +153,9 @@ static void print_service_rules_resource(HttpResponse, Service_T);
 static void print_service_status_port(HttpResponse, Service_T);
 static void print_service_status_socket(HttpResponse, Service_T);
 static void print_service_status_icmp(HttpResponse, Service_T);
-static void print_service_status_perm(HttpResponse, Service_T, mode_t);
-static void print_service_status_uid(HttpResponse, Service_T, uid_t);
-static void print_service_status_gid(HttpResponse, Service_T, gid_t);
+static void print_service_status_perm(HttpResponse, Service_T, int);
+static void print_service_status_uid(HttpResponse, Service_T, int);
+static void print_service_status_gid(HttpResponse, Service_T, int);
 static void print_service_status_timestamp(HttpResponse, Service_T, time_t);
 static void print_service_status_filesystem_flags(HttpResponse, Service_T);
 static void print_service_status_filesystem_blockstotal(HttpResponse, Service_T);
@@ -2097,9 +2097,9 @@ static void print_service_status_icmp(HttpResponse res, Service_T s) {
 }
 
 
-static void print_service_status_perm(HttpResponse res, Service_T s, mode_t mode) {
+static void print_service_status_perm(HttpResponse res, Service_T s, int mode) {
         StringBuffer_append(res->outputbuffer, "<tr><td>Permission</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || mode < 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
                 StringBuffer_append(res->outputbuffer, "<td class='%s'>%o</td>", (s->error & Event_Permission) ? "red-text" : "", mode & 07777);
@@ -2107,9 +2107,9 @@ static void print_service_status_perm(HttpResponse res, Service_T s, mode_t mode
 }
 
 
-static void print_service_status_uid(HttpResponse res, Service_T s, uid_t uid) {
+static void print_service_status_uid(HttpResponse res, Service_T s, int uid) {
         StringBuffer_append(res->outputbuffer, "<tr><td>UID</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || uid < 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
                 StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_Uid) ? "red-text" : "", (int)uid);
@@ -2117,9 +2117,9 @@ static void print_service_status_uid(HttpResponse res, Service_T s, uid_t uid) {
 }
 
 
-static void print_service_status_gid(HttpResponse res, Service_T s, gid_t gid) {
+static void print_service_status_gid(HttpResponse res, Service_T s, int gid) {
         StringBuffer_append(res->outputbuffer, "<tr><td>GID</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || gid < 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
                 StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_Gid) ? "red-text" : "", (int)gid);
@@ -2607,48 +2607,67 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                 if (Util_hasServiceStatus(s)) {
                         switch (s->type) {
                                 case Service_File:
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %o\n"
-                                                    "  %-33s %d\n"
-                                                    "  %-33s %d\n"
-                                                    "  %-33s %s\n",
-                                                    "permission", s->inf->priv.file.mode & 07777,
-                                                    "uid", (int)s->inf->priv.file.uid,
-                                                    "gid", (int)s->inf->priv.file.gid,
-                                                    "size", Str_bytesToSize(s->inf->priv.file.size, buf));
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %s\n",
-                                                    "timestamp", Time_string(s->inf->priv.file.timestamp, buf));
+                                        if (s->inf->priv.file.mode >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.file.mode & 07777);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                        if (s->inf->priv.file.uid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.file.uid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                        if (s->inf->priv.file.gid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.file.gid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "size", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                        if (s->inf->priv.file.timestamp > 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.file.timestamp, buf));
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "timestamp");
                                         if (s->checksum) {
-                                                StringBuffer_append(res->outputbuffer,
-                                                                    "  %-33s %s (%s)\n",
-                                                                    "checksum", s->inf->priv.file.cs_sum,
-                                                                    checksumnames[s->checksum->type]);
+                                                if (s->inf->priv.file.cs_sum && *s->inf->priv.file.cs_sum)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %s (%s)\n", "checksum", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "checksum");
                                         }
                                         break;
 
                                 case Service_Directory:
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %o\n"
-                                                    "  %-33s %d\n"
-                                                    "  %-33s %d\n"
-                                                    "  %-33s %s\n",
-                                                    "permission", s->inf->priv.directory.mode & 07777,
-                                                    "uid", (int)s->inf->priv.directory.uid,
-                                                    "gid", (int)s->inf->priv.directory.gid,
-                                                    "timestamp", Time_string(s->inf->priv.directory.timestamp, buf));
+                                        if (s->inf->priv.directory.mode >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.directory.mode & 07777);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                        if (s->inf->priv.directory.uid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.directory.uid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                        if (s->inf->priv.directory.gid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.directory.gid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
+                                        if (s->inf->priv.directory.timestamp > 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.directory.timestamp, buf));
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "timestamp");
                                         break;
 
                                 case Service_Fifo:
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %o\n"
-                                                    "  %-33s %d\n"
-                                                    "  %-33s %d\n"
-                                                    "  %-33s %s\n",
-                                                    "permission", s->inf->priv.fifo.mode & 07777,
-                                                    "uid", (int)s->inf->priv.fifo.uid,
-                                                    "gid", (int)s->inf->priv.fifo.gid,
-                                                    "timestamp", Time_string(s->inf->priv.fifo.timestamp, buf));
+                                        if (s->inf->priv.fifo.mode >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.fifo.mode & 07777);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                        if (s->inf->priv.fifo.uid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.fifo.uid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                        if (s->inf->priv.fifo.gid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.fifo.gid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
+                                        if (s->inf->priv.fifo.timestamp > 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.fifo.timestamp, buf));
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "timestamp");
                                         break;
 
                                 case Service_Net:
@@ -2686,13 +2705,18 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                         break;
 
                                 case Service_Filesystem:
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %o\n"
-                                                    "  %-33s %d\n"
-                                                    "  %-33s %d\n",
-                                                    "permission", s->inf->priv.filesystem.mode & 07777,
-                                                    "uid", (int)s->inf->priv.filesystem.uid,
-                                                    "gid", (int)s->inf->priv.filesystem.gid);
+                                        if (s->inf->priv.filesystem.mode >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.filesystem.mode & 07777);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                        if (s->inf->priv.filesystem.uid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.filesystem.uid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                        if (s->inf->priv.filesystem.gid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.filesystem.gid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
                                         StringBuffer_append(res->outputbuffer,
                                                             "  %-33s 0x%x\n"
                                                             "  %-33s %s\n",

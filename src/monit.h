@@ -950,12 +950,12 @@ typedef struct myinfo {
                         int flags;                     /**< Filesystem flags from actual cycle */
                         int uid;                                              /**< Owner's uid */
                         int gid;                                              /**< Owner's gid */
-                        mode_t mode;                                           /**< Permission */
+                        int mode;                                              /**< Permission */
                 } filesystem;
 
                 struct {
                         time_t timestamp;                                       /**< Timestamp */
-                        mode_t mode;                                           /**< Permission */
+                        int mode;                                              /**< Permission */
                         int uid;                                              /**< Owner's uid */
                         int gid;                                              /**< Owner's gid */
                         off_t size;                                                  /**< Size */
@@ -967,14 +967,14 @@ typedef struct myinfo {
 
                 struct {
                         time_t timestamp;                                       /**< Timestamp */
-                        mode_t mode;                                           /**< Permission */
+                        int mode;                                              /**< Permission */
                         int uid;                                              /**< Owner's uid */
                         int gid;                                              /**< Owner's gid */
                 } directory;
 
                 struct {
                         time_t timestamp;                                       /**< Timestamp */
-                        mode_t mode;                                           /**< Permission */
+                        int mode;                                              /**< Permission */
                         int uid;                                              /**< Owner's uid */
                         int gid;                                              /**< Owner's gid */
                 } fifo;
