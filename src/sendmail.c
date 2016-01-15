@@ -81,11 +81,10 @@
 /* ------------------------------------------------------------- Definitions */
 
 
-
 typedef struct {
         Socket_T socket;
-        StringBuffer_T status_message;
         boolean_t quit;
+        MTAFlags_t flags;
         const char *server;
         int port;
         const char *username;
@@ -98,7 +97,7 @@ typedef struct {
 /* ----------------------------------------------------------------- Private */
 
 
-void do_send(SendMail_T *S, const char *s, ...) {
+void _request(SendMail_T *S, const char *s, ...) {
         va_list ap;
         va_start(ap,s);
         char *msg = Str_vcat(s, ap);
@@ -110,14 +109,34 @@ void do_send(SendMail_T *S, const char *s, ...) {
 }
 
 
-static void do_status(SendMail_T *S) {
+static void _response(SendMail_T *S) {
         int status = 0;
-        StringBuffer_clear(S->status_message);
         char buf[STRLEN];
         do {
                 if (! Socket_readLine(S->socket, buf, sizeof(buf)))
                         THROW(IOException, "Error receiving data from the mailserver '%s' -- %s", S->server, STRERROR);
-                StringBuffer_append(S->status_message, "%s", buf);
+                // Server features: 250[-|" "]<feature>
+                if (Str_startsWith(buf, "250") && (buf[3] == '-' || buf[3] == ' ')) {
+                        char *flag = buf + 4;
+                        if (Str_startsWith(flag, "DSN")) {
+                                S->flags |= MTA_DSN;
+                        } else if (Str_startsWith(flag, "ETRN")) {
+                                S->flags |= MTA_ETRN;
+                        } else if (Str_startsWith(flag, "8BITMIME")) {
+                                S->flags |= MTA_8BitMIME;
+                        } else if (Str_startsWith(flag, "PIPELINING")) {
+                                S->flags |= MTA_Pipelining;
+                        } else if (Str_startsWith(flag, "ENHANCEDSTATUSCODES")) {
+                                S->flags |= MTA_EnhancedStatusCodes;
+                        } else if (Str_startsWith(flag, "STARTTLS")) {
+                                S->flags |= MTA_StartTLS;
+                        } else if (Str_startsWith(flag, "AUTH")) {
+                                if (Str_sub(flag, " PLAIN"))
+                                        S->flags |= MTA_AuthPlain;
+                                if (Str_sub(flag, " LOGIN"))
+                                        S->flags |= MTA_AuthLogin;
+                        }
+                }
         } while (buf[3] == '-'); // multi-line response
         Str_chomp(buf);
         if (sscanf(buf, "%d", &status) != 1 || status < 200 || status >= 400)
@@ -125,7 +144,7 @@ static void do_status(SendMail_T *S) {
 }
 
 
-static void open_server(SendMail_T *S) {
+static void _open(SendMail_T *S) {
         MailServer_T mta = Run.mailservers;
         if (mta) {
                 S->server   = mta->host;
@@ -161,13 +180,13 @@ static void open_server(SendMail_T *S) {
 }
 
 
-static void close_server(SendMail_T *S) {
+static void _close(SendMail_T *S) {
         TRY
         {
                 if (S->quit) {
                         S->quit = false;
-                        do_send(S, "QUIT\r\n");
-                        do_status(S);
+                        _request(S, "QUIT\r\n");
+                        _response(S);
                 }
         }
         ELSE
@@ -199,60 +218,62 @@ boolean_t sendmail(Mail_T mail) {
         ASSERT(mail);
 
         memset(&S, 0, sizeof(S));
-        S.status_message = StringBuffer_create(STRLEN);
 
         TRY
         {
-                open_server(&S);
+                _open(&S);
                 Time_gmtstring(Time_now(), now);
                 snprintf(S.localhost, sizeof(S.localhost), "%s", Run.mail_hostname ? Run.mail_hostname : Run.system->name);
-                do_status(&S);
-                do_send(&S, "%s %s\r\n", ((S.ssl.use_ssl && (S.ssl.version == SSL_TLSV1 || S.ssl.version == SSL_TLSV11 || S.ssl.version == SSL_TLSV12)) || S.username) ? "EHLO" : "HELO", S.localhost); // Use EHLO if TLS or Authentication is requested
-                do_status(&S);
-                /* Switch to TLS now if configured */
+                _response(&S);
+                _request(&S, "EHLO %s\r\n", S.localhost);
+                _response(&S);
                 if (S.ssl.use_ssl && (S.ssl.version == SSL_TLSV1 || S.ssl.version == SSL_TLSV11 || S.ssl.version == SSL_TLSV12)) {
-                        do_send(&S, "STARTTLS\r\n");
-                        do_status(&S);
-                        TRY
-                        {
-                                Socket_enableSsl(S.socket, S.ssl, NULL);
+                        if (S.flags & MTA_StartTLS) {
+                                _request(&S, "STARTTLS\r\n");
+                                _response(&S);
+                                TRY
+                                {
+                                        Socket_enableSsl(S.socket, S.ssl, NULL);
+                                }
+                                ELSE
+                                {
+                                        S.quit = false;
+                                        RETHROW;
+                                }
+                                END_TRY;
+                                /* After starttls, send ehlo again: RFC 3207: 4.2 Result of the STARTTLS Command */
+                                _request(&S, "EHLO %s\r\n", S.localhost);
+                                _response(&S);
+                        } else {
+                                THROW(IOException, "TLS required but the mail server doesn't support it");
                         }
-                        ELSE
-                        {
-                                S.quit = false;
-                                RETHROW;
-                        }
-                        END_TRY;
-                        /* After starttls, send ehlo again: RFC 3207: 4.2 Result of the STARTTLS Command */
-                        do_send(&S, "EHLO %s\r\n", S.localhost);
-                        do_status(&S);
                 }
-                /* Authenticate if possible */
+                // Authenticate if possible
                 if (S.username) {
                         char buffer[STRLEN];
                         // PLAIN takes precedence
-                        if (StringBuffer_indexOf(S.status_message, " PLAIN") > 0) {
+                        if (S.flags & MTA_AuthPlain) {
                                 int len = snprintf(buffer, STRLEN, "%c%s%c%s", '\0', S.username, '\0', S.password ? S.password : "");
                                 char *b64 = encode_base64(len, (unsigned char *)buffer);
                                 TRY
                                 {
-                                        do_send(&S, "AUTH PLAIN %s\r\n", b64);
-                                        do_status(&S);
+                                        _request(&S, "AUTH PLAIN %s\r\n", b64);
+                                        _response(&S);
                                 }
                                 FINALLY
                                 {
                                         FREE(b64);
                                 }
                                 END_TRY;
-                        } else if (StringBuffer_indexOf(S.status_message, " LOGIN") > 0) {
-                                do_send(&S, "AUTH LOGIN\r\n");
-                                do_status(&S);
+                        } else if (S.flags & MTA_AuthLogin) {
+                                _request(&S, "AUTH LOGIN\r\n");
+                                _response(&S);
                                 snprintf(buffer, STRLEN, "%s", S.username);
                                 char *b64 = encode_base64(strlen(buffer), (unsigned char *)buffer);
                                 TRY
                                 {
-                                        do_send(&S, "%s\r\n", b64);
-                                        do_status(&S);
+                                        _request(&S, "%s\r\n", b64);
+                                        _response(&S);
                                 }
                                 FINALLY
                                 {
@@ -263,8 +284,8 @@ boolean_t sendmail(Mail_T mail) {
                                 b64 = encode_base64(strlen(buffer), (unsigned char *)buffer);
                                 TRY
                                 {
-                                        do_send(&S, "%s\r\n", b64);
-                                        do_status(&S);
+                                        _request(&S, "%s\r\n", b64);
+                                        _response(&S);
                                 }
                                 FINALLY
                                 {
@@ -276,27 +297,27 @@ boolean_t sendmail(Mail_T mail) {
                         }
                 }
                 for (Mail_T m = mail; m; m = m->next) {
-                        do_send(&S, "MAIL FROM: <%s>\r\n", m->from);
-                        do_status(&S);
-                        do_send(&S, "RCPT TO: <%s>\r\n", m->to);
-                        do_status(&S);
-                        do_send(&S, "DATA\r\n");
-                        do_status(&S);
-                        do_send(&S, "From: %s\r\n", m->from);
+                        _request(&S, "MAIL FROM: <%s>\r\n", m->from);
+                        _response(&S);
+                        _request(&S, "RCPT TO: <%s>\r\n", m->to);
+                        _response(&S);
+                        _request(&S, "DATA\r\n");
+                        _response(&S);
+                        _request(&S, "From: %s\r\n", m->from);
                         if (m->replyto)
-                                do_send(&S, "Reply-To: %s\r\n", m->replyto);
-                        do_send(&S, "To: %s\r\n", m->to);
-                        do_send(&S, "Subject: %s\r\n", m->subject);
-                        do_send(&S, "Date: %s\r\n", now);
-                        do_send(&S, "X-Mailer: Monit %s\r\n", VERSION);
-                        do_send(&S, "MIME-Version: 1.0\r\n");
-                        do_send(&S, "Content-Type: text/plain; charset=\"iso-8859-1\"\r\n");
-                        do_send(&S, "Content-Transfer-Encoding: 8bit\r\n");
-                        do_send(&S, "Message-Id: <%lld.%lu@%s>\r\n", (long long)Time_now(), random(), S.localhost);
-                        do_send(&S, "\r\n");
-                        do_send(&S, "%s\r\n", m->message);
-                        do_send(&S, ".\r\n");
-                        do_status(&S);
+                                _request(&S, "Reply-To: %s\r\n", m->replyto);
+                        _request(&S, "To: %s\r\n", m->to);
+                        _request(&S, "Subject: %s\r\n", m->subject);
+                        _request(&S, "Date: %s\r\n", now);
+                        _request(&S, "X-Mailer: Monit %s\r\n", VERSION);
+                        _request(&S, "MIME-Version: 1.0\r\n");
+                        _request(&S, "Content-Type: text/plain; charset=\"iso-8859-1\"\r\n");
+                        _request(&S, "Content-Transfer-Encoding: 8bit\r\n");
+                        _request(&S, "Message-Id: <%lld.%lu@%s>\r\n", (long long)Time_now(), random(), S.localhost);
+                        _request(&S, "\r\n");
+                        _request(&S, "%s\r\n", m->message);
+                        _request(&S, ".\r\n");
+                        _response(&S);
                 }
         }
         ELSE
@@ -306,8 +327,7 @@ boolean_t sendmail(Mail_T mail) {
         }
         FINALLY
         {
-                close_server(&S);
-                StringBuffer_free(&(S.status_message));
+                _close(&S);
         }
         END_TRY;
         return failed;

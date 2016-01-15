@@ -318,6 +318,18 @@ typedef enum {
 
 
 typedef enum {
+        MTA_DSN                 = 0x1,
+        MTA_ETRN                = 0x2,
+        MTA_8BitMIME            = 0x4,
+        MTA_Pipelining          = 0x8,
+        MTA_EnhancedStatusCodes = 0x10,
+        MTA_StartTLS            = 0x20,
+        MTA_AuthPlain           = 0x40,
+        MTA_AuthLogin           = 0x80
+} __attribute__((__packed__)) MTAFlags_t;
+
+
+typedef enum {
         Level_Full = 0,
         Level_Summary
 } __attribute__((__packed__)) Level_Type;
@@ -910,6 +922,7 @@ typedef struct mynonexist {
 typedef struct myfilesystem {
         Resource_Type resource;               /**< Whether to check inode or space */
         Operator_Type operator;                           /**< Comparison operator */
+        //FIXME: union
         long long limit_absolute;                          /**< Watermark - blocks */
         float limit_percent;                              /**< Watermark - percent */
         EventAction_T action;  /**< Description of the action upon event occurence */
