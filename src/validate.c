@@ -436,7 +436,7 @@ static State_Type _checkChecksum(Service_T s) {
         if (s->checksum) {
                 Checksum_T cs = s->checksum;
                 if (Util_getChecksum(s->path, cs->type, s->inf->priv.file.cs_sum, sizeof(s->inf->priv.file.cs_sum))) {
-                        Event_post(s, Event_Data, State_Succeeded, s->action_DATA, "checksum computed for %s", s->path);
+                        Event_post(s, Event_Data, State_Succeeded, s->action_DATA, "checksum %s", s->inf->priv.file.cs_sum);
                         if (! cs->initialized) {
                                 cs->initialized = true;
                                 snprintf(cs->hash, sizeof(cs->hash), "%s", s->inf->priv.file.cs_sum);
@@ -457,14 +457,14 @@ static State_Type _checkChecksum(Service_T s) {
                         if (changed) {
                                 if (cs->test_changes) {
                                         rv = State_Changed;
-                                        /* if we are testing for changes only, the value is variable */
-                                        Event_post(s, Event_Checksum, State_Changed, cs->action, "checksum was changed for %s", s->path);
                                         /* reset expected value for next cycle */
                                         snprintf(cs->hash, sizeof(cs->hash), "%s", s->inf->priv.file.cs_sum);
+                                        /* if we are testing for changes only, the value is variable */
+                                        Event_post(s, Event_Checksum, State_Changed, cs->action, "checksum changed to %s", s->inf->priv.file.cs_sum);
                                 } else {
                                         /* we are testing constant value for failed or succeeded state */
                                         rv = State_Failed;
-                                        Event_post(s, Event_Checksum, State_Failed, cs->action, "checksum test failed for %s", s->path);
+                                        Event_post(s, Event_Checksum, State_Failed, cs->action, "checksum failed, expected %s got %s", cs->hash, s->inf->priv.file.cs_sum);
                                 }
                         } else if (cs->test_changes) {
                                 rv = State_ChangedNot;

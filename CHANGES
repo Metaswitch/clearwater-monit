@@ -80,6 +80,10 @@ Fixed: Issue #309: AIX: The check process by pattern was limited to 80 character
 Fixed: Issue #310: Linux LXC container: the connection test was skipped and port status
 showed a failure.
 
+Fixed: If restart action was used with the "if changed checksum" test, the test didn't
+reset the checksum expectation for next cycle properly and failed in every cycle past
+the first detected change.
+
 Fixed: Warn if the monit configuration include pattern didn't match any file or the
 path doesn't exist.
 
