@@ -580,72 +580,80 @@ static State_Type _checkGid(Service_T s, int gid) {
  */
 static State_Type _checkTimestamp(Service_T s, time_t timestamp) {
         ASSERT(s);
-        State_Type rv = State_Succeeded;
-        if (s->timestamplist) {
-                time_t now = Time_now();
-                for (Timestamp_T t = s->timestamplist; t; t = t->next) {
-                        if (t->test_changes) {
-                                /* if we are testing for changes only, the value is variable */
-                                if (t->timestamp != timestamp) {
-                                        rv = State_Changed;
-                                        Event_post(s, Event_Timestamp, State_Changed, t->action, "timestamp for %s changed from %s to %s", s->path, t->timestamp ? Time_string(t->timestamp, (char[26]){}) : "N/A", Time_string(timestamp, (char[26]){}));
-                                        t->timestamp = timestamp; // reset expected value for next cycle
+        if (timestamp > 0) {
+                State_Type rv = State_Succeeded;
+                if (s->timestamplist) {
+                        time_t now = Time_now();
+                        for (Timestamp_T t = s->timestamplist; t; t = t->next) {
+                                if (t->test_changes) {
+                                        /* if we are testing for changes only, the value is variable */
+                                        if (t->timestamp != timestamp) {
+                                                rv = State_Changed;
+                                                Event_post(s, Event_Timestamp, State_Changed, t->action, "timestamp for %s changed from %s to %s", s->path, t->timestamp ? Time_string(t->timestamp, (char[26]){}) : "N/A", Time_string(timestamp, (char[26]){}));
+                                                t->timestamp = timestamp; // reset expected value for next cycle
+                                        } else {
+                                                Event_post(s, Event_Timestamp, State_ChangedNot, t->action, "timestamp was not changed for %s", s->path);
+                                        }
                                 } else {
-                                        Event_post(s, Event_Timestamp, State_ChangedNot, t->action, "timestamp was not changed for %s", s->path);
-                                }
-                        } else {
-                                /* we are testing constant value for failed or succeeded state */
-                                if (Util_evalQExpression(t->operator, now - timestamp, t->time)) {
-                                        rv = State_Failed;
-                                        Event_post(s, Event_Timestamp, State_Failed, t->action, "timestamp for %s failed -- current timestamp is %s", s->path, Time_string(timestamp, (char[26]){}));
-                                } else {
-                                        Event_post(s, Event_Timestamp, State_Succeeded, t->action, "timestamp test succeeded for %s [current timestamp is %s]", s->path, Time_string(timestamp, (char[26]){}));
+                                        /* we are testing constant value for failed or succeeded state */
+                                        if (Util_evalQExpression(t->operator, now - timestamp, t->time)) {
+                                                rv = State_Failed;
+                                                Event_post(s, Event_Timestamp, State_Failed, t->action, "timestamp for %s failed -- current timestamp is %s", s->path, Time_string(timestamp, (char[26]){}));
+                                        } else {
+                                                Event_post(s, Event_Timestamp, State_Succeeded, t->action, "timestamp test succeeded for %s [current timestamp is %s]", s->path, Time_string(timestamp, (char[26]){}));
+                                        }
                                 }
                         }
                 }
+                return rv;
+        } else {
+                return State_Init;
         }
-        return rv;
 }
 
 
 /**
  * Test size
  */
-static State_Type _checkSize(Service_T s) {
+static State_Type _checkSize(Service_T s, off_t size) {
         ASSERT(s);
-        State_Type rv = State_Succeeded;
-        if (s->sizelist) {
-                char buf[10];
-                for (Size_T sl = s->sizelist; sl; sl = sl->next) {
-                        /* if we are testing for changes only, the value is variable */
-                        if (sl->test_changes) {
-                                if (! sl->initialized) {
-                                        /* the size was not initialized during monit start, so set the size now
-                                         * and allow further size change testing */
-                                        sl->initialized = true;
-                                        sl->size = s->inf->priv.file.size;
-                                } else {
-                                        if (sl->size != s->inf->priv.file.size) {
-                                                rv = State_Changed;
-                                                Event_post(s, Event_Size, State_Changed, sl->action, "size was changed for %s", s->path);
-                                                /* reset expected value for next cycle */
+        if (size >= 0) {
+                State_Type rv = State_Succeeded;
+                if (s->sizelist) {
+                        char buf[10];
+                        for (Size_T sl = s->sizelist; sl; sl = sl->next) {
+                                /* if we are testing for changes only, the value is variable */
+                                if (sl->test_changes) {
+                                        if (! sl->initialized) {
+                                                /* the size was not initialized during monit start, so set the size now
+                                                 * and allow further size change testing */
+                                                sl->initialized = true;
                                                 sl->size = s->inf->priv.file.size;
                                         } else {
-                                                Event_post(s, Event_Size, State_ChangedNot, sl->action, "size has not changed [current size=%s]", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                                if (sl->size != s->inf->priv.file.size) {
+                                                        rv = State_Changed;
+                                                        Event_post(s, Event_Size, State_Changed, sl->action, "size was changed for %s", s->path);
+                                                        /* reset expected value for next cycle */
+                                                        sl->size = s->inf->priv.file.size;
+                                                } else {
+                                                        Event_post(s, Event_Size, State_ChangedNot, sl->action, "size has not changed [current size=%s]", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                                }
                                         }
-                                }
-                        } else {
-                                /* we are testing constant value for failed or succeeded state */
-                                if (Util_evalQExpression(sl->operator, s->inf->priv.file.size, sl->size)) {
-                                        rv = State_Failed;
-                                        Event_post(s, Event_Size, State_Failed, sl->action, "size test failed for %s -- current size is %s", s->path, Str_bytesToSize(s->inf->priv.file.size, buf));
                                 } else {
-                                        Event_post(s, Event_Size, State_Succeeded, sl->action, "size check succeeded [current size=%s]", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                        /* we are testing constant value for failed or succeeded state */
+                                        if (Util_evalQExpression(sl->operator, s->inf->priv.file.size, sl->size)) {
+                                                rv = State_Failed;
+                                                Event_post(s, Event_Size, State_Failed, sl->action, "size test failed for %s -- current size is %s", s->path, Str_bytesToSize(s->inf->priv.file.size, buf));
+                                        } else {
+                                                Event_post(s, Event_Size, State_Succeeded, sl->action, "size check succeeded [current size=%s]", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                        }
                                 }
                         }
                 }
+                return rv;
+        } else {
+                return State_Init;
         }
-        return rv;
 }
 
 
@@ -1193,7 +1201,7 @@ State_Type check_file(Service_T s) {
                 rv = State_Failed;
         if (_checkGid(s, s->inf->priv.file.gid) == State_Failed)
                 rv = State_Failed;
-        if (_checkSize(s) == State_Failed)
+        if (_checkSize(s, s->inf->priv.file.size) == State_Failed)
                 rv = State_Failed;
         if (_checkTimestamp(s, s->inf->priv.file.timestamp) == State_Failed)
                 rv = State_Failed;

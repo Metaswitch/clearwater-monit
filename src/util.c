@@ -1742,7 +1742,7 @@ void Util_resetInfo(Service_T s) {
                         break;
                 case Service_File:
                         // persistent: st_inode, readpos
-                        s->inf->priv.file.size  = 0;
+                        s->inf->priv.file.size  = -1;
                         s->inf->priv.file.inode_prev = 0;
                         s->inf->priv.file.mode = -1;
                         s->inf->priv.file.uid = -1;

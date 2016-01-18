@@ -1141,9 +1141,9 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
                                 StringBuffer_append(res->outputbuffer, "<td align='right'>%s</td>", Time_fmt((char[32]){}, 32, "%d %b %Y %H:%M:%S", s->program->started));
                                 StringBuffer_append(res->outputbuffer, "<td align='right'>%d</td>", s->program->exitStatus);
                         } else {
-                                StringBuffer_append(res->outputbuffer, "<td align='right'>N/A</td>");
+                                StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                                 StringBuffer_append(res->outputbuffer, "<td align='right'>Not yet started</td>");
-                                StringBuffer_append(res->outputbuffer, "<td align='right'>N/A</td>");
+                                StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                         }
                 }
                 StringBuffer_append(res->outputbuffer, "</tr>");
@@ -1284,22 +1284,22 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
                 _printServiceStatus(res->outputbuffer, s);
                 StringBuffer_append(res->outputbuffer,
                                     "</td>");
-                if (! Util_hasServiceStatus(s))
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>-</td>"
-                                            "<td align='right'>-</td>"
-                                            "<td align='right'>-</td>"
-                                            "<td align='right'>-</td>");
+                if (! Util_hasServiceStatus(s) || s->inf->priv.file.size < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                 else
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>%s</td>"
-                                            "<td align='right'>%04o</td>"
-                                            "<td align='right'>%d</td>"
-                                            "<td align='right'>%d</td>",
-                                            Str_bytesToSize(s->inf->priv.file.size, (char[10]){}),
-                                            s->inf->priv.file.mode & 07777,
-                                            s->inf->priv.file.uid,
-                                            s->inf->priv.file.gid);
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%s</td>", Str_bytesToSize(s->inf->priv.file.size, (char[10]){}));
+                if (! Util_hasServiceStatus(s) || s->inf->priv.file.mode < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%04o</td>", s->inf->priv.file.mode & 07777);
+                if (! Util_hasServiceStatus(s) || s->inf->priv.file.uid < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%d</td>", s->inf->priv.file.uid);
+                if (! Util_hasServiceStatus(s) || s->inf->priv.file.gid < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%d</td>", s->inf->priv.file.gid);
                 StringBuffer_append(res->outputbuffer, "</tr>");
                 on = ! on;
         }
@@ -1336,20 +1336,18 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
                 _printServiceStatus(res->outputbuffer, s);
                 StringBuffer_append(res->outputbuffer,
                                     "</td>");
-                if (! Util_hasServiceStatus(s)) {
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>-</td>"
-                                            "<td align='right'>-</td>"
-                                            "<td align='right'>-</td>");
-                } else {
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>%o</td>"
-                                            "<td align='right'>%d</td>"
-                                            "<td align='right'>%d</td>",
-                                            s->inf->priv.fifo.mode & 07777,
-                                            s->inf->priv.fifo.uid,
-                                            s->inf->priv.fifo.gid);
-                }
+                if (! Util_hasServiceStatus(s) || s->inf->priv.fifo.mode < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%04o</td>", s->inf->priv.fifo.mode & 07777);
+                if (! Util_hasServiceStatus(s) || s->inf->priv.fifo.uid < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%d</td>", s->inf->priv.fifo.uid);
+                if (! Util_hasServiceStatus(s) || s->inf->priv.fifo.gid < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%d</td>", s->inf->priv.fifo.gid);
                 StringBuffer_append(res->outputbuffer, "</tr>");
                 on = ! on;
         }
@@ -1386,20 +1384,18 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
                 _printServiceStatus(res->outputbuffer, s);
                 StringBuffer_append(res->outputbuffer,
                                     "</td>");
-                if (! Util_hasServiceStatus(s)) {
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>-</td>"
-                                            "<td align='right'>-</td>"
-                                            "<td align='right'>-</td>");
-                } else {
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>%o</td>"
-                                            "<td align='right'>%d</td>"
-                                            "<td align='right'>%d</td>",
-                                            s->inf->priv.directory.mode & 07777,
-                                            s->inf->priv.directory.uid,
-                                            s->inf->priv.directory.gid);
-                }
+                if (! Util_hasServiceStatus(s) || s->inf->priv.directory.mode < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%04o</td>", s->inf->priv.directory.mode & 07777);
+                if (! Util_hasServiceStatus(s) || s->inf->priv.directory.uid < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%d</td>", s->inf->priv.directory.uid);
+                if (! Util_hasServiceStatus(s) || s->inf->priv.directory.gid < 0)
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%d</td>", s->inf->priv.directory.gid);
                 StringBuffer_append(res->outputbuffer, "</tr>");
                 on = ! on;
         }
@@ -2055,7 +2051,7 @@ static void print_service_status_port(HttpResponse res, Service_T s) {
         for (Port_T p = s->portlist; p; p = p->next) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Port Response time</td>");
                 if (! status || p->is_available == Connection_Init)
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A<td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-<td>");
                 else if (p->is_available == Connection_Failed)
                         StringBuffer_append(res->outputbuffer, "<td class='red-text'>failed to [%s]:%d%s type %s/%s %sprotocol %s</td>", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
                 else
@@ -2070,7 +2066,7 @@ static void print_service_status_socket(HttpResponse res, Service_T s) {
         for (Port_T p = s->socketlist; p; p = p->next) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Unix Socket Response time</td>");
                 if (! status || p->is_available == Connection_Init)
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A<td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-<td>");
                 else if (p->is_available == Connection_Failed)
                         StringBuffer_append(res->outputbuffer, "<td class='red-text'>failed to %s type %s protocol %s</td>", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
                 else
@@ -2085,11 +2081,11 @@ static void print_service_status_icmp(HttpResponse res, Service_T s) {
         for (Icmp_T i = s->icmplist; i; i = i->next) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Ping Response time</td>");
                 if (! status || i->is_available == Connection_Init)
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-</td>");
                 else if (i->is_available == Connection_Failed)
                         StringBuffer_append(res->outputbuffer, "<td class='red-text'>connection failed</td>");
                 else if (i->response < 0.)
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-</td>");
                 else
                         StringBuffer_append(res->outputbuffer, "<td>%s</td>", Str_milliToTime(i->response, (char[23]){}));
                 StringBuffer_append(res->outputbuffer, "</tr>");
@@ -2184,7 +2180,7 @@ static void print_service_status_upload(HttpResponse res, Service_T s) {
 
 static void print_service_status_timestamp(HttpResponse res, Service_T s, time_t timestamp) {
         StringBuffer_append(res->outputbuffer, "<tr><td>Timestamp</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || timestamp == 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
                 StringBuffer_append(res->outputbuffer, "<td class='%s'>%s</td>", (s->error & Event_Timestamp) ? "red-text" : "", Time_string(timestamp, (char[32]){}));
@@ -2257,7 +2253,7 @@ static void print_service_status_filesystem_inodestotal(HttpResponse res, Servic
                 if (s->inf->priv.filesystem.f_files > 0)
                         StringBuffer_append(res->outputbuffer, "<td>%lld</td>", s->inf->priv.filesystem.f_files);
                 else
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-</td>");
         }
         StringBuffer_append(res->outputbuffer, "</tr>");
 }
@@ -2271,7 +2267,7 @@ static void print_service_status_filesystem_inodesfree(HttpResponse res, Service
                 if (s->inf->priv.filesystem.f_files > 0)
                         StringBuffer_append(res->outputbuffer, "<td class='%s'>%lld [%.1f%%]</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.filesystem.f_filesfree, (float)100 * (float)s->inf->priv.filesystem.f_filesfree / (float)s->inf->priv.filesystem.f_files);
                 else
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-</td>");
         }
         StringBuffer_append(res->outputbuffer, "</tr>");
 }
@@ -2279,7 +2275,7 @@ static void print_service_status_filesystem_inodesfree(HttpResponse res, Service
 
 static void print_service_status_file_size(HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer, "<tr><td>Size</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || s->inf->priv.file.size < 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
                 StringBuffer_append(res->outputbuffer, "<td class='%s'>%s</td>", (s->error & Event_Size) ? "red-text" : "", Str_bytesToSize(s->inf->priv.file.size, (char[10]){}));
@@ -2487,7 +2483,7 @@ static void print_service_status_program_status(HttpResponse res, Service_T s) {
                 if (s->program->started)
                         StringBuffer_append(res->outputbuffer, "<td>%d</td>", s->program->exitStatus);
                 else
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-</td>");
         }
         StringBuffer_append(res->outputbuffer, "</tr>");
 }
@@ -2513,7 +2509,7 @@ static void print_service_status_program_output(HttpResponse res, Service_T s) {
                         }
                         StringBuffer_append(res->outputbuffer, "</td>");
                 } else {
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>N/A</td>");
+                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-</td>");
                 }
         }
         StringBuffer_append(res->outputbuffer, "</tr>");
@@ -2610,25 +2606,28 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                         if (s->inf->priv.file.mode >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.file.mode & 07777);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
                                         if (s->inf->priv.file.uid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.file.uid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
                                         if (s->inf->priv.file.gid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.file.gid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
-                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "size", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
+                                        if (s->inf->priv.file.gid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "size", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "size");
                                         if (s->inf->priv.file.timestamp > 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.file.timestamp, buf));
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "timestamp");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
                                         if (s->checksum) {
                                                 if (s->inf->priv.file.cs_sum && *s->inf->priv.file.cs_sum)
                                                         StringBuffer_append(res->outputbuffer, "  %-33s %s (%s)\n", "checksum", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
                                                 else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "checksum");
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "checksum");
                                         }
                                         break;
 
@@ -2636,38 +2635,38 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                         if (s->inf->priv.directory.mode >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.directory.mode & 07777);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
                                         if (s->inf->priv.directory.uid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.directory.uid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
                                         if (s->inf->priv.directory.gid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.directory.gid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
                                         if (s->inf->priv.directory.timestamp > 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.directory.timestamp, buf));
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "timestamp");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
                                         break;
 
                                 case Service_Fifo:
                                         if (s->inf->priv.fifo.mode >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.fifo.mode & 07777);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
                                         if (s->inf->priv.fifo.uid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.fifo.uid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
                                         if (s->inf->priv.fifo.gid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.fifo.gid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
                                         if (s->inf->priv.fifo.timestamp > 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.fifo.timestamp, buf));
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "timestamp");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
                                         break;
 
                                 case Service_Net:
@@ -2708,15 +2707,15 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                         if (s->inf->priv.filesystem.mode >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.filesystem.mode & 07777);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "permission");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
                                         if (s->inf->priv.filesystem.uid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.filesystem.uid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "uid");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
                                         if (s->inf->priv.filesystem.gid >= 0)
                                                 StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.filesystem.gid);
                                         else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s N/A\n", "gid");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
                                         StringBuffer_append(res->outputbuffer,
                                                             "  %-33s 0x%x\n"
                                                             "  %-33s %s\n",
@@ -2799,7 +2798,7 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                                             "ping response time");
                                 else if (i->is_available == Connection_Init)
                                         StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s N/A\n",
+                                                            "  %-33s -\n",
                                                             "ping response time");
                                 else
                                         StringBuffer_append(res->outputbuffer,
@@ -2813,7 +2812,7 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                                     "port response time", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
                                 else if (p->is_available == Connection_Init)
                                         StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s N/A\n",
+                                                            "  %-33s -\n",
                                                             "port response time");
                                 else
                                         StringBuffer_append(res->outputbuffer,
@@ -2827,7 +2826,7 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                                     "unix socket response time", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
                                 else if (p->is_available == Connection_Init)
                                         StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s N/A\n",
+                                                            "  %-33s -\n",
                                                             "unix socket response time");
                                 else
                                         StringBuffer_append(res->outputbuffer,
