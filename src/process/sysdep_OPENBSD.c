@@ -128,13 +128,8 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         int                       treesize;
         char                      buf[_POSIX2_LINE_MAX];
         size_t                    size = sizeof(maxslp);
-#if (OpenBSD <= 201105)
-        int                       mib_proc[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_KTHREAD, 0, sizeof(struct kinfo_proc2), 0};
-        static struct kinfo_proc2 *pinfo;
-#else
         int                       mib_proc[6] = {CTL_KERN, KERN_PROC, KERN_PROC_PID | KERN_PROC_SHOW_THREADS | KERN_PROC_KTHREAD, 0, sizeof(struct kinfo_proc), 0};
         static struct kinfo_proc *pinfo;
-#endif
         static int                mib_maxslp[] = {CTL_VM, VM_MAXSLP};
         ProcessTree_T            *pt;
         kvm_t                    *kvm_handle;
@@ -151,22 +146,14 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
 
         size *= 2; // Add reserve for new processes which were created between calls of sysctl
         pinfo = CALLOC(1, size);
-#if (OpenBSD <= 201105)
-        mib_proc[5] = (int)(size / sizeof(struct kinfo_proc2));
-#else
         mib_proc[5] = (int)(size / sizeof(struct kinfo_proc));
-#endif
         if (sysctl(mib_proc, 6, pinfo, &size, NULL, 0) == -1) {
                 FREE(pinfo);
                 LogError("system statistic error -- kern.proc #2 failed\n");
                 return 0;
         }
 
-#if (OpenBSD <= 201105)
-        treesize = (int)(size / sizeof(struct kinfo_proc2));
-#else
         treesize = (int)(size / sizeof(struct kinfo_proc));
-#endif
 
         pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
@@ -196,11 +183,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                                 pt[i].zombie = true;
                         pt[i].time = get_float_time();
                         char **args;
-#if (OpenBSD <= 201105)
-                        if ((args = kvm_getargv2(kvm_handle, &pinfo[i], 0))) {
-#else
                         if ((args = kvm_getargv(kvm_handle, &pinfo[i], 0))) {
-#endif
                                 StringBuffer_clear(cmdline);
                                 for (int j = 0; args[j]; j++)
                                         StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
