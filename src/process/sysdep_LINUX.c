@@ -287,6 +287,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].uid = stat_uid;
                 pt[i].euid = stat_euid;
                 pt[i].gid = stat_gid;
+                pt[i].threads = stat_threads;
                 pt[i].starttime = starttime > 0 ? (starttime + (time_t)(stat_item_starttime / HZ)) : 0;
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].cputime = ((float)(stat_item_utime + stat_item_stime) * 10.0) / HZ; // jiffies -> seconds = 1 / HZ. HZ is defined in "asm/param.h" and it is usually 1/100s but on alpha system it is 1/1024s
