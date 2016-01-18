@@ -190,12 +190,14 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 }
 
                 if (! read_proc_file(buf, sizeof(buf), "status", pt[i].pid, NULL)) {
-                        pt[i].cputime     = 0;
+                        pt[i].cputime = 0;
                         pt[i].cpu_percent = 0.;
+                        pt[i].threads = 0;
                 } else {
                         memcpy(&pstatus, buf, sizeof(pstatus_t));
-                        pt[i].cputime     = (timestruc_to_tseconds(pstatus.pr_utime) + timestruc_to_tseconds(pstatus.pr_stime));
+                        pt[i].cputime = timestruc_to_tseconds(pstatus.pr_utime) + timestruc_to_tseconds(pstatus.pr_stime);
                         pt[i].cpu_percent = 0.;
+                        pt[i].threads = pstatus.pr_nlwp;
                 }
         }
 
