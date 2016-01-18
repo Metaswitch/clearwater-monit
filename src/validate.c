@@ -628,24 +628,24 @@ static State_Type _checkSize(Service_T s, off_t size) {
                                                 /* the size was not initialized during monit start, so set the size now
                                                  * and allow further size change testing */
                                                 sl->initialized = true;
-                                                sl->size = s->inf->priv.file.size;
+                                                sl->size = size;
                                         } else {
-                                                if (sl->size != s->inf->priv.file.size) {
+                                                if (sl->size != size) {
                                                         rv = State_Changed;
                                                         Event_post(s, Event_Size, State_Changed, sl->action, "size was changed for %s", s->path);
                                                         /* reset expected value for next cycle */
-                                                        sl->size = s->inf->priv.file.size;
+                                                        sl->size = size;
                                                 } else {
-                                                        Event_post(s, Event_Size, State_ChangedNot, sl->action, "size has not changed [current size=%s]", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                                        Event_post(s, Event_Size, State_ChangedNot, sl->action, "size has not changed [current size=%s]", Str_bytesToSize(size, buf));
                                                 }
                                         }
                                 } else {
                                         /* we are testing constant value for failed or succeeded state */
-                                        if (Util_evalQExpression(sl->operator, s->inf->priv.file.size, sl->size)) {
+                                        if (Util_evalQExpression(sl->operator, size, sl->size)) {
                                                 rv = State_Failed;
-                                                Event_post(s, Event_Size, State_Failed, sl->action, "size test failed for %s -- current size is %s", s->path, Str_bytesToSize(s->inf->priv.file.size, buf));
+                                                Event_post(s, Event_Size, State_Failed, sl->action, "size test failed for %s -- current size is %s", s->path, Str_bytesToSize(size, buf));
                                         } else {
-                                                Event_post(s, Event_Size, State_Succeeded, sl->action, "size check succeeded [current size=%s]", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                                Event_post(s, Event_Size, State_Succeeded, sl->action, "size check succeeded [current size=%s]", Str_bytesToSize(size, buf));
                                         }
                                 }
                         }
