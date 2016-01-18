@@ -182,6 +182,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         int                 stat_uid = 0;
         int                 stat_euid = 0;
         int                 stat_gid = 0;
+        int                 stat_threads = 0;
         char               *tmp = NULL;
         char                procname[STRLEN];
         char                buf[4096];
