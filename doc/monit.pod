@@ -1777,10 +1777,10 @@ statements in [brackets]),
 
 
 I<resource> is a choice of "CPU", "TOTAL CPU",
-"CPU([user|system|wait])", "MEMORY", "SWAP", "CHILDREN", "TOTAL
-MEMORY", "LOADAVG([1min|5min|15min])". Some resource tests can be used
-inside a check system entry, some in a check process entry and some in
-both:
+"CPU([user|system|wait])", "MEMORY", "SWAP", "THREADS", "CHILDREN",
+"TOTAL MEMORY", "LOADAVG([1min|5min|15min])". Some resource tests can
+be used inside a check system entry, some in a check process entry and
+some in both:
 
 System only resource tests:
 
@@ -1799,6 +1799,8 @@ TOTAL CPU is the total CPU usage of the process and its children
 in (percent). You will want to use TOTAL CPU typically for
 services like Apache web server where one master process forks
 child processes as workers.
+
+THREADS is the number of processes' threads.
 
 CHILDREN is the number of child processes of the process.
 
@@ -1820,10 +1822,10 @@ I<operator> is a choice of "<", ">", "!=", "==" in C notation,
 "less", "equal", "notequal" in human readable form (if not
 specified, default is EQUAL).
 
-I<value> is either an integer or a real number (except for
-CHILDREN). For CPU, TOTAL CPU, MEMORY and TOTAL MEMORY you need to
-specify a I<unit>. This could be "%" or if applicable "B" (Byte),
-"kB" (1024 Byte), "MB" (1024 KiloByte) or "GB" (1024 MegaByte).
+I<value> is either an integer or a real number. For CPU, TOTAL CPU,
+MEMORY and TOTAL MEMORY you need to specify a I<unit>. This could
+be "%" or if applicable "B" (Byte), "kB" (1024 Byte), "MB" (1024 KiloByte)
+or "GB" (1024 MegaByte).
 
 I<action> is a choice of "ALERT", "RESTART", "START", "STOP",
 "EXEC" or "UNMONITOR".

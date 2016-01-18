@@ -103,6 +103,7 @@
 #define SLABRECLAIMABLE "SReclaimable:"
 #define SWAPTOTAL       "SwapTotal:"
 #define SWAPFREE        "SwapFree:"
+#define THREADS         "Threads:"
 
 #define NSEC_PER_SEC    1000000000L
 

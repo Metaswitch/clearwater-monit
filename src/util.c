@@ -1283,6 +1283,10 @@ void Util_printService(Service_T s) {
                                 printf(" %-20s = ", "Load avg. (15min)");
                                 break;
 
+                        case Resource_Threads:
+                                printf(" %-20s = ", "Threads");
+                                break;
+
                         case Resource_Children:
                                 printf(" %-20s = ", "Children");
                                 break;
@@ -1321,6 +1325,7 @@ void Util_printService(Service_T s) {
                                 printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.1f", operatornames[o->operator], o->limit)));
                                 break;
 
+                        case Resource_Threads:
                         case Resource_Children:
                                 printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %ld", operatornames[o->operator], o->limit)));
                                 break;
@@ -1771,6 +1776,7 @@ void Util_resetInfo(Service_T s) {
                         s->inf->priv.process.euid = -1;
                         s->inf->priv.process.gid = -1;
                         s->inf->priv.process.zombie = false;
+                        s->inf->priv.process.threads = 0;
                         s->inf->priv.process.children = 0;
                         s->inf->priv.process.mem = 0ULL;
                         s->inf->priv.process.total_mem = 0ULL;

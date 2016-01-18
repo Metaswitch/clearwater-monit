@@ -171,6 +171,7 @@ static void print_service_status_process_pid(HttpResponse, Service_T);
 static void print_service_status_process_ppid(HttpResponse, Service_T);
 static void print_service_status_process_euid(HttpResponse, Service_T);
 static void print_service_status_process_uptime(HttpResponse, Service_T);
+static void print_service_status_process_threads(HttpResponse, Service_T);
 static void print_service_status_process_children(HttpResponse, Service_T);
 static void print_service_status_process_cpu(HttpResponse, Service_T);
 static void print_service_status_process_cputotal(HttpResponse, Service_T);
@@ -892,6 +893,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                         print_service_status_process_euid(res, s);
                         print_service_status_gid(res, s, s->inf->priv.process.gid);
                         print_service_status_process_uptime(res, s);
+                        print_service_status_process_threads(res, s);
                         print_service_status_process_children(res, s);
                         print_service_status_process_cpu(res, s);
                         print_service_status_process_cputotal(res, s);
@@ -1996,6 +1998,10 @@ static void print_service_rules_resource(HttpResponse res, Service_T s) {
                                 StringBuffer_append(res->outputbuffer, "Load average (15min)");
                                 break;
 
+                        case Resource_Threads:
+                                StringBuffer_append(res->outputbuffer, "Threads");
+                                break;
+
                         case Resource_Children:
                                 StringBuffer_append(res->outputbuffer, "Children");
                                 break;
@@ -2035,6 +2041,7 @@ static void print_service_rules_resource(HttpResponse res, Service_T s) {
                                 Util_printRule(res->outputbuffer, q->action, "If %s %.1f", operatornames[q->operator], q->limit);
                                 break;
 
+                        case Resource_Threads:
                         case Resource_Children:
                                 Util_printRule(res->outputbuffer, q->action, "If %s %ld", operatornames[q->operator], q->limit);
                                 break;
@@ -2345,6 +2352,18 @@ static void print_service_status_process_uptime(HttpResponse res, Service_T s) {
                 FREE(uptime);
         }
         StringBuffer_append(res->outputbuffer, "</tr>");
+}
+
+
+static void print_service_status_process_threads(HttpResponse res, Service_T s) {
+        if (Run.flags & Run_ProcessEngineEnabled) {
+                StringBuffer_append(res->outputbuffer, "<tr><td>Threads</td>");
+                if (! Util_hasServiceStatus(s))
+                        StringBuffer_append(res->outputbuffer, "<td>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.threads);
+                StringBuffer_append(res->outputbuffer, "</tr>");
+        }
 }
 
 
@@ -2767,6 +2786,9 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                                             "uptime", uptime);
                                         FREE(uptime);
                                         if (Run.flags & Run_ProcessEngineEnabled) {
+                                                StringBuffer_append(res->outputbuffer,
+                                                                    "  %-33s %d\n",
+                                                                    "threads", s->inf->priv.process.threads);
                                                 StringBuffer_append(res->outputbuffer,
                                                                     "  %-33s %d\n",
                                                                     "children", s->inf->priv.process.children);

@@ -388,10 +388,19 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         }
                         break;
 
+                case Resource_Threads:
+                        if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.threads, r->limit)) {
+                                rv = State_Failed;
+                                snprintf(report, STRLEN, "threads count %i matches resource limit [threads%s%.0f]", s->inf->priv.process.threads, operatorshortnames[r->operator], r->limit);
+                        } else {
+                                snprintf(report, STRLEN, "threads check succeeded [current threads=%i]", s->inf->priv.process.threads);
+                        }
+                        break;
+
                 case Resource_Children:
                         if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.children, r->limit)) {
                                 rv = State_Failed;
-                                snprintf(report, STRLEN, "children of %i matches resource limit [children%s%.0f]", s->inf->priv.process.children, operatorshortnames[r->operator], r->limit);
+                                snprintf(report, STRLEN, "children count %i matches resource limit [children%s%.0f]", s->inf->priv.process.children, operatorshortnames[r->operator], r->limit);
                         } else {
                                 snprintf(report, STRLEN, "children check succeeded [current children=%i]", s->inf->priv.process.children);
                         }

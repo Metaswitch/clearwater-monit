@@ -321,7 +321,7 @@ static int verifyMaxForward(int);
 %token <number> CLEANUPLIMIT
 %token <real> REAL
 %token CHECKPROC CHECKFILESYS CHECKFILE CHECKDIR CHECKHOST CHECKSYSTEM CHECKFIFO CHECKPROGRAM CHECKNET
-%token CHILDREN STATUS ORIGIN VERSIONOPT
+%token THREADS CHILDREN STATUS ORIGIN VERSIONOPT
 %token RESOURCE MEMORY TOTALMEMORY LOADAVG1 LOADAVG5 LOADAVG15 SWAP
 %token MODE ACTIVE PASSIVE MANUAL CPU TOTALCPU CPUUSER CPUSYSTEM CPUWAIT
 %token GROUP REQUEST DEPENDS BASEDIR SLOT EVENTQUEUE SECRET HOSTHEADER
@@ -1948,6 +1948,7 @@ resourceprocesslist : resourceprocessopt
 
 resourceprocessopt  : resourcecpuproc
                     | resourcemem
+                    | resourcethreads
                     | resourcechild
                     | resourceload
                     ;
@@ -2024,6 +2025,13 @@ resourceswap    : SWAP operator value unit {
                     resourceset.resource_id = Resource_SwapPercent;
                     resourceset.operator = $<number>2;
                     resourceset.limit = $3;
+                  }
+                ;
+
+resourcethreads : THREADS operator NUMBER {
+                    resourceset.resource_id = Resource_Threads;
+                    resourceset.operator = $<number>2;
+                    resourceset.limit = (int) $3;
                   }
                 ;
 

@@ -115,6 +115,7 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                 s->inf->priv.process.euid              = pt[leaf].euid;
                 s->inf->priv.process.gid               = pt[leaf].gid;
                 s->inf->priv.process.uptime            = Time_now() - pt[leaf].starttime;
+                s->inf->priv.process.threads           = pt[leaf].threads;
                 s->inf->priv.process.children          = pt[leaf].children_sum;
                 s->inf->priv.process.mem               = pt[leaf].mem;
                 s->inf->priv.process.zombie            = pt[leaf].zombie;

@@ -7,6 +7,9 @@ Version 5.16
 New: The HTTP protocol test uses now HEAD method if no content check is set, so
 the test is faster and saves bandwidth.
 
+New: Issue #205: Added test for threads count to process check. Syntax:
+        if threads > 10 then alert
+
 New: Issue #280: Timestamp test related events report the timestamp value now.
 
 New: Issue #299: Show last output of the program check in monit status CLI.

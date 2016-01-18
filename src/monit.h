@@ -288,7 +288,8 @@ typedef enum {
         Resource_CpuWait,
         Resource_CpuPercentTotal,
         Resource_SwapPercent,
-        Resource_SwapKbyte
+        Resource_SwapKbyte,
+        Resource_Threads
 } __attribute__((__packed__)) Resource_Type;
 
 
@@ -535,6 +536,7 @@ typedef struct myprocesstree {
         int           uid;
         int           euid;
         int           gid;
+        int           threads;
         int           children_num;
         int           children_sum;
         float         cpu_percent;
@@ -980,6 +982,7 @@ typedef struct myinfo {
                 } fifo;
 
                 struct {
+                        boolean_t zombie;
                         pid_t _pid;                           /**< Process PID from last cycle */
                         pid_t _ppid;                   /**< Process parent PID from last cycle */
                         pid_t pid;                          /**< Process PID from actual cycle */
@@ -987,7 +990,7 @@ typedef struct myinfo {
                         int uid;                                              /**< Process UID */
                         int euid;                                   /**< Effective Process UID */
                         int gid;                                              /**< Process GID */
-                        boolean_t zombie;
+                        int threads;
                         int children;
                         uint64_t mem;
                         uint64_t total_mem;

@@ -204,6 +204,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         pt[i].mem         = tinfo.pti_resident_size;
                         pt[i].cputime     = (long)((tinfo.pti_total_user + tinfo.pti_total_system) / 100000000.); // The time is in nanoseconds, we store it as 1/10s
                         pt[i].cpu_percent = 0.;
+                        pt[i].threads     = tinfo.pti_threadnum;
                 }
         }
         StringBuffer_free(&cmdline);

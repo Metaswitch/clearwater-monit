@@ -313,7 +313,8 @@ swap              { return SWAP; }
 total[ ]?mem(ory)? { return TOTALMEMORY; }
 cpu               { return CPU; }
 total[ ]?cpu      { return TOTALCPU; }
-child(ren)        { return CHILDREN; }
+child(ren)?       { return CHILDREN; }
+thread(s)?        { return THREADS; }
 timestamp         { return TIMESTAMP; }
 changed           { return CHANGED; }
 second(s)?        { return SECOND; }
