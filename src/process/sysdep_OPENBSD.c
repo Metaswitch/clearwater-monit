@@ -132,7 +132,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         int                       mib_proc[6] = {CTL_KERN, KERN_PROC2, KERN_PROC_KTHREAD, 0, sizeof(struct kinfo_proc2), 0};
         static struct kinfo_proc2 *pinfo;
 #else
-        int                       mib_proc[6] = {CTL_KERN, KERN_PROC, KERN_PROC_KTHREAD, 0, sizeof(struct kinfo_proc), 0};
+        int                       mib_proc[6] = {CTL_KERN, KERN_PROC, KERN_PROC_PID | KERN_PROC_SHOW_THREADS | KERN_PROC_KTHREAD, 0, sizeof(struct kinfo_proc), 0};
         static struct kinfo_proc *pinfo;
 #endif
         static int                mib_maxslp[] = {CTL_VM, VM_MAXSLP};
@@ -177,35 +177,42 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 return 0;
         }
 
+        int kthread = 0;
         StringBuffer_T cmdline = StringBuffer_create(64);;
         for (int i = 0; i < treesize; i++) {
-                pt[i].pid         = pinfo[i].p_pid;
-                pt[i].ppid        = pinfo[i].p_ppid;
-                pt[i].uid         = pinfo[i].p_ruid;
-                pt[i].euid        = pinfo[i].p_uid;
-                pt[i].gid         = pinfo[i].p_rgid;
-                pt[i].starttime   = pinfo[i].p_ustart_sec;
-                pt[i].cputime     = (long)((pinfo[i].p_rtime_sec * 10) + (pinfo[i].p_rtime_usec / 100000));
-                pt[i].cpu_percent = 0.;
-                pt[i].mem         = pinfo[i].p_vm_rssize * pagesize;
-                if (pinfo[i].p_stat == SZOMB)
-                        pt[i].zombie = true;
-                pt[i].time = get_float_time();
-                char **args;
+                if (pinfo[i].p_tid < 0) {
+                        kthread           = i;
+                        pt[i].pid         = pinfo[i].p_pid;
+                        pt[i].ppid        = pinfo[i].p_ppid;
+                        pt[i].uid         = pinfo[i].p_ruid;
+                        pt[i].euid        = pinfo[i].p_uid;
+                        pt[i].gid         = pinfo[i].p_rgid;
+                        pt[i].starttime   = pinfo[i].p_ustart_sec;
+                        pt[i].cputime     = (long)((pinfo[i].p_rtime_sec * 10) + (pinfo[i].p_rtime_usec / 100000));
+                        pt[i].cpu_percent = 0.;
+                        pt[i].threads     = 0;
+                        pt[i].mem         = pinfo[i].p_vm_rssize * pagesize;
+                        if (pinfo[i].p_stat == SZOMB)
+                                pt[i].zombie = true;
+                        pt[i].time = get_float_time();
+                        char **args;
 #if (OpenBSD <= 201105)
-                if ((args = kvm_getargv2(kvm_handle, &pinfo[i], 0))) {
+                        if ((args = kvm_getargv2(kvm_handle, &pinfo[i], 0))) {
 #else
-                if ((args = kvm_getargv(kvm_handle, &pinfo[i], 0))) {
+                        if ((args = kvm_getargv(kvm_handle, &pinfo[i], 0))) {
 #endif
-                        StringBuffer_clear(cmdline);
-                        for (int j = 0; args[j]; j++)
-                                StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
-                        if (StringBuffer_length(cmdline))
-                                pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
-                }
-                if (! pt[i].cmdline || ! *pt[i].cmdline) {
-                        FREE(pt[i].cmdline);
-                        pt[i].cmdline = Str_dup(pinfo[i].p_comm);
+                                StringBuffer_clear(cmdline);
+                                for (int j = 0; args[j]; j++)
+                                        StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
+                                if (StringBuffer_length(cmdline))
+                                        pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
+                        }
+                        if (! pt[i].cmdline || ! *pt[i].cmdline) {
+                                FREE(pt[i].cmdline);
+                                pt[i].cmdline = Str_dup(pinfo[i].p_comm);
+                        }
+                } else {
+                        pt[kthread].threads++;
                 }
         }
         StringBuffer_free(&cmdline);
