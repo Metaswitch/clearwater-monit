@@ -261,6 +261,14 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         DEBUG("system statistic error -- cannot read process gid\n");
                         continue;
                 }
+                if (! (tmp = strstr(buf, THREADS))) {
+                        DEBUG("system statistic error -- cannot find process threads\n");
+                        continue;
+                }
+                if (sscanf(tmp+strlen(THREADS), "\t%d", &stat_threads) != 1) {
+                        DEBUG("system statistic error -- cannot read process threads\n");
+                        continue;
+                }
 
                 /********** /proc/PID/cmdline **********/
                 if (! read_proc_file(buf, sizeof(buf), "cmdline", stat_pid, &bytes)) {
