@@ -196,9 +196,13 @@ static struct mychecksum checksumset;
 static struct mytimestamp timestampset;
 static struct myactionrate actionrateset;
 static struct IHavePrecedence ihp = {false, false, false};
+static struct myrate rate = {1, 1};
 static struct myrate rate1 = {1, 1};
 static struct myrate rate2 = {1, 1};
 static char * htpasswd_file = NULL;
+static unsigned repeat = 0;
+static unsigned repeat1 = 0;
+static unsigned repeat2 = 0;
 static Digest_Type digesttype = Digest_Cleartext;
 
 #define BITMAP_MAX (sizeof(long long) * 8)
@@ -282,7 +286,7 @@ static void  reset_gidset();
 static void  reset_statusset();
 static void  reset_filesystemset();
 static void  reset_icmpset();
-static void  reset_rateset();
+static void  reset_rateset(struct myrate *);
 static void  check_name(char *);
 static int   check_perm(int);
 static void  check_exec(char *);
@@ -306,7 +310,7 @@ static int verifyMaxForward(int);
 %token READONLY CLEARTEXT MD5HASH SHA1HASH CRYPT DELAY
 %token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CERTIFICATE CACERTIFICATEFILE CACERTIFICATEPATH VALID
 %token INTERFACE LINK PACKET BYTEIN BYTEOUT PACKETIN PACKETOUT SPEED SATURATION UPLOAD DOWNLOAD TOTAL
-%token IDFILE STATEFILE SEND EXPECT CYCLE COUNT REMINDER
+%token IDFILE STATEFILE SEND EXPECT CYCLE COUNT REMINDER REPEAT
 %token LIMITS SENDEXPECTBUFFER EXPECTBUFFER FILECONTENTBUFFER HTTPCONTENTBUFFER NETWORKTIMEOUT
 %token PIDFILE START STOP PATHTOK
 %token HOST HOSTNAME PORT IPV4 IPV6 TYPE UDP TCP TCPSSL PROTOCOL CONNECTION
@@ -2094,18 +2098,46 @@ totaltime       : MINUTE      { $<number>$ = Time_Minute; }
 currenttime     : /* EMPTY */ { $<number>$ = Time_Second; }
                 | SECOND      { $<number>$ = Time_Second; }
 
-action          : ALERT                            { $<number>$ = Action_Alert; }
-                | EXEC argumentlist                { $<number>$ = Action_Exec; }
-                | EXEC argumentlist useroptionlist { $<number>$ = Action_Exec; }
-                | RESTART                          { $<number>$ = Action_Restart; }
-                | START                            { $<number>$ = Action_Start; }
-                | STOP                             { $<number>$ = Action_Stop; }
-                | UNMONITOR                        { $<number>$ = Action_Unmonitor; }
+repeat          : /* EMPTY */ {
+                        repeat = 0;
+                  }
+                | REPEAT EVERY NUMBER CYCLE {
+                        if ($<number>3 < 0) {
+                                yyerror2("The number of repeat cycles must be greater or equal to 0");
+                        }
+                        repeat = $<number>3;
+                  }
+                ;
+
+action          : ALERT {
+                        $<number>$ = Action_Alert;
+                  }
+                | EXEC argumentlist repeat {
+                        $<number>$ = Action_Exec;
+                  }
+                | EXEC argumentlist useroptionlist repeat
+                  {
+                        $<number>$ = Action_Exec;
+                  }
+                | RESTART {
+                        $<number>$ = Action_Restart;
+                  }
+                | START {
+                        $<number>$ = Action_Start;
+                  }
+                | STOP {
+                        $<number>$ = Action_Stop;
+                  }
+                | UNMONITOR {
+                        $<number>$ = Action_Unmonitor;
+                  }
                 ;
 
 action1         : action {
                     $<number>$ = $<number>1;
                     if ($<number>1 == Action_Exec && command) {
+                      repeat1 = repeat;
+                      repeat = 0;
                       command1 = command;
                       command = NULL;
                     }
@@ -2115,44 +2147,60 @@ action1         : action {
 action2         : action {
                     $<number>$ = $<number>1;
                     if ($<number>1 == Action_Exec && command) {
+                      repeat2 = repeat;
+                      repeat = 0;
                       command2 = command;
                       command = NULL;
                     }
                   }
                 ;
 
-rate1           : /* EMPTY */
-                | NUMBER CYCLE {
-                    rate1.count  = $<number>1;
-                    rate1.cycles = $<number>1;
-                    if (rate1.cycles < 1 || rate1.cycles > BITMAP_MAX)
-                      yyerror2("The number of cycles must be between 1 and %d", BITMAP_MAX);
-                  }
-                | NUMBER NUMBER CYCLE {
-                    rate1.count  = $<number>1;
-                    rate1.cycles = $<number>2;
-                    if (rate1.cycles < 1 || rate1.cycles > BITMAP_MAX)
-                      yyerror2("The number of cycles must be between 1 and %d", BITMAP_MAX);
-                    if (rate1.count < 1 || rate1.count > rate1.cycles)
-                      yyerror2("The number of events must be bigger then 0 and less than poll cycles");
+rateXcycles     : NUMBER CYCLE {
+                        if ($<number>1 < 1 || $<number>1 > BITMAP_MAX) {
+                                yyerror2("The number of cycles must be between 1 and %d", BITMAP_MAX);
+                        } else {
+                                rate.count  = $<number>1;
+                                rate.cycles = $<number>1;
+                        }
                   }
                 ;
 
+rateXYcycles    : NUMBER NUMBER CYCLE {
+                        if ($<number>2 < 1 || $<number>2 > BITMAP_MAX) {
+                                yyerror2("The number of cycles must be between 1 and %d", BITMAP_MAX);
+                        } else if ($<number>1 < 1 || $<number>1 > $<number>2) {
+                                yyerror2("The number of events must be between 1 and less then poll cycles");
+                        } else {
+                                rate.count  = $<number>1;
+                                rate.cycles = $<number>2;
+                        }
+                  }
+                ;
+
+rate1           : /* EMPTY */
+                | rateXcycles {
+                        rate1.count = rate.count;
+                        rate1.cycles = rate.cycles;
+                        reset_rateset(&rate);
+                  }
+                | rateXYcycles {
+                        rate1.count = rate.count;
+                        rate1.cycles = rate.cycles;
+                        reset_rateset(&rate);
+                }
+                ;
+
 rate2           : /* EMPTY */
-                | NUMBER CYCLE {
-                    rate2.count  = $<number>1;
-                    rate2.cycles = $<number>1;
-                    if (rate2.cycles < 1 || rate2.cycles > BITMAP_MAX)
-                      yyerror2("The number of cycles must be between 1 and %d", BITMAP_MAX);
+                | rateXcycles {
+                        rate2.count = rate.count;
+                        rate2.cycles = rate.cycles;
+                        reset_rateset(&rate);
                   }
-                | NUMBER NUMBER CYCLE {
-                    rate2.count  = $<number>1;
-                    rate2.cycles = $<number>2;
-                    if (rate2.cycles < 1 || rate2.cycles > BITMAP_MAX)
-                      yyerror2("The number of cycles must be between 1 and %d", BITMAP_MAX);
-                    if (rate2.count < 1 || rate2.count > rate2.cycles)
-                      yyerror2("The number of events must be bigger then 0 and less than poll cycles");
-                  }
+                | rateXYcycles {
+                        rate2.count = rate.count;
+                        rate2.cycles = rate.cycles;
+                        reset_rateset(&rate);
+                }
                 ;
 
 recovery        : /* EMPTY */ {
@@ -2720,7 +2768,9 @@ static void preparse() {
         reset_linkspeedset();
         reset_linksaturationset();
         reset_bandwidthset();
-        reset_rateset();
+        reset_rateset(&rate);
+        reset_rateset(&rate1);
+        reset_rateset(&rate2);
         reset_filesystemset();
         reset_resourceset();
         reset_checksumset();
@@ -3638,8 +3688,9 @@ static void addeventaction(EventAction_T *_ea, Action_Type failed, Action_Type s
         NEW(ea->failed);
         NEW(ea->succeeded);
 
-        ea->failed->id     = failed;
-        ea->failed->count  = rate1.count;
+        ea->failed->id = failed;
+        ea->failed->repeat = repeat1;
+        ea->failed->count = rate1.count;
         ea->failed->cycles = rate1.cycles;
         if (failed == Action_Exec) {
                 ASSERT(command1);
@@ -3647,8 +3698,9 @@ static void addeventaction(EventAction_T *_ea, Action_Type failed, Action_Type s
                 command1 = NULL;
         }
 
-        ea->succeeded->id     = succeeded;
-        ea->succeeded->count  = rate2.count;
+        ea->succeeded->id = succeeded;
+        ea->succeeded->repeat = repeat2;
+        ea->succeeded->count = rate2.count;
         ea->succeeded->cycles = rate2.cycles;
         if (succeeded == Action_Exec) {
                 ASSERT(command2);
@@ -3656,7 +3708,10 @@ static void addeventaction(EventAction_T *_ea, Action_Type failed, Action_Type s
                 command2 = NULL;
         }
         *_ea = ea;
-        reset_rateset();
+        reset_rateset(&rate);
+        reset_rateset(&rate1);
+        reset_rateset(&rate2);
+        repeat = repeat1 = repeat2 = 0;
 }
 
 
@@ -4420,12 +4475,9 @@ static void reset_icmpset() {
 /*
  * Reset the Rate set to default values
  */
-static void reset_rateset() {
-        rate1.count  = 1;
-        rate1.cycles = 1;
-
-        rate2.count  = 1;
-        rate2.cycles = 1;
+static void reset_rateset(struct myrate *rate) {
+        rate->count = 1;
+        rate->cycles = 1;
 }
 
 

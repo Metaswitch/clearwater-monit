@@ -377,6 +377,7 @@ content           { return CONTENT; }
 pid               { return PID; }
 ppid              { return PPID; }
 count             { return COUNT; }
+repeat            { return REPEAT; }
 reminder          { return REMINDER; }
 instance          { return INSTANCE; }
 hostname          { return HOSTNAME; }

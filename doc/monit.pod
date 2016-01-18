@@ -1669,13 +1669,16 @@ enable monitoring from the web interface or from the console.
 
 B<EXEC> can be used to execute an arbitrary program B<and> send
 an alert. If you choose this action you must state the program to
-be executed and if the program require arguments you must enclose
+be executed and if the program requires arguments you must enclose
 the program and its arguments in a quoted string. You may
 optionally specify the uid and gid the executed program should
-switch to upon start. For instance:
+switch to upon start. The program is by default executed only once,
+on the state change. You can enable program repetition when the error
+persists for given number of cycles. For instance:
 
- exec "/usr/local/tomcat/bin/startup.sh"
+ if failed <test> then exec "/usr/local/bin/sms.sh"
       as uid nobody and gid nobody
+      repeat every 5 cycles
 
 Remember, if Monit is run by root, then all programs executed by Monit
 will be started with superuser privileges unless the uid and gid

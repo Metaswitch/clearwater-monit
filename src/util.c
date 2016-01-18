@@ -1922,6 +1922,8 @@ StringBuffer_T Util_printAction(Action_T A, StringBuffer_T buf) {
                         StringBuffer_append(buf, " as gid %d", C->gid);
                 if (C->timeout)
                         StringBuffer_append(buf, " timeout %d cycle(s)", C->timeout);
+                if (A->repeat)
+                        StringBuffer_append(buf, " repeat every %d cycle(s)", A->repeat);
         }
         return buf;
 }

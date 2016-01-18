@@ -297,9 +297,11 @@ static void _handleAction(Event_T E, Action_T A) {
                 if (A->id == Action_Alert || E->id == Event_Instance) {
                         return;
                 } else if (A->id == Action_Exec) {
-                        LogInfo("'%s' exec: %s\n", E->source->name, A->exec->arg[0]);
-                        spawn(E->source, A->exec, E);
-                        return;
+                        if (E->state_changed || (E->state && A->repeat && E->count % A->repeat == 0)) {
+                                LogInfo("'%s' exec: %s\n", E->source->name, A->exec->arg[0]);
+                                spawn(E->source, A->exec, E);
+                                return;
+                        }
                 } else {
                         if (E->source->actionratelist && (A->id == Action_Start || A->id == Action_Restart))
                                 E->source->nstart++;

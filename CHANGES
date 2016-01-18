@@ -7,6 +7,13 @@ Version 5.16
 New: The HTTP protocol test uses now HEAD method if no content check is set, so
 the test is faster and saves bandwidth.
 
+New: The exec action is now executed only once, on state change, same way as the alert
+action. The new "repeat" option allows to repeat the exec action after given number of
+cycles if the error persists.  Syntax:
+        if <test> then exec <script> repeat every <x> cycles
+If you want to get the old behaviour, use "repeat every 1 cycle". Example:
+        if failed port 1234 then exec "/usr/bin/myscript.sh" repeat every 5 cycles
+
 New: Issue #205: Added test for threads count to process check. Syntax:
         if threads > 10 then alert
 

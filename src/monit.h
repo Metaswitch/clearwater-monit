@@ -441,6 +441,7 @@ typedef struct myaction {
         Action_Type id;                                   /**< Action to be done */
         unsigned char count;       /**< Event count needed to trigger the action */
         unsigned char cycles;/**< Cycles during which count limit can be reached */
+        unsigned int repeat;                    /*< Repeat action each Xth cycle */
         command_t exec;                     /**< Optional command to be executed */
 } *Action_T;
 
