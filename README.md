@@ -81,8 +81,8 @@ You can subscribe to [Monitʼs mailing list](https://lists.nongnu.org/mailman/li
 CONTRIBUTING
 ============
  
-You are welcome to contribute to this project. Join our [developer mailing
-list](https://lists.nongnu.org/mailman/listinfo/monit-dev) and ask first if a new feature is wanted before working on a patch.
+You are welcome to contribute to this project. Join our [mailing
+list](http://lists.nongnu.org/mailman/listinfo/monit-general) and ask first if a new feature is wanted before working on a patch.
 Good pull requests, patches, improvements and new features are always helpful and appreciated.
 
 To create a pull request:
