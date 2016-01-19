@@ -2643,7 +2643,7 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                         else
                                                 StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
                                         if (s->checksum) {
-                                                if (s->inf->priv.file.cs_sum && *s->inf->priv.file.cs_sum)
+                                                if (*s->inf->priv.file.cs_sum)
                                                         StringBuffer_append(res->outputbuffer, "  %-33s %s (%s)\n", "checksum", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
                                                 else
                                                         StringBuffer_append(res->outputbuffer, "  %-33s -\n", "checksum");
