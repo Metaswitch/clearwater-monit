@@ -230,17 +230,13 @@ error3:
  * Initialize the process tree
  * @return treesize >= 0 if succeeded otherwise < 0
  */
-int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, int *oldsize_r) {
+int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
         ASSERT(pt_r);
         ASSERT(size_r);
-        ASSERT(oldpt_r);
-        ASSERT(oldsize_r);
 
-        if (*pt_r) {
-                if (*oldpt_r)
-                        delprocesstree(oldpt_r, oldsize_r);
-                *oldpt_r = *pt_r;
-                *oldsize_r = *size_r;
+        ProcessTree_T *oldpt = *pt_r;
+        int oldsize = *size_r;
+        if (oldpt) {
                 *pt_r = NULL;
                 *size_r = 0;
         }
@@ -248,8 +244,8 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
         if ((*size_r = initprocesstree_sysdep(pt_r)) <= 0 || ! *pt_r) {
                 DEBUG("System statistic -- cannot initialize the process tree -- process resource monitoring disabled\n");
                 Run.flags &= ~Run_ProcessEngineEnabled;
-                if (*oldpt_r)
-                        delprocesstree(oldpt_r, oldsize_r);
+                if (oldpt)
+                        delprocesstree(&oldpt, &oldsize);
                 return -1;
         } else if (! (Run.flags & Run_ProcessEngineEnabled)) {
                 DEBUG("System statistic -- initialization of the process tree succeeded -- process resource monitoring enabled\n");
@@ -258,10 +254,9 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
 
         int root = -1; // Main process. Not all systems have main process with PID 1 (such as Solaris zones and FreeBSD jails), so we try to find process which is parent of itself
         ProcessTree_T *pt = *pt_r;
-        ProcessTree_T *oldpt = *oldpt_r;
         for (int i = 0; i < (volatile int)*size_r; i ++) {
                 if (oldpt) {
-                        int oldentry = _findProcess(pt[i].pid, oldpt, *oldsize_r);
+                        int oldentry = _findProcess(pt[i].pid, oldpt, oldsize);
                         if (oldentry != -1) {
                                 pt[i].cputime_prev = oldpt[oldentry].cputime;
                                 pt[i].time_prev    = oldpt[oldentry].time;
@@ -294,13 +289,11 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
                         pt[parent].children++;
                 }
         }
-
+        if (oldpt)
+                delprocesstree(&oldpt, &oldsize);
         if (root == -1) {
                 DEBUG("System statistic error -- cannot find root process id\n");
-                if (*oldpt_r)
-                        delprocesstree(oldpt_r, oldsize_r);
-                if (*pt_r)
-                        delprocesstree(pt_r, size_r);
+                delprocesstree(pt_r, size_r);
                 return -1;
         }
 
@@ -352,7 +345,7 @@ void process_testmatch(char *pattern) {
                 exit(1);
         }
 #endif
-        initprocesstree(&ptree, &ptreesize, &oldptree, &oldptreesize);
+        initprocesstree(&ptree, &ptreesize);
         if (Run.flags & Run_ProcessEngineEnabled) {
                 int count = 0;
                 printf("List of processes matching pattern \"%s\":\n", pattern);

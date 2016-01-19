@@ -1202,8 +1202,6 @@ extern ServiceGroup_T servicegrouplist;
 extern SystemInfo_T   systeminfo;
 extern ProcessTree_T *ptree;
 extern int            ptreesize;
-extern ProcessTree_T *oldptree;
-extern int            oldptreesize;
 
 extern char *actionnames[];
 extern char *modenames[];

@@ -35,7 +35,7 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *, int treesize, pid_t 
 boolean_t init_process_info(void);
 boolean_t update_system_load();
 time_t getProcessUptime(pid_t pid, ProcessTree_T *pt, int treesize);
-int initprocesstree(ProcessTree_T **, int *, ProcessTree_T **, int *);
+int initprocesstree(ProcessTree_T **, int *);
 void delprocesstree(ProcessTree_T **, int *);
 void process_testmatch(char *);
 boolean_t read_proc_file(char *, int, char *, int, int *);

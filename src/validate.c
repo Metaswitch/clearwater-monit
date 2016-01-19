@@ -1035,7 +1035,7 @@ int validate() {
         Event_queue_process();
 
         update_system_load();
-        initprocesstree(&ptree, &ptreesize, &oldptree, &oldptreesize);
+        initprocesstree(&ptree, &ptreesize);
         gettimeofday(&systeminfo.collected, NULL);
 
         /* In the case that at least one action is pending, perform quick loop to handle the actions ASAP */

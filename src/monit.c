@@ -132,9 +132,7 @@ Mutex_T  heartbeatMutex;
 static volatile boolean_t heartbeatRunning = false;
 
 int ptreesize = 0;
-int oldptreesize = 0;
 ProcessTree_T *ptree = NULL;
-ProcessTree_T *oldptree = NULL;
 
 char *actionnames[] = {"ignore", "alert", "restart", "stop", "exec", "unmonitor", "start", "monitor", ""};
 char *modenames[] = {"active", "passive", "manual"};
