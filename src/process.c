@@ -68,6 +68,72 @@
  */
 
 
+/* ----------------------------------------------------------------- Private */
+
+
+/**
+ * Search a leaf in the processtree
+ * @param pid  pid of the process
+ * @param pt  processtree
+ * @param treesize  size of the processtree
+ * @return process index if succeeded otherwise -1
+ */
+static int _findProcess(int pid, ProcessTree_T *pt, int treesize) {
+        if (treesize > 0) {
+                for (int i = 0; i < treesize; i++)
+                        if (pid == pt[i].pid)
+                                return i;
+        }
+        return -1;
+}
+
+
+/**
+ * Connects child and parent in a process tree
+ * @param pt process tree
+ * @param parent index
+ * @param child index
+ */
+static void _connectChild(ProcessTree_T *pt, int parent, int child) {
+        if (pt[parent].pid != pt[child].pid) {
+                RESIZE(pt[parent].children, sizeof(ProcessTree_T *) * (pt[parent].children_num + 1));
+                pt[parent].children[pt[parent].children_num] = child;
+                pt[parent].children_num++;
+        }
+}
+
+
+/**
+ * Fill data in the process tree by recusively walking through it
+ * @param pt process tree
+ * @param i process index
+ */
+static void _fillProcessTree(ProcessTree_T *pt, int index) {
+        ProcessTree_T *parent_pt;
+
+        ASSERT(pt);
+
+        if (pt[index].visited == true)
+                return;
+
+        pt[index].visited         = true;
+        pt[index].children_sum    = pt[index].children_num;
+        pt[index].mem_sum         = pt[index].mem;
+        pt[index].cpu_percent_sum = pt[index].cpu_percent;
+
+        for (int i = 0; i < pt[index].children_num; i++)
+                _fillProcessTree(pt, pt[index].children[i]);
+
+        if (pt[index].parent != -1 && pt[index].parent != index) {
+                parent_pt                   = &pt[pt[index].parent];
+                parent_pt->children_sum    += pt[index].children_sum;
+                parent_pt->mem_sum         += pt[index].mem_sum;
+                parent_pt->cpu_percent_sum += pt[index].cpu_percent_sum;
+                parent_pt->cpu_percent_sum  = (pt[index].cpu_percent_sum > 100.) ? 100. : parent_pt->cpu_percent_sum;
+        }
+}
+
+
 /* ------------------------------------------------------------------ Public */
 
 
@@ -107,7 +173,7 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
         s->inf->priv.process.pid  = pid;
 
         int leaf;
-        if ((leaf = findprocess(pid, pt, treesize)) != -1) {
+        if ((leaf = _findProcess(pid, pt, treesize)) != -1) {
                 /* save the previous ppid and set actual one */
                 s->inf->priv.process._ppid             = s->inf->priv.process.ppid;
                 s->inf->priv.process.ppid              = pt[leaf].ppid;
@@ -130,18 +196,7 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                         s->inf->priv.process.mem_percent       = 100. * (double)pt[leaf].mem / (double)systeminfo.mem_max;
                 }
         } else {
-                s->inf->priv.process.ppid              = -1;
-                s->inf->priv.process.uid               = -1;
-                s->inf->priv.process.euid              = -1;
-                s->inf->priv.process.gid               = -1;
-                s->inf->priv.process.uptime            = 0;
-                s->inf->priv.process.children          = 0;
-                s->inf->priv.process.total_mem         = 0ULL;
-                s->inf->priv.process.total_mem_percent = 0.;
-                s->inf->priv.process.mem               = 0ULL;
-                s->inf->priv.process.mem_percent       = 0.;
-                s->inf->priv.process.cpu_percent       = 0.;
-                s->inf->priv.process.total_cpu_percent = 0.;
+                Util_resetInfo(s);
         }
         return true;
 }
@@ -224,47 +279,37 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
                 Run.flags |= Run_ProcessEngineEnabled;
         }
 
-        int oldentry;
         ProcessTree_T *pt = *pt_r;
         ProcessTree_T *oldpt = *oldpt_r;
         for (int i = 0; i < (volatile int)*size_r; i ++) {
-                if (oldpt && ((oldentry = findprocess(pt[i].pid, oldpt, *oldsize_r)) != -1)) {
-                        pt[i].cputime_prev = oldpt[oldentry].cputime;
-                        pt[i].time_prev    = oldpt[oldentry].time;
+                if (oldpt) {
+                        int oldentry = _findProcess(pt[i].pid, oldpt, *oldsize_r);
+                        if (oldentry != -1) {
+                                pt[i].cputime_prev = oldpt[oldentry].cputime;
+                                pt[i].time_prev    = oldpt[oldentry].time;
 
-                        /* The cpu_percent may be set already (for example by HPUX module) */
-                        if (pt[i].cpu_percent == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
-                                pt[i].cpu_percent = (100. * (double)(pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
-                                if (pt[i].cpu_percent > 100.)
-                                        pt[i].cpu_percent = 100.;
+                                /* The cpu_percent may be set already (for example by HPUX module) */
+                                if (pt[i].cpu_percent == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
+                                        pt[i].cpu_percent = (100. * (double)(pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
+                                        if (pt[i].cpu_percent > 100.)
+                                                pt[i].cpu_percent = 100.;
+                                }
                         }
-                } else {
-                        pt[i].cputime_prev = 0;
-                        pt[i].time_prev    = 0.;
-                        pt[i].cpu_percent  = 0.;
                 }
-
                 if (pt[i].pid == pt[i].ppid) {
                         pt[i].parent = i;
-                        continue;
-                }
+                } else {
+                        if ((pt[i].parent = _findProcess(pt[i].ppid, pt, *size_r)) == -1) {
+                                /* Parent process wasn't found - on Linux this is normal: main process with PID 0 is not listed, similarly in FreeBSD jail.
+                                 * We create virtual process entry for missing parent so we can have full tree-like structure with root. */
+                                int j = (*size_r)++;
 
-                if ((pt[i].parent = findprocess(pt[i].ppid, pt, *size_r)) == -1) {
-                        /* Parent process wasn't found - on Linux this is normal: main process with PID 0 is not listed, similarly in FreeBSD jail.
-                         * We create virtual process entry for missing parent so we can have full tree-like structure with root. */
-                        int j = (*size_r)++;
-
-                        pt = RESIZE(*pt_r, *size_r * sizeof(ProcessTree_T));
-                        memset(&pt[j], 0, sizeof(ProcessTree_T));
-                        pt[j].ppid = pt[j].pid  = pt[i].ppid;
-                        pt[i].parent = j;
-                }
-
-                if (! connectchild(pt, pt[i].parent, i)) {
-                        /* connection to parent process has failed, this is usually caused in the part above */
-                        DEBUG("System statistic error -- cannot connect process id %d to its parent %d\n", pt[i].pid, pt[i].ppid);
-                        pt[i].pid = 0;
-                        continue;
+                                pt = RESIZE(*pt_r, *size_r * sizeof(ProcessTree_T));
+                                memset(&pt[j], 0, sizeof(ProcessTree_T));
+                                pt[j].ppid = pt[j].pid = pt[i].ppid;
+                                pt[i].parent = j;
+                        }
+                        _connectChild(pt, pt[i].parent, i);
                 }
         }
 
@@ -286,36 +331,15 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
                 return -1;
         }
 
-        fillprocesstree(pt, root);
+        _fillProcessTree(pt, root);
 
         return *size_r;
 }
 
 
-/**
- * Search a leaf in the processtree
- * @param pid  pid of the process
- * @param pt  processtree
- * @param treesize  size of the processtree
- * @return process index if succeeded otherwise -1
- */
-int findprocess(int pid, ProcessTree_T *pt, int treesize) {
-        ASSERT(pt);
-
-        if (treesize <= 0)
-                return -1;
-
-        for (int i = 0; i < treesize; i++)
-                if (pid == pt[i].pid)
-                        return i;
-
-        return -1;
-}
-
-
 time_t getProcessUptime(pid_t pid, ProcessTree_T *pt, int treesize) {
         if (pt) {
-                int leaf = findprocess(pid, pt, treesize);
+                int leaf = _findProcess(pid, pt, treesize);
                 return (time_t)((leaf >= 0 && leaf < treesize) ? Time_now() - pt[leaf].starttime : -1);
         } else {
                 return 0;
@@ -381,4 +405,61 @@ void process_testmatch(char *pattern) {
         }
 }
 
+
+/**
+ * Reads an process dependent entry or the proc filesystem
+ * @param buf buffer to write to
+ * @param buf_size size of buffer "buf"
+ * @param name name of proc service
+ * @param pid number of the process / or <0 if main directory
+ * @param bytes_read number of bytes read to buffer
+ * @return true if succeeded otherwise false.
+ */
+boolean_t read_proc_file(char *buf, int buf_size, char *name, int pid, int *bytes_read) {
+        int fd;
+        char filename[STRLEN];
+        int bytes;
+        boolean_t rv = false;
+
+        ASSERT(buf);
+        ASSERT(name);
+
+        if (pid < 0)
+                snprintf(filename, STRLEN, "/proc/%s", name);
+        else
+                snprintf(filename, STRLEN, "/proc/%d/%s", pid, name);
+
+        if ((fd = open(filename, O_RDONLY)) < 0) {
+                DEBUG("Cannot open proc file %s -- %s\n", filename, STRERROR);
+                return rv;
+        }
+
+        if ((bytes = (int)read(fd, buf, buf_size-1)) < 0) {
+                DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
+                goto error;
+        }
+        if (bytes_read)
+                *bytes_read = bytes;
+
+        /* In case it is a string we have to 0 terminate it our self */
+        buf[bytes]='\0';
+        rv = true;
+
+error:
+        if (close(fd) < 0)
+                LogError("Socket close failed -- %s\n", STRERROR);
+
+        return rv;
+}
+
+/**
+ * Get the actual time as a floating point number
+ * @return time in 1/10 seconds
+ */
+double get_float_time(void) {
+        struct timeval t;
+
+        gettimeofday(&t, NULL);
+        return (double) t.tv_sec * 10 + (double) t.tv_usec / 100000.0;
+}
 

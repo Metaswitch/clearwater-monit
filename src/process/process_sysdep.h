@@ -27,18 +27,9 @@
 
 boolean_t init_process_info_sysdep(void);
 int init_proc_info_sysdep(void);
-
-boolean_t read_proc_file(char *, int, char *, int, int *);
 int getloadavg_sysdep (double *, int);
 boolean_t used_system_memory_sysdep(SystemInfo_T *);
 boolean_t used_system_cpu_sysdep(SystemInfo_T *);
-
-double get_float_time(void);
-
 int    initprocesstree_sysdep(ProcessTree_T **);
-void   fillprocesstree(ProcessTree_T *, int);
-
-boolean_t connectchild(ProcessTree_T *, int, int);
-
 
 #endif
