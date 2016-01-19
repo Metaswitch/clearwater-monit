@@ -112,6 +112,8 @@ Noah Kantrowitz for report.
 Fixed: If the port test was skipped (while the process is starting), mark the state
 as init (previously monit status showed connection error).
 
+Fixed: AIX per-process CPU usage statistics.
+
 Warning: The maximum length of password or hash used for Monit HTTP GUI authentication
 is now limited to 64 characters.
 

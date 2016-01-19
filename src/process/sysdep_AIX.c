@@ -191,8 +191,8 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         for (int i = 0; i < treesize; i++) {
-
-                pt[i].cputime     = 0;
+                pt[i].time        = get_float_time();
+                pt[i].cputime     = 0.;
                 pt[i].cpu_percent = 0.;
                 pt[i].pid         = procs[i].pi_pid;
                 pt[i].ppid        = procs[i].pi_ppid;
