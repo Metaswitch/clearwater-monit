@@ -73,10 +73,6 @@
 #include <sys/sysinfo.h>
 #endif
 
-#ifndef HZ
-# define HZ sysconf(_SC_CLK_TCK)
-#endif
-
 #include "monit.h"
 #include "process.h"
 #include "process_sysdep.h"
@@ -114,6 +110,8 @@ static unsigned long long old_cpu_total    = 0;
 
 static long page_size = 0;
 
+static double hz = 0.;
+
 /**
  * Get system start time
  * @return seconds since unix epoch
@@ -134,6 +132,11 @@ static time_t get_starttime() {
 boolean_t init_process_info_sysdep(void) {
         char *ptr;
         char  buf[2048];
+
+        if ((hz = sysconf(_SC_CLK_TCK)) <= 0.) {
+                DEBUG("system statistic error -- cannot get hz: %s\n", STRERROR);
+                return false;
+        }
 
         if ((page_size = sysconf(_SC_PAGESIZE)) <= 0) {
                 DEBUG("system statistic error -- cannot get page size: %s\n", STRERROR);
@@ -288,10 +291,10 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].euid = stat_euid;
                 pt[i].gid = stat_gid;
                 pt[i].threads = stat_threads;
-                pt[i].starttime = starttime > 0 ? (starttime + (time_t)(stat_item_starttime / HZ)) : 0;
+                pt[i].starttime = starttime > 0 ? (starttime + (time_t)(stat_item_starttime / hz)) : 0;
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].time = now;
-                pt[i].cputime = (double)(stat_item_utime + stat_item_stime) / HZ * 10.; // jiffies -> seconds = 1 / HZ. HZ is defined in "asm/param.h" and it is usually 1/100s but on alpha system it is 1/1024s
+                pt[i].cputime = (double)(stat_item_utime + stat_item_stime) / hz * 10.; // jiffies -> seconds = 1/hz
                 pt[i].cpu_percent = 0.;
                 pt[i].mem = stat_item_rss * page_size;
                 if (stat_item_state == 'Z') // State is Zombie -> then we are a Zombie ... clear or? (-:
