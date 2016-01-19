@@ -171,10 +171,8 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                 s->inf->priv.process.total_cpu_percent = pt[leaf].cpu_percent_sum > 100. ? 100. : pt[leaf].cpu_percent_sum;
                 s->inf->priv.process.mem               = pt[leaf].mem;
                 s->inf->priv.process.total_mem         = pt[leaf].mem_sum;
-                if (systeminfo.mem_max > 0) {
-                        s->inf->priv.process.total_mem_percent = pt[leaf].mem_sum >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max);
-                        s->inf->priv.process.mem_percent       = pt[leaf].mem >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem / (double)systeminfo.mem_max);
-                }
+                s->inf->priv.process.total_mem_percent = pt[leaf].mem_sum >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max);
+                s->inf->priv.process.mem_percent       = pt[leaf].mem >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem / (double)systeminfo.mem_max);
         } else {
                 Util_resetInfo(s);
         }
