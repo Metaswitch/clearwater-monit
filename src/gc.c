@@ -365,6 +365,7 @@ static void _gcportlist(Port_T *p) {
                                 char *s = List_pop(l);
                                 FREE(s);
                         }
+                        List_free(&(*p)->parameters.http.headers);
                 }
         } else if ((*p)->protocol->check == check_generic) {
                 if ((*p)->parameters.generic.sendexpect)
