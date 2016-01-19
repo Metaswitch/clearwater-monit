@@ -149,7 +149,6 @@ boolean_t init_process_info(void) {
  */
 boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_t pid) {
         ASSERT(s);
-        ASSERT(systeminfo.mem_max > 0);
 
         /* save the previous pid and set actual one */
         s->inf->priv.process._pid = s->inf->priv.process.pid;
@@ -171,8 +170,10 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                 s->inf->priv.process.total_cpu_percent = pt[leaf].cpu_percent_sum > 100. ? 100. : pt[leaf].cpu_percent_sum;
                 s->inf->priv.process.mem               = pt[leaf].mem;
                 s->inf->priv.process.total_mem         = pt[leaf].mem_sum;
-                s->inf->priv.process.total_mem_percent = pt[leaf].mem_sum >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max);
-                s->inf->priv.process.mem_percent       = pt[leaf].mem >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem / (double)systeminfo.mem_max);
+                if (systeminfo.mem_max > 0) {
+                        s->inf->priv.process.total_mem_percent = pt[leaf].mem_sum >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max);
+                        s->inf->priv.process.mem_percent       = pt[leaf].mem >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem / (double)systeminfo.mem_max);
+                }
         } else {
                 Util_resetInfo(s);
         }
@@ -186,8 +187,6 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
  */
 boolean_t update_system_load() {
         if (Run.flags & Run_ProcessEngineEnabled) {
-                ASSERT(systeminfo.mem_max > 0);
-
                 /** Get load average triplet */
                 if (getloadavg_sysdep(systeminfo.loadavg, 3) == -1) {
                         LogError("'%s' statistic error -- load average gathering failed\n", Run.system->name);
@@ -199,8 +198,8 @@ boolean_t update_system_load() {
                         LogError("'%s' statistic error -- memory usage gathering failed\n", Run.system->name);
                         goto error2;
                 }
-                systeminfo.total_mem_percent  = systeminfo.mem_max ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
-                systeminfo.total_swap_percent = systeminfo.swap_max ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
+                systeminfo.total_mem_percent  = systeminfo.mem_max > 0 ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
+                systeminfo.total_swap_percent = systeminfo.swap_max > 0 ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
 
                 /** Get CPU usage statistic */
                 if (! used_system_cpu_sysdep(&systeminfo)) {
