@@ -196,7 +196,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].ppid        = procs[i].pi_ppid;
                 pt[i].euid        = procs[i].pi_uid;
                 pt[i].threads     = procs[i].pi_thcount;
-                pt[i].starttime   = procs[i].pi_start;
+                pt[i].uptime      = now / 10. - procs[i].pi_start;
                 pt[i].mem         = (procs[i].pi_drss + procs[i].pi_trss) * page_size;
                 pt[i].time        = now;
                 pt[i].cputime     = procs[i].pi_ru.ru_utime.tv_sec * 10 + (double)procs[i].pi_ru.ru_utime.tv_usec / 100000. + procs[i].pi_ru.ru_stime.tv_sec * 10 + (double)procs[i].pi_ru.ru_stime.tv_usec / 100000.;

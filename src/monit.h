@@ -544,7 +544,7 @@ typedef struct myprocesstree {
         float         cpu_percent_sum;
         uint64_t      mem;
         uint64_t      mem_sum;
-        time_t        starttime;
+        time_t        uptime;
         char         *cmdline;
 
         /** For internal use */

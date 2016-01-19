@@ -174,7 +174,6 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         int                 stat_uid = 0;
         int                 stat_euid = 0;
         int                 stat_gid = 0;
-        int                 stat_threads = 0;
         char               *tmp = NULL;
         char                procname[STRLEN];
         char                buf[4096];
@@ -182,6 +181,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         long                stat_item_cutime = 0;
         long                stat_item_cstime = 0;
         long                stat_item_rss = 0;
+        int                 stat_item_threads = 0;
         glob_t              globbuf;
         unsigned long       stat_item_utime = 0;
         unsigned long       stat_item_stime = 0;
@@ -221,15 +221,16 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 }
                 tmp += 2;
                 if (sscanf(tmp,
-                           "%c %d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %ld %ld %*d %*d %*d %*u %llu %*u %ld %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d\n",
+                           "%c %d %*d %*d %*d %*d %*u %*u %*u %*u %*u %lu %lu %ld %ld %*d %*d %d %*u %llu %*u %ld %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*u %*d %*d\n",
                            &stat_item_state,
                            &stat_ppid,
                            &stat_item_utime,
                            &stat_item_stime,
                            &stat_item_cutime,
                            &stat_item_cstime,
+                           &stat_item_threads,
                            &stat_item_starttime,
-                           &stat_item_rss) != 8) {
+                           &stat_item_rss) != 9) {
                         DEBUG("system statistic error -- file /proc/%d/stat parse error\n", stat_pid);
                         continue;
                 }
@@ -255,14 +256,6 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         DEBUG("system statistic error -- cannot read process gid\n");
                         continue;
                 }
-                if (! (tmp = strstr(buf, "Threads:"))) {
-                        DEBUG("system statistic error -- cannot find process threads\n");
-                        continue;
-                }
-                if (sscanf(tmp + 8, "\t%d", &stat_threads) != 1) {
-                        DEBUG("system statistic error -- cannot read process threads\n");
-                        continue;
-                }
 
                 /********** /proc/PID/cmdline **********/
                 if (! read_proc_file(buf, sizeof(buf), "cmdline", stat_pid, &bytes)) {
@@ -279,8 +272,8 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].uid = stat_uid;
                 pt[i].euid = stat_euid;
                 pt[i].gid = stat_gid;
-                pt[i].threads = stat_threads;
-                pt[i].starttime = starttime > 0 ? (starttime + (time_t)(stat_item_starttime / hz)) : 0;
+                pt[i].threads = stat_item_threads;
+                pt[i].uptime = starttime > 0 ? (now / 10. - (starttime + (time_t)(stat_item_starttime / hz))) : 0;
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].time = now;
                 pt[i].cputime = (double)(stat_item_utime + stat_item_stime) / hz * 10.; // jiffies -> seconds = 1/hz

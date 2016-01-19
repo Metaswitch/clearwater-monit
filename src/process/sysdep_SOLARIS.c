@@ -161,12 +161,12 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         continue;
                 }
 
-                pt[i].time      = now;
-                pt[i].ppid      = psinfo->pr_ppid;
-                pt[i].uid       = psinfo->pr_uid;
-                pt[i].euid      = psinfo->pr_euid;
-                pt[i].gid       = psinfo->pr_gid;
-                pt[i].starttime = psinfo->pr_start.tv_sec;
+                pt[i].time   = now;
+                pt[i].ppid   = psinfo->pr_ppid;
+                pt[i].uid    = psinfo->pr_uid;
+                pt[i].euid   = psinfo->pr_euid;
+                pt[i].gid    = psinfo->pr_gid;
+                pt[i].uptime = now / 10. - psinfo->pr_start.tv_sec;
 
                 /* If we don't have any light-weight processes (LWP) then we are definitely a zombie */
                 if (psinfo->pr_nlwp == 0) {

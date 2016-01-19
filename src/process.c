@@ -89,27 +89,11 @@ static int _findProcess(int pid, ProcessTree_T *pt, int treesize) {
 
 
 /**
- * Connects child and parent in a process tree
- * @param pt process tree
- * @param parent index
- * @param child index
- */
-static void _connectChild(ProcessTree_T *pt, int parent, int child) {
-        if (pt[parent].pid != pt[child].pid) {
-                RESIZE(pt[parent].children, sizeof(ProcessTree_T *) * (pt[parent].children_num + 1));
-                pt[parent].children[pt[parent].children_num] = child;
-                pt[parent].children_num++;
-        }
-}
-
-
-/**
  * Fill data in the process tree by recusively walking through it
  * @param pt process tree
  * @param i process index
  */
 static void _fillProcessTree(ProcessTree_T *pt, int index) {
-        ProcessTree_T *parent_pt;
 
         ASSERT(pt);
 
@@ -125,11 +109,10 @@ static void _fillProcessTree(ProcessTree_T *pt, int index) {
                 _fillProcessTree(pt, pt[index].children[i]);
 
         if (pt[index].parent != -1 && pt[index].parent != index) {
-                parent_pt                   = &pt[pt[index].parent];
+                ProcessTree_T *parent_pt    = &pt[pt[index].parent];
                 parent_pt->children_sum    += pt[index].children_sum;
                 parent_pt->mem_sum         += pt[index].mem_sum;
                 parent_pt->cpu_percent_sum += pt[index].cpu_percent_sum;
-                parent_pt->cpu_percent_sum  = (pt[index].cpu_percent_sum > 100.) ? 100. : parent_pt->cpu_percent_sum;
         }
 }
 
@@ -172,28 +155,25 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
         s->inf->priv.process._pid = s->inf->priv.process.pid;
         s->inf->priv.process.pid  = pid;
 
-        int leaf;
-        if ((leaf = _findProcess(pid, pt, treesize)) != -1) {
+        int leaf = _findProcess(pid, pt, treesize);
+        if (leaf != -1) {
                 /* save the previous ppid and set actual one */
                 s->inf->priv.process._ppid             = s->inf->priv.process.ppid;
                 s->inf->priv.process.ppid              = pt[leaf].ppid;
                 s->inf->priv.process.uid               = pt[leaf].uid;
                 s->inf->priv.process.euid              = pt[leaf].euid;
                 s->inf->priv.process.gid               = pt[leaf].gid;
-                s->inf->priv.process.uptime            = Time_now() - pt[leaf].starttime;
+                s->inf->priv.process.uptime            = pt[leaf].uptime;
                 s->inf->priv.process.threads           = pt[leaf].threads;
                 s->inf->priv.process.children          = pt[leaf].children_sum;
-                s->inf->priv.process.mem               = pt[leaf].mem;
                 s->inf->priv.process.zombie            = pt[leaf].zombie;
-                s->inf->priv.process.total_mem         = pt[leaf].mem_sum;
                 s->inf->priv.process.cpu_percent       = pt[leaf].cpu_percent;
-                s->inf->priv.process.total_cpu_percent = pt[leaf].cpu_percent_sum;
-                if (systeminfo.mem_max == 0) {
-                        s->inf->priv.process.total_mem_percent = 0.;
-                        s->inf->priv.process.mem_percent       = 0.;
-                } else {
-                        s->inf->priv.process.total_mem_percent = 100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max;
-                        s->inf->priv.process.mem_percent       = 100. * (double)pt[leaf].mem / (double)systeminfo.mem_max;
+                s->inf->priv.process.total_cpu_percent = pt[leaf].cpu_percent_sum > 100. ? 100. : pt[leaf].cpu_percent_sum;
+                s->inf->priv.process.mem               = pt[leaf].mem;
+                s->inf->priv.process.total_mem         = pt[leaf].mem_sum;
+                if (systeminfo.mem_max > 0) {
+                        s->inf->priv.process.total_mem_percent = pt[leaf].mem_sum >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max);
+                        s->inf->priv.process.mem_percent       = pt[leaf].mem >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem / (double)systeminfo.mem_max);
                 }
         } else {
                 Util_resetInfo(s);
@@ -279,6 +259,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
                 Run.flags |= Run_ProcessEngineEnabled;
         }
 
+        int root = -1; // Main process. Not all systems have main process with PID 1 (such as Solaris zones and FreeBSD jails), so we try to find process which is parent of itself
         ProcessTree_T *pt = *pt_r;
         ProcessTree_T *oldpt = *oldpt_r;
         for (int i = 0; i < (volatile int)*size_r; i ++) {
@@ -297,28 +278,23 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
                         }
                 }
                 if (pt[i].pid == pt[i].ppid) {
-                        pt[i].parent = i;
+                        root = pt[i].parent = i;
                 } else {
-                        if ((pt[i].parent = _findProcess(pt[i].ppid, pt, *size_r)) == -1) {
+                        // Find this process' parent
+                        int parent = _findProcess(pt[i].ppid, pt, *size_r);
+                        if (parent == -1) {
                                 /* Parent process wasn't found - on Linux this is normal: main process with PID 0 is not listed, similarly in FreeBSD jail.
                                  * We create virtual process entry for missing parent so we can have full tree-like structure with root. */
-                                int j = (*size_r)++;
-
+                                parent = (*size_r)++;
                                 pt = RESIZE(*pt_r, *size_r * sizeof(ProcessTree_T));
-                                memset(&pt[j], 0, sizeof(ProcessTree_T));
-                                pt[j].ppid = pt[j].pid = pt[i].ppid;
-                                pt[i].parent = j;
+                                memset(&pt[parent], 0, sizeof(ProcessTree_T));
+                                root = pt[parent].ppid = pt[parent].pid = pt[i].ppid;
                         }
-                        _connectChild(pt, pt[i].parent, i);
-                }
-        }
-
-        /* The main process in Solaris zones and FreeBSD host doesn't have pid 1, so try to find process which is parent of itself */
-        int root = -1;
-        for (int i = 0; i < *size_r; i++) {
-                if (pt[i].pid == pt[i].ppid) {
-                        root = i;
-                        break;
+                        pt[i].parent = parent;
+                        // Connect the child (this process) to the parent
+                        RESIZE(pt[parent].children, sizeof(int) * (pt[parent].children_num + 1));
+                        pt[parent].children[pt[parent].children_num] = i;
+                        pt[parent].children_num++;
                 }
         }
 
@@ -340,7 +316,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
 time_t getProcessUptime(pid_t pid, ProcessTree_T *pt, int treesize) {
         if (pt) {
                 int leaf = _findProcess(pid, pt, treesize);
-                return (time_t)((leaf >= 0 && leaf < treesize) ? Time_now() - pt[leaf].starttime : -1);
+                return (time_t)((leaf >= 0 && leaf < treesize) ? pt[leaf].uptime : -1);
         } else {
                 return 0;
         }

@@ -191,7 +191,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].uid         = psall[i].pst_uid;
                 pt[i].euid        = psall[i].pst_euid;
                 pt[i].gid         = psall[i].pst_gid;
-                pt[i].starttime   = psall[i].pst_start;
+                pt[i].uptime      = now / 10. - psall[i].pst_start;
                 pt[i].time        = now;
                 pt[i].cputime     = (psall[i].pst_utime + psall[i].pst_stime) * 10;
                 pt[i].cpu_percent = 100. * psall[i].pst_pctcpu / (float)systeminfo.cpus;

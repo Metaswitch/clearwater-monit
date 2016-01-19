@@ -153,7 +153,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 pt[i].euid      = pinfo[i].ki_uid;
                 pt[i].gid       = pinfo[i].ki_rgid;
                 pt[i].threads   = pinfo[i].ki_numthreads;
-                pt[i].starttime = pinfo[i].ki_start.tv_sec;
+                pt[i].uptime    = now / 10. - pinfo[i].ki_start.tv_sec;
                 pt[i].cputime   = (double)pinfo[i].ki_runtime / 100000.;
                 pt[i].mem       = pinfo[i].ki_rssize * pagesize;
                 int flags       = pinfo[i].ki_stat;

@@ -162,7 +162,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].euid        = pinfo[i].p_uid;
                 pt[i].gid         = pinfo[i].p_rgid;
                 pt[i].threads     = pinfo[i].p_nlwps;
-                pt[i].starttime   = pinfo[i].p_ustart_sec;
+                pt[i].uptime      = now / 10. - pinfo[i].p_ustart_sec;
                 pt[i].time        = now;
                 pt[i].cputime     = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
                 pt[i].cpu_percent = 0.;
