@@ -538,7 +538,7 @@ typedef struct myprocesstree {
         int           euid;
         int           gid;
         int           threads;
-        int           children_num;
+        int           children;
         int           children_sum;
         float         cpu_percent;
         float         cpu_percent_sum;
@@ -553,7 +553,7 @@ typedef struct myprocesstree {
         double        cputime;                                   /**< 1/10 seconds */
         double        cputime_prev;                              /**< 1/10 seconds */
 
-        int          *children;
+        int          *children_list;
 } ProcessTree_T;
 
 

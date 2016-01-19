@@ -153,47 +153,26 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
-
-                if (! read_proc_file(buf, sizeof(buf), "psinfo", pt[i].pid, NULL)) {
-                        pt[i].cputime     = 0.;
-                        pt[i].cpu_percent = 0.;
-                        pt[i].mem         = 0ULL;
-                        continue;
-                }
-
-                pt[i].time   = now;
-                pt[i].ppid   = psinfo->pr_ppid;
-                pt[i].uid    = psinfo->pr_uid;
-                pt[i].euid   = psinfo->pr_euid;
-                pt[i].gid    = psinfo->pr_gid;
-                pt[i].uptime = now / 10. - psinfo->pr_start.tv_sec;
-
-                /* If we don't have any light-weight processes (LWP) then we are definitely a zombie */
-                if (psinfo->pr_nlwp == 0) {
-                        pt[i].zombie = true;
-                        pt[i].cputime = 0.;
-                        pt[i].cpu_percent = 0.;
-                        pt[i].mem = 0ULL;
-                        continue;
-                }
-
-                pt[i].mem = psinfo->pr_rssize * 1024;
-
-                pt[i].cmdline  = Str_dup(psinfo->pr_psargs);
-                if (! pt[i].cmdline || ! *pt[i].cmdline) {
-                        FREE(pt[i].cmdline);
-                        pt[i].cmdline = Str_dup(psinfo->pr_fname);
-                }
-
-                if (! read_proc_file(buf, sizeof(buf), "status", pt[i].pid, NULL)) {
-                        pt[i].cputime = 0;
-                        pt[i].cpu_percent = 0.;
-                        pt[i].threads = 0;
-                } else {
-                        memcpy(&pstatus, buf, sizeof(pstatus_t));
-                        pt[i].cputime = timestruc_to_tseconds(pstatus.pr_utime) + timestruc_to_tseconds(pstatus.pr_stime);
-                        pt[i].cpu_percent = 0.;
-                        pt[i].threads = pstatus.pr_nlwp;
+                if (read_proc_file(buf, sizeof(buf), "psinfo", pt[i].pid, NULL)) {
+                        pt[i].time   = now;
+                        pt[i].ppid   = psinfo->pr_ppid;
+                        pt[i].uid    = psinfo->pr_uid;
+                        pt[i].euid   = psinfo->pr_euid;
+                        pt[i].gid    = psinfo->pr_gid;
+                        pt[i].uptime = now / 10. - psinfo->pr_start.tv_sec;
+                        pt[i].zombie = psinfo->pr_nlwp == 0 ? true : false; // If we don't have any light-weight processes (LWP) then we are definitely a zombie
+                        pt[i].mem    = psinfo->pr_rssize * 1024;
+                        pt[i].cmdline  = Str_dup(psinfo->pr_psargs);
+                        if (! pt[i].cmdline || ! *pt[i].cmdline) {
+                                FREE(pt[i].cmdline);
+                                pt[i].cmdline = Str_dup(psinfo->pr_fname);
+                        }
+                        if (read_proc_file(buf, sizeof(buf), "status", pt[i].pid, NULL)) {
+                                memcpy(&pstatus, buf, sizeof(pstatus_t));
+                                pt[i].cputime = timestruc_to_tseconds(pstatus.pr_utime) + timestruc_to_tseconds(pstatus.pr_stime);
+                                pt[i].cpu_percent = 0.;
+                                pt[i].threads = pstatus.pr_nlwp;
+                        }
                 }
         }
 

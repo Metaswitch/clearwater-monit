@@ -101,12 +101,12 @@ static void _fillProcessTree(ProcessTree_T *pt, int index) {
                 return;
 
         pt[index].visited         = true;
-        pt[index].children_sum    = pt[index].children_num;
+        pt[index].children_sum    = pt[index].children;
         pt[index].mem_sum         = pt[index].mem;
         pt[index].cpu_percent_sum = pt[index].cpu_percent;
 
-        for (int i = 0; i < pt[index].children_num; i++)
-                _fillProcessTree(pt, pt[index].children[i]);
+        for (int i = 0; i < pt[index].children; i++)
+                _fillProcessTree(pt, pt[index].children_list[i]);
 
         if (pt[index].parent != -1 && pt[index].parent != index) {
                 ProcessTree_T *parent_pt    = &pt[pt[index].parent];
@@ -269,7 +269,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
 
                                 /* The cpu_percent may be set already (for example by HPUX module) */
                                 if (pt[i].cpu_percent == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
-                                        pt[i].cpu_percent = (100. * (double)(pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
+                                        pt[i].cpu_percent = (100. * (pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
                                         if (pt[i].cpu_percent > 100.)
                                                 pt[i].cpu_percent = 100.;
                                 }
@@ -290,9 +290,9 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessTree_T **oldpt_r, 
                         }
                         pt[i].parent = parent;
                         // Connect the child (this process) to the parent
-                        RESIZE(pt[parent].children, sizeof(int) * (pt[parent].children_num + 1));
-                        pt[parent].children[pt[parent].children_num] = i;
-                        pt[parent].children_num++;
+                        RESIZE(pt[parent].children_list, sizeof(int) * (pt[parent].children + 1));
+                        pt[parent].children_list[pt[parent].children] = i;
+                        pt[parent].children++;
                 }
         }
 
@@ -329,7 +329,7 @@ void delprocesstree(ProcessTree_T **reference, int *size) {
         if (pt) {
                 for (int i = 0; i < *size; i++) {
                         FREE(pt[i].cmdline);
-                        FREE(pt[i].children);
+                        FREE(pt[i].children_list);
                 }
                 FREE(pt);
                 *reference = NULL;
