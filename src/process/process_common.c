@@ -119,7 +119,7 @@ error:
 
 /**
  * Get the actual time as a floating point number
- * @return time in seconds
+ * @return time in 1/10 seconds
  */
 double get_float_time(void) {
         struct timeval t;

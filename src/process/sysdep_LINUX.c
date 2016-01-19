@@ -208,6 +208,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         /* Insert data from /proc directory */
+        double now = get_float_time();
         time_t starttime = get_starttime();
         for (int i = 0; i < treesize; i++) {
                 stat_pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
@@ -281,7 +282,6 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                                 buf[j] = ' ';
 
                 /* Set the data in ptree only if all process related reads succeeded (prevent partial data in the case that continue was called during data gathering) */
-                pt[i].time = get_float_time();
                 pt[i].pid = stat_pid;
                 pt[i].ppid = stat_ppid;
                 pt[i].uid = stat_uid;
@@ -290,8 +290,9 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].threads = stat_threads;
                 pt[i].starttime = starttime > 0 ? (starttime + (time_t)(stat_item_starttime / HZ)) : 0;
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
-                pt[i].cputime = ((float)(stat_item_utime + stat_item_stime) * 10.0) / HZ; // jiffies -> seconds = 1 / HZ. HZ is defined in "asm/param.h" and it is usually 1/100s but on alpha system it is 1/1024s
-                pt[i].cpu_percent = 0;
+                pt[i].time = now;
+                pt[i].cputime = (double)(stat_item_utime + stat_item_stime) / HZ * 10.; // jiffies -> seconds = 1 / HZ. HZ is defined in "asm/param.h" and it is usually 1/100s but on alpha system it is 1/1024s
+                pt[i].cpu_percent = 0.;
                 pt[i].mem = stat_item_rss * page_size;
                 if (stat_item_state == 'Z') // State is Zombie -> then we are a Zombie ... clear or? (-:
                         pt[i].zombie = true;

@@ -130,7 +130,6 @@ double timestruc_to_tseconds(timestruc_t t) {
  */
 int initprocesstree_sysdep(ProcessTree_T ** reference) {
         int            rv;
-        int            pid;
         int            treesize;
         char           buf[4096];
         glob_t         globbuf;
@@ -151,21 +150,18 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         /* Allocate the tree */
         pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
-        /* Insert data from /proc directory */
+        double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
-                pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
-                pt[i].pid = pid;
-
-                /* get the actual time */
-                pt[i].time = get_float_time();
+                pt[i].pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
 
                 if (! read_proc_file(buf, sizeof(buf), "psinfo", pt[i].pid, NULL)) {
-                        pt[i].cputime     = 0;
+                        pt[i].cputime     = 0.;
                         pt[i].cpu_percent = 0.;
                         pt[i].mem         = 0ULL;
                         continue;
                 }
 
+                pt[i].time      = now;
                 pt[i].ppid      = psinfo->pr_ppid;
                 pt[i].uid       = psinfo->pr_uid;
                 pt[i].euid      = psinfo->pr_euid;
@@ -175,7 +171,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 /* If we don't have any light-weight processes (LWP) then we are definitely a zombie */
                 if (psinfo->pr_nlwp == 0) {
                         pt[i].zombie = true;
-                        pt[i].cputime = 0;
+                        pt[i].cputime = 0.;
                         pt[i].cpu_percent = 0.;
                         pt[i].mem = 0ULL;
                         continue;

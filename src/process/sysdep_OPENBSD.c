@@ -166,6 +166,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
 
         int kthread = 0;
         StringBuffer_T cmdline = StringBuffer_create(64);;
+        double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
                 if (pinfo[i].p_tid < 0) {
                         kthread           = i;
@@ -175,13 +176,13 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         pt[i].euid        = pinfo[i].p_uid;
                         pt[i].gid         = pinfo[i].p_rgid;
                         pt[i].starttime   = pinfo[i].p_ustart_sec;
-                        pt[i].cputime     = (long)((pinfo[i].p_rtime_sec * 10) + (pinfo[i].p_rtime_usec / 100000));
+                        pt[i].time        = now;
+                        pt[i].cputime     = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
                         pt[i].cpu_percent = 0.;
                         pt[i].threads     = 0;
                         pt[i].mem         = pinfo[i].p_vm_rssize * pagesize;
                         if (pinfo[i].p_stat == SZOMB)
                                 pt[i].zombie = true;
-                        pt[i].time = get_float_time();
                         char **args;
                         if ((args = kvm_getargv(kvm_handle, &pinfo[i], 0))) {
                                 StringBuffer_clear(cmdline);

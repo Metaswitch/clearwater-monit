@@ -147,6 +147,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         size = args_size; // save for per-process sysctl loop
         StringBuffer_T cmdline = StringBuffer_create(64);
 
+        double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid       = pinfo[i].kp_proc.p_pid;
                 pt[i].ppid      = pinfo[i].kp_eproc.e_ppid;
@@ -191,7 +192,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
 
                 if (pinfo[i].kp_proc.p_stat == SZOMB)
                         pt[i].zombie = true;
-                pt[i].time = get_float_time();
+                pt[i].time = now;
 
                 struct proc_taskinfo tinfo;
                 int rv = proc_pidinfo(pt[i].pid, PROC_PIDTASKINFO, 0, &tinfo, sizeof(tinfo));
@@ -202,7 +203,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         LogError("proc_pidinfo for pid %d -- invalid result size\n", pt[i].pid);
                 } else {
                         pt[i].mem         = tinfo.pti_resident_size;
-                        pt[i].cputime     = (long)((tinfo.pti_total_user + tinfo.pti_total_system) / 100000000.); // The time is in nanoseconds, we store it as 1/10s
+                        pt[i].cputime     = (double)(tinfo.pti_total_user + tinfo.pti_total_system) / 100000000.; // The time is in nanoseconds, we store it as 1/10s
                         pt[i].cpu_percent = 0.;
                         pt[i].threads     = tinfo.pti_threadnum;
                 }

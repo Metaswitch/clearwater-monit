@@ -550,8 +550,8 @@ typedef struct myprocesstree {
         /** For internal use */
         double        time;                                      /**< 1/10 seconds */
         double        time_prev;                                 /**< 1/10 seconds */
-        long          cputime;                                   /**< 1/10 seconds */
-        long          cputime_prev;                              /**< 1/10 seconds */
+        double        cputime;                                   /**< 1/10 seconds */
+        double        cputime_prev;                              /**< 1/10 seconds */
 
         int          *children;
 } ProcessTree_T;
