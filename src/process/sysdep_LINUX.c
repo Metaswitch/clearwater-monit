@@ -90,17 +90,6 @@
 /* ----------------------------------------------------------------- Private */
 
 
-#define UID             "Uid:"
-#define GID             "Gid:"
-#define MEMTOTAL        "MemTotal:"
-#define MEMFREE         "MemFree:"
-#define MEMBUF          "Buffers:"
-#define MEMCACHE        "Cached:"
-#define SLABRECLAIMABLE "SReclaimable:"
-#define SWAPTOTAL       "SwapTotal:"
-#define SWAPFREE        "SwapFree:"
-#define THREADS         "Threads:"
-
 #define NSEC_PER_SEC    1000000000L
 
 static unsigned long long old_cpu_user     = 0;
@@ -147,12 +136,12 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system statistic error -- cannot read /proc/meminfo\n");
                 return false;
         }
-        if (! (ptr = strstr(buf, MEMTOTAL))) {
+        if (! (ptr = strstr(buf, "MemTotal:"))) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
         long mem_max;
-        if (sscanf(ptr+strlen(MEMTOTAL), "%ld", &mem_max) != 1) {
+        if (sscanf(ptr + 9, "%ld", &mem_max) != 1) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
@@ -214,7 +203,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         double now = get_float_time();
         time_t starttime = get_starttime();
         for (int i = 0; i < treesize; i++) {
-                stat_pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
+                stat_pid = atoi(globbuf.gl_pathv[i] + 6); // skip "/proc/"
 
                 /********** /proc/PID/stat **********/
                 if (! read_proc_file(buf, sizeof(buf), "stat", stat_pid, NULL)) {
@@ -250,27 +239,27 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         DEBUG("system statistic error -- cannot read /proc/%d/status\n", stat_pid);
                         continue;
                 }
-                if (! (tmp = strstr(buf, UID))) {
+                if (! (tmp = strstr(buf, "Uid:"))) {
                         DEBUG("system statistic error -- cannot find process uid\n");
                         continue;
                 }
-                if (sscanf(tmp+strlen(UID), "\t%d\t%d", &stat_uid, &stat_euid) != 2) {
+                if (sscanf(tmp + 4, "\t%d\t%d", &stat_uid, &stat_euid) != 2) {
                         DEBUG("system statistic error -- cannot read process uid\n");
                         continue;
                 }
-                if (! (tmp = strstr(buf, GID))) {
+                if (! (tmp = strstr(buf, "Gid:"))) {
                         DEBUG("system statistic error -- cannot find process gid\n");
                         continue;
                 }
-                if (sscanf(tmp+strlen(GID), "\t%d", &stat_gid) != 1) {
+                if (sscanf(tmp + 4, "\t%d", &stat_gid) != 1) {
                         DEBUG("system statistic error -- cannot read process gid\n");
                         continue;
                 }
-                if (! (tmp = strstr(buf, THREADS))) {
+                if (! (tmp = strstr(buf, "Threads:"))) {
                         DEBUG("system statistic error -- cannot find process threads\n");
                         continue;
                 }
-                if (sscanf(tmp+strlen(THREADS), "\t%d", &stat_threads) != 1) {
+                if (sscanf(tmp + 8, "\t%d", &stat_threads) != 1) {
                         DEBUG("system statistic error -- cannot read process threads\n");
                         continue;
                 }
@@ -354,24 +343,24 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
         }
 
         /* Memory */
-        if (! (ptr = strstr(buf, MEMFREE)) || sscanf(ptr + strlen(MEMFREE), "%ld", &mem_free) != 1) {
+        if (! (ptr = strstr(buf, "MemFree:")) || sscanf(ptr + 8, "%ld", &mem_free) != 1) {
                 LogError("system statistic error -- cannot get real memory free amount\n");
                 goto error;
         }
-        if (! (ptr = strstr(buf, MEMBUF)) || sscanf(ptr + strlen(MEMBUF), "%ld", &buffers) != 1)
+        if (! (ptr = strstr(buf, "Buffers:")) || sscanf(ptr + 8, "%ld", &buffers) != 1)
                 DEBUG("system statistic error -- cannot get real memory buffers amount\n");
-        if (! (ptr = strstr(buf, MEMCACHE)) || sscanf(ptr + strlen(MEMCACHE), "%ld", &cached) != 1)
+        if (! (ptr = strstr(buf, "Cached:")) || sscanf(ptr + 7, "%ld", &cached) != 1)
                 DEBUG("system statistic error -- cannot get real memory cache amount\n");
-        if (! (ptr = strstr(buf, SLABRECLAIMABLE)) || sscanf(ptr + strlen(SLABRECLAIMABLE), "%ld", &slabreclaimable) != 1)
+        if (! (ptr = strstr(buf, "SReclaimable:")) || sscanf(ptr + 13, "%ld", &slabreclaimable) != 1)
                 DEBUG("system statistic error -- cannot get slab reclaimable memory amount\n");
         si->total_mem = systeminfo.mem_max - (mem_free + buffers + cached + slabreclaimable) * 1024;
 
         /* Swap */
-        if (! (ptr = strstr(buf, SWAPTOTAL)) || sscanf(ptr + strlen(SWAPTOTAL), "%ld", &swap_total) != 1) {
+        if (! (ptr = strstr(buf, "SwapTotal:")) || sscanf(ptr + 10, "%ld", &swap_total) != 1) {
                 LogError("system statistic error -- cannot get swap total amount\n");
                 goto error;
         }
-        if (! (ptr = strstr(buf, SWAPFREE)) || sscanf(ptr + strlen(SWAPFREE), "%ld", &swap_free) != 1) {
+        if (! (ptr = strstr(buf, "SwapFree:")) || sscanf(ptr + 9, "%ld", &swap_free) != 1) {
                 LogError("system statistic error -- cannot get swap free amount\n");
                 goto error;
         }
