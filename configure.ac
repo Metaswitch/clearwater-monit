@@ -78,6 +78,23 @@ AC_ARG_ENABLE(optimized,
     ]
 )
 
+AC_ARG_ENABLE(profiling,
+        AS_HELP_STRING([--enable-profiling],
+                [Build with debug and profiling options]),
+    [
+        if test "x$enableval" = "xyes" ; then
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//'`
+                CFLAGS="$CFLAGS -g -pg"
+                profile="true"
+        else
+                profile="false"
+        fi
+    ],
+    [
+        profile="false"
+    ]
+)
+AM_CONDITIONAL([ENABLE_PROFILING], [test x$profile = xtrue])
 
 # ------------------------------------------------------------------------
 # Libraries 
@@ -1013,5 +1030,10 @@ if test "x1" = "x$OPTIMIZED"; then
 echo "|   Optimized:                                    ENABLED    |"
 else
 echo "|   Optimized:                                    DISABLED   |"
+fi
+if test "xfalse" = "x$profile"; then
+echo "|   Profiling:                                    DISABLED   |"
+else
+echo "|   Profiling:                                    ENABLED    |"
 fi
 echo "+------------------------------------------------------------+"
