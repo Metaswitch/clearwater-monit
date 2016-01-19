@@ -156,7 +156,7 @@ static void _open(SendMail_T *S) {
                 THROW(IOException, "No mail servers are defined -- see manual for 'set mailserver' statement");
         }
         do {
-                /* wait with ssl-connect if SSL_TLS* is set (rfc2487) */
+                // wait with ssl-connect if SSL_TLS* is set (RFC 3207)
                 if (! S->ssl.use_ssl || S->ssl.version == SSL_TLSV1 || S->ssl.version == SSL_TLSV11 || S->ssl.version == SSL_TLSV12)
                         S->socket = Socket_new(S->server, S->port, Socket_Tcp, Socket_Ip, false, Run.mailserver_timeout);
                 else
