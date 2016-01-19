@@ -498,6 +498,9 @@ typedef struct mymail {
         char *message;                                       /**< The mail message */
         unsigned int events;  /*< Events for which this mail object should be sent */
         unsigned int reminder;              /*< Send error reminder each Xth cycle */
+
+        /** For internal use */
+        struct mymail *next;                          /**< next recipient in chain */
 } *Mail_T;
 
 
@@ -1027,7 +1030,7 @@ typedef struct myservice {
         Program_T program;                            /**< Program execution check */
 
         Dependant_T dependantlist;                     /**< Dependant service list */
-        List_T maillist;                       /**< Alert notification mailinglist */
+        Mail_T maillist;                       /**< Alert notification mailinglist */
 
         /** Test rules and event handlers */
         ActionRate_T actionratelist;                    /**< ActionRate check list */
