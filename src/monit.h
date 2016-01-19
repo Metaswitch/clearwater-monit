@@ -776,8 +776,8 @@ typedef struct myprogram {
         Process_T P;          /**< A Process_T object representing the sub-process */
         Command_T C;          /**< A Command_T object for creating the sub-process */
         command_t args;                                     /**< Program arguments */
-        int timeout;           /**< Seconds the program may run until it is killed */
         time_t started;                      /**< When the sub-process was started */
+        int timeout;           /**< Seconds the program may run until it is killed */
         int exitStatus;                 /**< Sub-process exit status for reporting */
         StringBuffer_T output;                            /**< Last program output */
 } *Program_T;
@@ -837,9 +837,9 @@ typedef struct mylinksaturation {
 
 typedef struct mybandwidth {
         Operator_Type operator;                           /**< Comparison operator */
-        unsigned long long limit;                              /**< Data watermark */
+        Time_Type range;                            /**< Time range to watch: unit */
         int rangecount;                            /**< Time range to watch: count */
-        Time_Type range;                                  /**< Time range to watch: unit */
+        unsigned long long limit;                              /**< Data watermark */
         EventAction_T action;  /**< Description of the action upon event occurence */
 
         /** For internal use */
@@ -852,8 +852,8 @@ typedef struct mychecksum {
         boolean_t initialized;               /**< true if checksum was initialized */
         boolean_t test_changes;       /**< true if we only should test for changes */
         Hash_Type type;                   /**< The type of hash (e.g. md5 or sha1) */
-        MD_T  hash;                     /**< A checksum hash computed for the path */
         int   length;                                      /**< Length of the hash */
+        MD_T  hash;                     /**< A checksum hash computed for the path */
         EventAction_T action;  /**< Description of the action upon event occurence */
 } *Checksum_T;
 
