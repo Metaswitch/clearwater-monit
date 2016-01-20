@@ -2727,6 +2727,7 @@ static void preparse() {
         argcurrentfile              = NULL;
         argyytext                   = NULL;
         /* Reset parser */
+        Run.pflags                   = 0;
         Run.limits.sendExpectBuffer  = LIMIT_SENDEXPECTBUFFER;
         Run.limits.fileContentBuffer = LIMIT_FILECONTENTBUFFER;
         Run.limits.httpContentBuffer = LIMIT_HTTPCONTENTBUFFER;
