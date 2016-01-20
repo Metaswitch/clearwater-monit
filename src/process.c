@@ -389,7 +389,7 @@ boolean_t read_proc_file(char *buf, int buf_size, char *name, int pid, int *byte
         }
 
         boolean_t rv = false;
-        int bytes = read(fd, buf, buf_size - 1);
+        int bytes = (int)read(fd, buf, buf_size - 1);
         if (bytes >= 0) {
                 if (bytes_read)
                         *bytes_read = bytes;

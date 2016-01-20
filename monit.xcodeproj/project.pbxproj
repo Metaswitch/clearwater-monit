@@ -34,7 +34,6 @@
 		52F6E82013A74F220023F87A /* monit.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E76E13A74F220023F87A /* monit.c */; };
 		52F6E82113A74F220023F87A /* net.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77013A74F220023F87A /* net.c */; };
 		52F6E82213A74F220023F87A /* p.y in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77213A74F220023F87A /* p.y */; };
-		52F6E82313A74F220023F87A /* process_common.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77413A74F220023F87A /* process_common.c */; };
 		52F6E82513A74F220023F87A /* sysdep_DARWIN.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77713A74F220023F87A /* sysdep_DARWIN.c */; };
 		52F6E82D13A74F220023F87A /* process.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77F13A74F220023F87A /* process.c */; };
 		52F6E82E13A74F220023F87A /* apache_status.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E78213A74F220023F87A /* apache_status.c */; };
@@ -226,7 +225,6 @@
 		52F6E77013A74F220023F87A /* net.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = net.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E77113A74F220023F87A /* net.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = net.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		52F6E77213A74F220023F87A /* p.y */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.yacc; lineEnding = 0; path = p.y; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.simpleColoring; };
-		52F6E77413A74F220023F87A /* process_common.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = process_common.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E77513A74F220023F87A /* process_sysdep.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = process_sysdep.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		52F6E77613A74F220023F87A /* sysdep_AIX.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = sysdep_AIX.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E77713A74F220023F87A /* sysdep_DARWIN.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = sysdep_DARWIN.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -539,7 +537,6 @@
 		52F6E77313A74F220023F87A /* process */ = {
 			isa = PBXGroup;
 			children = (
-				52F6E77413A74F220023F87A /* process_common.c */,
 				52F6E77513A74F220023F87A /* process_sysdep.h */,
 				52F6E77613A74F220023F87A /* sysdep_AIX.c */,
 				52F6E77713A74F220023F87A /* sysdep_DARWIN.c */,
@@ -722,7 +719,6 @@
 				52F6E82013A74F220023F87A /* monit.c in Sources */,
 				52F6E82113A74F220023F87A /* net.c in Sources */,
 				52F6E82213A74F220023F87A /* p.y in Sources */,
-				52F6E82313A74F220023F87A /* process_common.c in Sources */,
 				52F6E82513A74F220023F87A /* sysdep_DARWIN.c in Sources */,
 				52F6E82D13A74F220023F87A /* process.c in Sources */,
 				52F6E82E13A74F220023F87A /* apache_status.c in Sources */,
