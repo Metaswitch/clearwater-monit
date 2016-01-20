@@ -94,25 +94,19 @@ static int _findProcess(int pid, ProcessTree_T *pt, int treesize) {
  * @param i process index
  */
 static void _fillProcessTree(ProcessTree_T *pt, int index) {
-
-        ASSERT(pt);
-
-        if (pt[index].visited == true)
-                return;
-
-        pt[index].visited         = true;
-        pt[index].children_sum    = pt[index].children;
-        pt[index].mem_sum         = pt[index].mem;
-        pt[index].cpu_percent_sum = pt[index].cpu_percent;
-
-        for (int i = 0; i < pt[index].children; i++)
-                _fillProcessTree(pt, pt[index].children_list[i]);
-
-        if (pt[index].parent != -1 && pt[index].parent != index) {
-                ProcessTree_T *parent_pt    = &pt[pt[index].parent];
-                parent_pt->children_sum    += pt[index].children_sum;
-                parent_pt->mem_sum         += pt[index].mem_sum;
-                parent_pt->cpu_percent_sum += pt[index].cpu_percent_sum;
+        if (! pt[index].visited) {
+                pt[index].visited            = true;
+                pt[index].children.total     = pt[index].children.count;
+                pt[index].memory.usage_total = pt[index].memory.usage;
+                pt[index].cpu.usage_total    = pt[index].cpu.usage;
+                for (int i = 0; i < pt[index].children.count; i++)
+                        _fillProcessTree(pt, pt[index].children.list[i]);
+                if (pt[index].parent != -1 && pt[index].parent != index) {
+                        ProcessTree_T *parent_pt       = &pt[pt[index].parent];
+                        parent_pt->children.total     += pt[index].children.total;
+                        parent_pt->memory.usage_total += pt[index].memory.usage_total;
+                        parent_pt->cpu.usage_total    += pt[index].cpu.usage_total;
+                }
         }
 }
 
@@ -131,11 +125,9 @@ boolean_t init_process_info(void) {
                 LogError("'%s' resource monitoring initialization error -- uname failed: %s\n", Run.system->name, STRERROR);
                 return false;
         }
-
         systeminfo.total_cpu_user_percent = -1.;
         systeminfo.total_cpu_syst_percent = -1.;
         systeminfo.total_cpu_wait_percent = -1.;
-
         return (init_process_info_sysdep());
 }
 
@@ -159,20 +151,20 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                 /* save the previous ppid and set actual one */
                 s->inf->priv.process._ppid             = s->inf->priv.process.ppid;
                 s->inf->priv.process.ppid              = pt[leaf].ppid;
-                s->inf->priv.process.uid               = pt[leaf].uid;
-                s->inf->priv.process.euid              = pt[leaf].euid;
-                s->inf->priv.process.gid               = pt[leaf].gid;
+                s->inf->priv.process.uid               = pt[leaf].cred.uid;
+                s->inf->priv.process.euid              = pt[leaf].cred.euid;
+                s->inf->priv.process.gid               = pt[leaf].cred.gid;
                 s->inf->priv.process.uptime            = pt[leaf].uptime;
                 s->inf->priv.process.threads           = pt[leaf].threads;
-                s->inf->priv.process.children          = pt[leaf].children_sum;
+                s->inf->priv.process.children          = pt[leaf].children.total;
                 s->inf->priv.process.zombie            = pt[leaf].zombie;
-                s->inf->priv.process.cpu_percent       = pt[leaf].cpu_percent;
-                s->inf->priv.process.total_cpu_percent = pt[leaf].cpu_percent_sum > 100. ? 100. : pt[leaf].cpu_percent_sum;
-                s->inf->priv.process.mem               = pt[leaf].mem;
-                s->inf->priv.process.total_mem         = pt[leaf].mem_sum;
+                s->inf->priv.process.cpu_percent       = pt[leaf].cpu.usage;
+                s->inf->priv.process.total_cpu_percent = pt[leaf].cpu.usage_total > 100. ? 100. : pt[leaf].cpu.usage_total;
+                s->inf->priv.process.mem               = pt[leaf].memory.usage;
+                s->inf->priv.process.total_mem         = pt[leaf].memory.usage_total;
                 if (systeminfo.mem_max > 0) {
-                        s->inf->priv.process.total_mem_percent = pt[leaf].mem_sum >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem_sum / (double)systeminfo.mem_max);
-                        s->inf->priv.process.mem_percent       = pt[leaf].mem >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].mem / (double)systeminfo.mem_max);
+                        s->inf->priv.process.total_mem_percent = pt[leaf].memory.usage_total >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].memory.usage_total / (double)systeminfo.mem_max);
+                        s->inf->priv.process.mem_percent       = pt[leaf].memory.usage >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].memory.usage / (double)systeminfo.mem_max);
                 }
         } else {
                 Util_resetInfo(s);
@@ -187,13 +179,11 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
  */
 boolean_t update_system_load() {
         if (Run.flags & Run_ProcessEngineEnabled) {
-                /** Get load average triplet */
                 if (getloadavg_sysdep(systeminfo.loadavg, 3) == -1) {
                         LogError("'%s' statistic error -- load average gathering failed\n", Run.system->name);
                         goto error1;
                 }
 
-                /** Get memory usage statistic */
                 if (! used_system_memory_sysdep(&systeminfo)) {
                         LogError("'%s' statistic error -- memory usage gathering failed\n", Run.system->name);
                         goto error2;
@@ -201,7 +191,6 @@ boolean_t update_system_load() {
                 systeminfo.total_mem_percent  = systeminfo.mem_max > 0 ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
                 systeminfo.total_swap_percent = systeminfo.swap_max > 0 ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
 
-                /** Get CPU usage statistic */
                 if (! used_system_cpu_sysdep(&systeminfo)) {
                         LogError("'%s' statistic error -- cpu usage gathering failed\n", Run.system->name);
                         goto error3;
@@ -239,6 +228,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
         if (oldpt) {
                 *pt_r = NULL;
                 *size_r = 0;
+//FIXME: can free cmdline and children in the old tree now (no longer needed, would reduce memory usage)
         }
 
         if ((*size_r = initprocesstree_sysdep(pt_r)) <= 0 || ! *pt_r) {
@@ -262,10 +252,10 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
                                 pt[i].time_prev    = oldpt[oldentry].time;
 
                                 /* The cpu_percent may be set already (for example by HPUX module) */
-                                if (pt[i].cpu_percent == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
-                                        pt[i].cpu_percent = (100. * (pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
-                                        if (pt[i].cpu_percent > 100.)
-                                                pt[i].cpu_percent = 100.;
+                                if (pt[i].cpu.usage == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
+                                        pt[i].cpu.usage = (100. * (pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
+                                        if (pt[i].cpu.usage > 100.)
+                                                pt[i].cpu.usage = 100.;
                                 }
                         }
                 }
@@ -284,9 +274,9 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
                         }
                         pt[i].parent = parent;
                         // Connect the child (this process) to the parent
-                        RESIZE(pt[parent].children_list, sizeof(int) * (pt[parent].children + 1));
-                        pt[parent].children_list[pt[parent].children] = i;
-                        pt[parent].children++;
+                        RESIZE(pt[parent].children.list, sizeof(int) * (pt[parent].children.count + 1));
+                        pt[parent].children.list[pt[parent].children.count] = i;
+                        pt[parent].children.count++;
                 }
         }
         if (oldpt)
@@ -321,7 +311,7 @@ void delprocesstree(ProcessTree_T **reference, int *size) {
         if (pt) {
                 for (int i = 0; i < *size; i++) {
                         FREE(pt[i].cmdline);
-                        FREE(pt[i].children_list);
+                        FREE(pt[i].children.list);
                 }
                 FREE(pt);
                 *reference = NULL;
@@ -382,41 +372,38 @@ void process_testmatch(char *pattern) {
  * @return true if succeeded otherwise false.
  */
 boolean_t read_proc_file(char *buf, int buf_size, char *name, int pid, int *bytes_read) {
-        int fd;
-        char filename[STRLEN];
-        int bytes;
-        boolean_t rv = false;
-
         ASSERT(buf);
         ASSERT(name);
 
+        char filename[STRLEN];
         if (pid < 0)
-                snprintf(filename, STRLEN, "/proc/%s", name);
+                snprintf(filename, sizeof(filename), "/proc/%s", name);
         else
-                snprintf(filename, STRLEN, "/proc/%d/%s", pid, name);
+                snprintf(filename, sizeof(filename), "/proc/%d/%s", pid, name);
 
-        if ((fd = open(filename, O_RDONLY)) < 0) {
+        int fd = open(filename, O_RDONLY);
+        if (fd < 0) {
                 DEBUG("Cannot open proc file %s -- %s\n", filename, STRERROR);
-                return rv;
+                return false;
         }
 
-        if ((bytes = (int)read(fd, buf, buf_size-1)) < 0) {
+        boolean_t rv = false;
+        int bytes = read(fd, buf, buf_size - 1);
+        if (bytes >= 0) {
+                if (bytes_read)
+                        *bytes_read = bytes;
+                buf[bytes] = 0;
+                rv = true;
+        } else {
                 DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
-                goto error;
         }
-        if (bytes_read)
-                *bytes_read = bytes;
 
-        /* In case it is a string we have to 0 terminate it our self */
-        buf[bytes]='\0';
-        rv = true;
-
-error:
         if (close(fd) < 0)
-                LogError("Socket close failed -- %s\n", STRERROR);
+                LogError("proc file %s close failed -- %s\n", filename, STRERROR);
 
         return rv;
 }
+
 
 /**
  * Get the actual time as a floating point number
@@ -424,8 +411,7 @@ error:
  */
 double get_float_time(void) {
         struct timeval t;
-
         gettimeofday(&t, NULL);
-        return (double) t.tv_sec * 10 + (double) t.tv_usec / 100000.0;
+        return (double) t.tv_sec * 10 + (double) t.tv_usec / 100000.;
 }
 

@@ -529,35 +529,45 @@ typedef struct myauthentication {
 
 /** Defines process tree - data storage backend */
 typedef struct myprocesstree {
-        boolean_t     visited;
-        boolean_t     zombie;
-        pid_t         pid;
-        pid_t         ppid;
-        int           parent;
-        int           uid;
-        int           euid;
-        int           gid;
-        int           threads;
-        int           children;
-        int           children_sum;
-        float         cpu_percent;
-        float         cpu_percent_sum;
-        uint64_t      mem;
-        uint64_t      mem_sum;
-        time_t        uptime;
-        char         *cmdline;
+        boolean_t visited;
+        boolean_t zombie;
+        pid_t pid;
+        pid_t ppid;
+        int threads;
+        int parent;
+        struct {
+                int uid;
+                int euid;
+                int gid;
+        } cred;
+        struct {
+                float usage;
+                float usage_total;
+        } cpu; //FIXME: maybe drop ... can compute directly when populating Info_T
+        struct {
+                int count;
+                int total;
+                int *list;
+        } children;
+        struct {
+                uint64_t usage;
+                uint64_t usage_total;
+        } memory;
+        time_t uptime;
+        char *cmdline;
 
         /** For internal use */
-        double        time;                                      /**< 1/10 seconds */
-        double        time_prev;                                 /**< 1/10 seconds */
+        //FIXME: structure ... move it above to the cpu struct?
+        double        time;                                      /**< 1/10 seconds */ //FIXME: this can be stored globally in initprocesstree static variable ... no need for per process. or move to SystemInfo_T
+        double        time_prev;                                 /**< 1/10 seconds */ //FIXME: ditto
         double        cputime;                                   /**< 1/10 seconds */
-        double        cputime_prev;                              /**< 1/10 seconds */
+        double        cputime_prev;                              /**< 1/10 seconds */ //FIXME: is _prev needed at all? we read it from oldptree
 
-        int          *children_list;
 } ProcessTree_T;
 
 
 /** Defines data for systemwide statistic */
+//FIXME: structurize the data
 typedef struct mysysteminfo {
         int cpus;                                              /**< Number of CPUs */
         float total_mem_percent;       /**< Total real memory in use in the system */
@@ -869,8 +879,8 @@ typedef struct myperm {
 typedef struct mymatch {
         boolean_t ignore;                                        /**< Ignore match */
         boolean_t not;                                           /**< Invert match */
-        char    *match_string;                                   /**< Match string */
-        char    *match_path;                         /**< File with matching rules */
+        char    *match_string;                                   /**< Match string */ //FIXME: union?
+        char    *match_path;                         /**< File with matching rules */ //FIXME: union?
 #ifdef HAVE_REGEX_H
         regex_t *regex_comp;                                    /**< Match compile */
 #endif
@@ -939,7 +949,6 @@ typedef struct myfilesystem {
 typedef struct myinfo {
         union {
                 struct {
-                        long long  f_bsize;                           /**< Transfer block size */
                         long long  f_blocks;              /**< Total data blocks in filesystem */
                         long long  f_blocksfree;   /**< Free blocks available to non-superuser */
                         long long  f_blocksfreetotal;           /**< Free blocks in filesystem */
@@ -949,6 +958,7 @@ typedef struct myinfo {
                         long long  space_total;                   /**< Used space total blocks */
                         float inode_percent;                        /**< Used inode percentage */
                         float space_percent;                        /**< Used space percentage */
+                        int f_bsize;                                  /**< Transfer block size */
                         int _flags;                      /**< Filesystem flags from last cycle */
                         int flags;                     /**< Filesystem flags from actual cycle */
                         int uid;                                              /**< Owner's uid */
@@ -965,7 +975,7 @@ typedef struct myinfo {
                         off_t readpos;                        /**< Position for regex matching */
                         ino_t inode;                                                /**< Inode */
                         ino_t inode_prev;               /**< Previous inode for regex matching */
-                        MD_T  cs_sum;                                            /**< Checksum */
+                        MD_T  cs_sum;                                            /**< Checksum */ //FIXME: allocate dynamically only when necessary
                 } file;
 
                 struct {
@@ -1077,7 +1087,7 @@ typedef struct myservice {
         int                error;                          /**< Error flags bitmap */
         int                error_hint;   /**< Failed/Changed hint for error bitmap */
         Info_T             inf;                          /**< Service check result */
-        struct timeval     collected;                /**< When were data collected */
+        struct timeval     collected;                /**< When were data collected */ //FIXME: replace with uint64_t? (all places where timeval is used) ... Time_milli()?
         char              *token;                                /**< Action token */
 
         /** Events */

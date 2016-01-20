@@ -92,7 +92,7 @@ boolean_t init_process_info_sysdep(void) {
         }
 
         mib[1] = HW_PAGESIZE;
-        len    = sizeof(pagesize);
+        len = sizeof(pagesize);
         if (sysctl(mib, 2, &pagesize, &len, NULL, 0) == -1) {
                 DEBUG("system statistic error -- cannot get memory page size: %s\n", STRERROR);
                 return false;
@@ -108,53 +108,45 @@ boolean_t init_process_info_sysdep(void) {
  * @return treesize>0 if succeeded otherwise =0.
  */
 int initprocesstree_sysdep(ProcessTree_T **reference) {
-        size_t             treesize;
-        ProcessTree_T     *pt;
-        struct kinfo_proc *pinfo;
-        size_t             pinfo_size = 0;
-        char              *args;
-        size_t             args_size = 0;
-        size_t             size;
-        int                mib[4];
-
-        mib[0] = CTL_KERN;
-        mib[1] = KERN_PROC;
-        mib[2] = KERN_PROC_ALL;
-        mib[3] = 0;
+        size_t pinfo_size = 0;
+        int mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
         if (sysctl(mib, 4, NULL, &pinfo_size, NULL, 0) < 0) {
                 LogError("system statistic error -- sysctl failed: %s\n", STRERROR);
                 return 0;
         }
-        pinfo = CALLOC(1, pinfo_size);
+        struct kinfo_proc *pinfo = CALLOC(1, pinfo_size);
         if (sysctl(mib, 4, pinfo, &pinfo_size, NULL, 0)) {
                 FREE(pinfo);
                 LogError("system statistic error -- sysctl failed: %s\n", STRERROR);
                 return 0;
         }
-        treesize = pinfo_size / sizeof(struct kinfo_proc);
-        pt = CALLOC(sizeof(ProcessTree_T), treesize);
+        size_t treesize = pinfo_size / sizeof(struct kinfo_proc);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         mib[0] = CTL_KERN;
         mib[1] = KERN_ARGMAX;
-        size = sizeof(args_size);
+        size_t args_size = 0;
+        size_t size = sizeof(args_size);
         if (sysctl(mib, 2, &args_size, &size, NULL, 0) == -1) {
                 FREE(pinfo);
                 FREE(pt);
                 LogError("system statistic error -- sysctl failed: %s\n", STRERROR);
                 return 0;
         }
-        args = CALLOC(1, args_size + 1);
+        char *args = CALLOC(1, args_size + 1);
         size = args_size; // save for per-process sysctl loop
         StringBuffer_T cmdline = StringBuffer_create(64);
 
         double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
-                pt[i].pid    = pinfo[i].kp_proc.p_pid;
-                pt[i].ppid   = pinfo[i].kp_eproc.e_ppid;
-                pt[i].uid    = pinfo[i].kp_eproc.e_pcred.p_ruid;
-                pt[i].euid   = pinfo[i].kp_eproc.e_ucred.cr_uid;
-                pt[i].gid    = pinfo[i].kp_eproc.e_pcred.p_rgid;
-                pt[i].uptime = now / 10. - pinfo[i].kp_proc.p_starttime.tv_sec;
+                pt[i].time      = now;
+                pt[i].uptime    = now / 10. - pinfo[i].kp_proc.p_starttime.tv_sec;
+                pt[i].zombie    = pinfo[i].kp_proc.p_stat == SZOMB ? true : false;
+                pt[i].pid       = pinfo[i].kp_proc.p_pid;
+                pt[i].ppid      = pinfo[i].kp_eproc.e_ppid;
+                pt[i].cred.uid  = pinfo[i].kp_eproc.e_pcred.p_ruid;
+                pt[i].cred.euid = pinfo[i].kp_eproc.e_ucred.cr_uid;
+                pt[i].cred.gid  = pinfo[i].kp_eproc.e_pcred.p_rgid;
 
                 args_size = size;
                 mib[0] = CTL_KERN;
@@ -170,7 +162,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                          *        }
                          * The strings are terminated with '\0' and may have variable '\0' padding
                          */
-                        int  argc = *args;
+                        int argc = *args;
                         char *p = args + sizeof(int); // arguments beginning
                         StringBuffer_clear(cmdline);
                         p += strlen(p); // skip exename
@@ -190,10 +182,6 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         pt[i].cmdline = Str_dup(pinfo[i].kp_proc.p_comm);
                 }
 
-                if (pinfo[i].kp_proc.p_stat == SZOMB)
-                        pt[i].zombie = true;
-                pt[i].time = now;
-
                 struct proc_taskinfo tinfo;
                 int rv = proc_pidinfo(pt[i].pid, PROC_PIDTASKINFO, 0, &tinfo, sizeof(tinfo));
                 if (rv <= 0) {
@@ -202,10 +190,9 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 } else if (rv < sizeof(tinfo)) {
                         LogError("proc_pidinfo for pid %d -- invalid result size\n", pt[i].pid);
                 } else {
-                        pt[i].mem         = tinfo.pti_resident_size;
-                        pt[i].cputime     = (double)(tinfo.pti_total_user + tinfo.pti_total_system) / 100000000.; // The time is in nanoseconds, we store it as 1/10s
-                        pt[i].cpu_percent = 0.;
-                        pt[i].threads     = tinfo.pti_threadnum;
+                        pt[i].memory.usage = tinfo.pti_resident_size;
+                        pt[i].cputime      = (double)(tinfo.pti_total_user + tinfo.pti_total_system) / 100000000.; // The time is in nanoseconds, we store it as 1/10s
+                        pt[i].threads      = tinfo.pti_threadnum;
                 }
         }
         StringBuffer_free(&cmdline);

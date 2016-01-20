@@ -73,6 +73,7 @@ void check_smtp(Socket_T socket) {
         TRY
         {
                 expect(socket, 250);
+                //FIXME: if ssl is set to TLS, try the STARTTLS command
         }
         ELSE
         {
