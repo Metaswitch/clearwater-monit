@@ -157,11 +157,11 @@ static int _commandExecute(Service_T S, command_t c, char *msg, int msglen, int6
 
 
 static Process_Status _waitProcessStart(Service_T s, int64_t *timeout) {
-        long wait = 50000;
+        long wait = RETRY_INTERVAL;
         do {
+                Time_usleep(wait);
                 if (Util_isProcessRunning(s, true))
                         return Process_Started;
-                Time_usleep(wait);
                 *timeout -= wait;
                 wait = wait < 1000000 ? wait * 2 : 1000000; // double the wait during each cycle until 1s is reached (Util_isProcessRunning can be heavy and we don't want to drain power every 100ms on mobile devices)
         } while (*timeout > 0 && ! (Run.flags & Run_Stopped));
@@ -171,9 +171,9 @@ static Process_Status _waitProcessStart(Service_T s, int64_t *timeout) {
 
 static Process_Status _waitProcessStop(int pid, int64_t *timeout) {
         do {
+                Time_usleep(RETRY_INTERVAL);
                 if (! pid || (getpgid(pid) == -1 && errno != EPERM))
                         return Process_Stopped;
-                Time_usleep(RETRY_INTERVAL);
                 *timeout -= RETRY_INTERVAL;
         } while (*timeout > 0 && ! (Run.flags & Run_Stopped));
         return Process_Started;
