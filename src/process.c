@@ -228,7 +228,11 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
         if (oldpt) {
                 *pt_r = NULL;
                 *size_r = 0;
-//FIXME: can free cmdline and children in the old tree now (no longer needed, would reduce memory usage)
+                // We need only process' cputime from the old ptree, so free dynamically allocated parts which we don't need before initializing new ptree (so the memory can be reused, otherwise the memory footprint will hold two ptrees)
+                for (int i = 0; i < oldsize; i++) {
+                        FREE(oldpt[i].cmdline);
+                        FREE(oldpt[i].children.list);
+                }
         }
 
         if ((*size_r = initprocesstree_sysdep(pt_r)) <= 0 || ! *pt_r) {
@@ -279,8 +283,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
                         pt[parent].children.count++;
                 }
         }
-        if (oldpt)
-                delprocesstree(&oldpt, &oldsize);
+        FREE(oldpt); // Free the rest of old ptree
         if (root == -1) {
                 DEBUG("System statistic error -- cannot find root process id\n");
                 delprocesstree(pt_r, size_r);
