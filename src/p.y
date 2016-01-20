@@ -1110,6 +1110,7 @@ checkproc       : CHECKPROC SERVICENAME PIDFILE PATH {
                     createservice(Service_Process, $<string>2, $4, check_process);
                   }
                 | CHECKPROC SERVICENAME MATCH STRING {
+                    Run.pflags |= ProcessEngine_CollectCommandLine;
                     createservice(Service_Process, $<string>2, $4, check_process);
                     matchset.ignore = false;
                     matchset.match_path = NULL;
@@ -1117,6 +1118,7 @@ checkproc       : CHECKPROC SERVICENAME PIDFILE PATH {
                     addmatch(&matchset, Action_Ignored, 0);
                   }
                 | CHECKPROC SERVICENAME MATCH PATH {
+                    Run.pflags |= ProcessEngine_CollectCommandLine;
                     createservice(Service_Process, $<string>2, $4, check_process);
                     matchset.ignore = false;
                     matchset.match_path = NULL;

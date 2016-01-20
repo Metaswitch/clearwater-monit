@@ -169,9 +169,10 @@ int getloadavg_sysdep (double *loadv, int nelem) {
 /**
  * Read all processes to initialize the process tree
  * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0.
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
         int treesize;
         pid_t firstproc = 0;
         if ((treesize = getprocs64(NULL, 0, NULL, 0, &firstproc, PID_MAX)) < 0) {
@@ -218,22 +219,24 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         LogError("Socket close failed -- %s\n", STRERROR);
                 pt[i].cred.uid = ps.pr_uid;
                 pt[i].cred.gid = ps.pr_gid;
-                if (ps.pr_argc == 0) {
-                        pt[i].cmdline = Str_dup(procs[i].pi_comm); // Kernel thread
-                } else {
-                        char command[4096];
-                        if (! getargs(&procs[i], sizeof(struct procentry64), command, sizeof(command))) {
-                                // The arguments are separated with '\0' with the last one terminated by '\0\0' -> merge arguments into one string
-                                for (int i = 0; i < sizeof(command) - 1; i++) {
-                                        if (command[i] == '\0') {
-                                                if (command[i + 1] == '\0')
-                                                        break;
-                                                command[i] = ' ';
-                                        }
-                                }
-                                pt[i].cmdline = Str_dup(command);
+                if (pflags & ProcessEngine_CollectCommandLine) {
+                        if (ps.pr_argc == 0) {
+                                pt[i].cmdline = Str_dup(procs[i].pi_comm); // Kernel thread
                         } else {
-                                pt[i].cmdline = Str_dup(procs[i].pi_comm);
+                                char command[4096];
+                                if (! getargs(&procs[i], sizeof(struct procentry64), command, sizeof(command))) {
+                                        // The arguments are separated with '\0' with the last one terminated by '\0\0' -> merge arguments into one string
+                                        for (int i = 0; i < sizeof(command) - 1; i++) {
+                                                if (command[i] == '\0') {
+                                                        if (command[i + 1] == '\0')
+                                                                break;
+                                                        command[i] = ' ';
+                                                }
+                                        }
+                                        pt[i].cmdline = Str_dup(command);
+                                } else {
+                                        pt[i].cmdline = Str_dup(procs[i].pi_comm);
+                                }
                         }
                 }
         }

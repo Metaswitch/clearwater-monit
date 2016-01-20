@@ -30,6 +30,6 @@ int init_proc_info_sysdep(void);
 int getloadavg_sysdep (double *, int);
 boolean_t used_system_memory_sysdep(SystemInfo_T *);
 boolean_t used_system_cpu_sysdep(SystemInfo_T *);
-int    initprocesstree_sysdep(ProcessTree_T **);
+int    initprocesstree_sysdep(ProcessTree_T **, ProcessEngine_Flags);
 
 #endif

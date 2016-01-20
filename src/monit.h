@@ -172,6 +172,11 @@ typedef enum {
 
 
 typedef enum {
+        ProcessEngine_CollectCommandLine = 0x1
+} __attribute__((__packed__)) ProcessEngine_Flags;
+
+
+typedef enum {
         Httpd_Start = 1,
         Httpd_Stop
 } __attribute__((__packed__)) Httpd_Action;
@@ -565,6 +570,7 @@ typedef struct mysysteminfo {
         float total_cpu_user_percent;    /**< Total CPU in use in user space (pct.)*/
         float total_cpu_syst_percent;  /**< Total CPU in use in kernel space (pct.)*/
         float total_cpu_wait_percent;       /**< Total CPU in use in waiting (pct.)*/
+        size_t argmax;                          /**< Program arguments maximum [B] */
         uint64_t mem_max;                          /**< Maximal system real memory */
         uint64_t swap_max;                                          /**< Swap size */
         uint64_t total_mem;            /**< Total real memory in use in the system */
@@ -1128,6 +1134,7 @@ typedef struct myservicegroup {
 struct myrun {
         uint8_t debug;                                            /**< Debug level */
         volatile Run_Flags flags;
+        ProcessEngine_Flags pflags;
         Handler_Type handler_flag;                    /**< The handlers state flag */
         struct {
                 char *control;            /**< The file to read configuration from */

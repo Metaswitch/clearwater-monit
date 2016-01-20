@@ -44,13 +44,11 @@ int init_process_info_sysdep(void) {
 /**
  * THIS IS JUST A DUMMY!!!
  *
- * Read all processes of the proc files system to initialize
- * the process tree (sysdep version... but should work for
- * all procfs based unices)
- * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * @param reference reference of ProcessTree
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
         return 0;
 }
 

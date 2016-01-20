@@ -161,9 +161,10 @@ int getloadavg_sysdep (double *a, int na) {
 /**
  * Read all processes to initialize the process tree
  * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise 0.
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
+int initprocesstree_sysdep(ProcessTree_T ** reference, ProcessEngine_Flags pflags) {
         ASSERT(reference);
 
         pstat_getdynamic(&pst_dyn, sizeof(struct pst_dynamic), 1, 0);
@@ -191,8 +192,9 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].uptime       = systeminfo.time / 10. - psall[i].pst_start;
                 pt[i].cpu.time     = (psall[i].pst_utime + psall[i].pst_stime) * 10;
                 pt[i].memory.usage = psall[i].pst_rssize * page_size;
-                pt[i].cmdline      = (psall[i].pst_cmd && *psall[i].pst_cmd) ? Str_dup(psall[i].pst_cmd) : Str_dup(psall[i].pst_ucomm);
                 pt[i].zombie       = psall[i].pst_stat == PS_ZOMBIE ? true : false;
+                if (pflags & ProcessEngine_CollectCommandLine)
+                        pt[i].cmdline = (psall[i].pst_cmd && *psall[i].pst_cmd) ? Str_dup(psall[i].pst_cmd) : Str_dup(psall[i].pst_ucomm);
         }
 
         *reference = pt;

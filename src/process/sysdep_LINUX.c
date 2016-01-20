@@ -160,13 +160,12 @@ boolean_t init_process_info_sysdep(void) {
 
 
 /**
- * Read all processes of the proc files system to initialize
- * the process tree (sysdep version... but should work for
- * all procfs based unices)
- * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * Read all processes of the proc files system to initialize the process tree
+ * @param reference reference of ProcessTree
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
         int                 rv, bytes = 0;
         int                 treesize = 0;
         int                 stat_pid = 0;
@@ -257,13 +256,16 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 }
 
                 /********** /proc/PID/cmdline **********/
-                if (! read_proc_file(buf, sizeof(buf), "cmdline", stat_pid, &bytes)) {
-                        DEBUG("system statistic error -- cannot read /proc/%d/cmdline\n", stat_pid);
-                        continue;
+                if (pflags & ProcessEngine_CollectCommandLine) {
+                        if (! read_proc_file(buf, sizeof(buf), "cmdline", stat_pid, &bytes)) {
+                                DEBUG("system statistic error -- cannot read /proc/%d/cmdline\n", stat_pid);
+                                continue;
+                        }
+                        for (int j = 0; j < (bytes - 1); j++) // The cmdline file contains argv elements/strings terminated separated by '\0' => join the string
+                                if (buf[j] == 0)
+                                        buf[j] = ' ';
+                        pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 }
-                for (int j = 0; j < (bytes - 1); j++) // The cmdline file contains argv elements/strings terminated separated by '\0' => join the string
-                        if (buf[j] == 0)
-                                buf[j] = ' ';
 
                 /* Set the data in ptree only if all process related reads succeeded (prevent partial data in the case that continue was called during data gathering) */
                 pt[i].pid = stat_pid;
@@ -273,7 +275,6 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].cred.gid = stat_gid;
                 pt[i].threads = stat_item_threads;
                 pt[i].uptime = starttime > 0 ? (systeminfo.time / 10. - (starttime + (time_t)(stat_item_starttime / hz))) : 0;
-                pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].cpu.time = (double)(stat_item_utime + stat_item_stime) / hz * 10.; // jiffies -> seconds = 1/hz
                 pt[i].memory.usage = stat_item_rss * page_size;
                 pt[i].zombie = stat_item_state == 'Z' ? true : false;

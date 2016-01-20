@@ -1465,7 +1465,7 @@ int Util_isProcessRunning(Service_T s, boolean_t refresh) {
                         return s->inf->priv.process.pid;
                 // If the cached PID is not running, rescan the process tree
                 if (refresh || ! ptree || ! ptreesize)
-                        initprocesstree(&ptree, &ptreesize);
+                        initprocesstree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
                 /* The process table read may sporadically fail during read, because we're using glob on some platforms which may fail if the proc filesystem
                  * which it traverses is changed during glob (process stopped). Note that the glob failure is rare and temporary - it will be OK on next cycle.
                  * We skip the process matching that cycle however because we don't have process informations - will retry next cycle */

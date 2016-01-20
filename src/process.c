@@ -219,7 +219,7 @@ error3:
  * Initialize the process tree
  * @return treesize >= 0 if succeeded otherwise < 0
  */
-int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
+int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflags) {
         ASSERT(pt_r);
         ASSERT(size_r);
 
@@ -236,8 +236,8 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
         }
 
         systeminfo.time_prev = systeminfo.time;
-        systeminfo.time = Time_milli() * 100.;
-        if ((*size_r = initprocesstree_sysdep(pt_r)) <= 0 || ! *pt_r) {
+        systeminfo.time = Time_milli() / 100.;
+        if ((*size_r = initprocesstree_sysdep(pt_r, pflags)) <= 0 || ! *pt_r) {
                 DEBUG("System statistic -- cannot initialize the process tree -- process resource monitoring disabled\n");
                 Run.flags &= ~Run_ProcessEngineEnabled;
                 if (oldpt)
@@ -336,7 +336,7 @@ void process_testmatch(char *pattern) {
                 exit(1);
         }
 #endif
-        initprocesstree(&ptree, &ptreesize);
+        initprocesstree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
         if (Run.flags & Run_ProcessEngineEnabled) {
                 int count = 0;
                 printf("List of processes matching pattern \"%s\":\n", pattern);

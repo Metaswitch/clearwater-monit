@@ -77,24 +77,27 @@ static long cpu_syst_old = 0;
 
 
 boolean_t init_process_info_sysdep(void) {
-        int mib[2] = {CTL_HW, HW_NCPU};
-        size_t len = sizeof(systeminfo.cpus);
-        if (sysctl(mib, 2, &systeminfo.cpus, &len, NULL, 0) == -1) {
-                DEBUG("system statistic error -- cannot get cpu count: %s\n", STRERROR);
+        size_t size = sizeof(systeminfo.cpus);
+        if (sysctlbyname("hw.logicalcpu", &systeminfo.cpus, &size, NULL, 0) == -1) {
+                DEBUG("system statistics error -- sysctl hw.logicalcpu failed: %s\n", STRERROR);
                 return false;
         }
 
-        mib[1] = HW_MEMSIZE;
-        len = sizeof(systeminfo.mem_max);
-        if (sysctl(mib, 2, &systeminfo.mem_max, &len, NULL, 0 ) == -1) {
-                DEBUG("system statistic error -- cannot get real memory amount: %s\n", STRERROR);
+        size = sizeof(systeminfo.mem_max);
+        if (sysctlbyname("hw.memsize", &systeminfo.mem_max, &size, NULL, 0) == -1) {
+                DEBUG("system statistics error -- sysctl hw.memsize failed: %s\n", STRERROR);
                 return false;
         }
 
-        mib[1] = HW_PAGESIZE;
-        len = sizeof(pagesize);
-        if (sysctl(mib, 2, &pagesize, &len, NULL, 0) == -1) {
-                DEBUG("system statistic error -- cannot get memory page size: %s\n", STRERROR);
+        size = sizeof(pagesize);
+        if (sysctlbyname("hw.pagesize", &pagesize, &size, NULL, 0) == -1) {
+                DEBUG("system statistics error -- sysctl hw.pagesize failed: %s\n", STRERROR);
+                return false;
+        }
+
+        size = sizeof(systeminfo.argmax);
+        if (sysctlbyname("kern.argmax", &systeminfo.argmax, &size, NULL, 0) == -1) {
+                DEBUG("system statistics error -- sysctl kern.argmax failed: %s\n", STRERROR);
                 return false;
         }
 
@@ -104,10 +107,11 @@ boolean_t init_process_info_sysdep(void) {
 
 /**
  * Read all processes to initialize the information tree.
- * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * @param reference reference of ProcessTree
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0
  */
-int initprocesstree_sysdep(ProcessTree_T **reference) {
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
         size_t pinfo_size = 0;
         int mib[] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
         if (sysctl(mib, 4, NULL, &pinfo_size, NULL, 0) < 0) {
@@ -123,20 +127,12 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         size_t treesize = pinfo_size / sizeof(struct kinfo_proc);
         ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
-        mib[0] = CTL_KERN;
-        mib[1] = KERN_ARGMAX;
-        size_t args_size = 0;
-        size_t size = sizeof(args_size);
-        if (sysctl(mib, 2, &args_size, &size, NULL, 0) == -1) {
-                FREE(pinfo);
-                FREE(pt);
-                LogError("system statistic error -- sysctl failed: %s\n", STRERROR);
-                return 0;
+        char *args = NULL;
+        StringBuffer_T cmdline = NULL;
+        if (pflags & ProcessEngine_CollectCommandLine) {
+                cmdline = StringBuffer_create(64);
+                args = CALLOC(1, systeminfo.argmax + 1);
         }
-        char *args = CALLOC(1, args_size + 1);
-        size = args_size; // save for per-process sysctl loop
-        StringBuffer_T cmdline = StringBuffer_create(64);
-
         for (int i = 0; i < treesize; i++) {
                 pt[i].uptime    = systeminfo.time / 10. - pinfo[i].kp_proc.p_starttime.tv_sec;
                 pt[i].zombie    = pinfo[i].kp_proc.p_stat == SZOMB ? true : false;
@@ -145,41 +141,41 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 pt[i].cred.uid  = pinfo[i].kp_eproc.e_pcred.p_ruid;
                 pt[i].cred.euid = pinfo[i].kp_eproc.e_ucred.cr_uid;
                 pt[i].cred.gid  = pinfo[i].kp_eproc.e_pcred.p_rgid;
-
-                args_size = size;
-                mib[0] = CTL_KERN;
-                mib[1] = KERN_PROCARGS2;
-                mib[2] = pt[i].pid;
-                if (sysctl(mib, 3, args, &args_size, NULL, 0) != -1) {
-                        /* KERN_PROCARGS2 sysctl() returns following pseudo structure:
-                         *        struct {
-                         *                int argc
-                         *                char execname[];
-                         *                char argv[argc][];
-                         *                char env[][];
-                         *        }
-                         * The strings are terminated with '\0' and may have variable '\0' padding
-                         */
-                        int argc = *args;
-                        char *p = args + sizeof(int); // arguments beginning
-                        StringBuffer_clear(cmdline);
-                        p += strlen(p); // skip exename
-                        while (argc && p < args + args_size) {
-                                if (*p == 0) { // skip terminating 0 and variable length 0 padding
-                                        p++;
-                                        continue;
+                if (pflags & ProcessEngine_CollectCommandLine) {
+                        size_t size = systeminfo.argmax;
+                        mib[0] = CTL_KERN;
+                        mib[1] = KERN_PROCARGS2;
+                        mib[2] = pt[i].pid;
+                        if (sysctl(mib, 3, args, &size, NULL, 0) != -1) {
+                                /* KERN_PROCARGS2 sysctl() returns following pseudo structure:
+                                 *        struct {
+                                 *                int argc
+                                 *                char execname[];
+                                 *                char argv[argc][];
+                                 *                char env[][];
+                                 *        }
+                                 * The strings are terminated with '\0' and may have variable '\0' padding
+                                 */
+                                int argc = *args;
+                                char *p = args + sizeof(int); // arguments beginning
+                                StringBuffer_clear(cmdline);
+                                p += strlen(p); // skip exename
+                                while (argc && p < args + systeminfo.argmax) {
+                                        if (*p == 0) { // skip terminating 0 and variable length 0 padding
+                                                p++;
+                                                continue;
+                                        }
+                                        StringBuffer_append(cmdline, argc-- ? "%s " : "%s", p);
+                                        p += strlen(p);
                                 }
-                                StringBuffer_append(cmdline, argc-- ? "%s " : "%s", p);
-                                p += strlen(p);
+                                if (StringBuffer_length(cmdline))
+                                        pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
                         }
-                        if (StringBuffer_length(cmdline))
-                                pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
+                        if (! pt[i].cmdline || ! *pt[i].cmdline) {
+                                FREE(pt[i].cmdline);
+                                pt[i].cmdline = Str_dup(pinfo[i].kp_proc.p_comm);
+                        }
                 }
-                if (! pt[i].cmdline || ! *pt[i].cmdline) {
-                        FREE(pt[i].cmdline);
-                        pt[i].cmdline = Str_dup(pinfo[i].kp_proc.p_comm);
-                }
-
                 struct proc_taskinfo tinfo;
                 int rv = proc_pidinfo(pt[i].pid, PROC_PIDTASKINFO, 0, &tinfo, sizeof(tinfo));
                 if (rv <= 0) {
@@ -193,8 +189,10 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                         pt[i].threads      = tinfo.pti_threadnum;
                 }
         }
-        StringBuffer_free(&cmdline);
-        FREE(args);
+        if (pflags & ProcessEngine_CollectCommandLine) {
+                StringBuffer_free(&cmdline);
+                FREE(args);
+        }
         FREE(pinfo);
 
         *reference = pt;

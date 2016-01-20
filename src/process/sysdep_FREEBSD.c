@@ -122,9 +122,10 @@ boolean_t init_process_info_sysdep(void) {
 /**
  * Read all processes to initialize the information tree.
  * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0.
  */
-int initprocesstree_sysdep(ProcessTree_T **reference) {
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
         static kvm_t *kvm_handle = kvm_open(NULL, _PATH_DEVNULL, NULL, O_RDONLY, prog);
         if (! kvm_handle) {
                 LogError("system statistic error -- cannot initialize kvm interface\n");
@@ -141,7 +142,9 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
 
         ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
-        StringBuffer_T cmdline = StringBuffer_create(64);
+        StringBuffer_T cmdline = NULL;
+        if (pflags & ProcessEngine_CollectCommandLine)
+                cmdline = StringBuffer_create(64);
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid          = pinfo[i].ki_pid;
                 pt[i].ppid         = pinfo[i].ki_ppid;
@@ -153,20 +156,23 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 pt[i].cpu.time     = (double)pinfo[i].ki_runtime / 100000.;
                 pt[i].memory.usage = pinfo[i].ki_rssize * pagesize;
                 pt[i].zombie       = pinfo[i].ki_stat == SZOMB ? true : false;
-                char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
-                if (args) {
-                        StringBuffer_clear(cmdline);
-                        for (int j = 0; args[j]; j++)
-                                StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
-                        if (StringBuffer_length(cmdline))
-                                pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
-                }
-                if (! pt[i].cmdline || ! *pt[i].cmdline) {
-                        FREE(pt[i].cmdline);
-                        pt[i].cmdline = Str_dup(pinfo[i].ki_comm);
+                if (pflags & ProcessEngine_CollectCommandLine) {
+                        char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
+                        if (args) {
+                                StringBuffer_clear(cmdline);
+                                for (int j = 0; args[j]; j++)
+                                        StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
+                                if (StringBuffer_length(cmdline))
+                                        pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
+                        }
+                        if (! pt[i].cmdline || ! *pt[i].cmdline) {
+                                FREE(pt[i].cmdline);
+                                pt[i].cmdline = Str_dup(pinfo[i].ki_comm);
+                        }
                 }
         }
-        StringBuffer_free(&cmdline);
+        if (pflags & ProcessEngine_CollectCommandLine)
+                StringBuffer_free(&cmdline);
 
         *reference = pt;
         kvm_close(kvm_handle);

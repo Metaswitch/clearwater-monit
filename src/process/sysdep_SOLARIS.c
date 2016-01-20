@@ -122,13 +122,12 @@ double timestruc_to_tseconds(timestruc_t t) {
 
 
 /**
- * Read all processes of the proc files system to initialize
- * the process tree (sysdep version... but should work for
- * all procfs based unices)
- * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * Read all processes of the proc files system to initialize the process tree
+ * @param reference reference of ProcessTree
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
         int            rv;
         int            treesize;
         char           buf[4096];
@@ -160,10 +159,12 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                         pt[i].uptime       = systeminfo.time / 10. - psinfo->pr_start.tv_sec;
                         pt[i].zombie       = psinfo->pr_nlwp == 0 ? true : false; // If we don't have any light-weight processes (LWP) then we are definitely a zombie
                         pt[i].memory.usage = psinfo->pr_rssize * 1024;
-                        pt[i].cmdline      = Str_dup(psinfo->pr_psargs);
-                        if (! pt[i].cmdline || ! *pt[i].cmdline) {
-                                FREE(pt[i].cmdline);
-                                pt[i].cmdline = Str_dup(psinfo->pr_fname);
+                        if (pflags & ProcessEngine_CollectCommandLine) {
+                                pt[i].cmdline = Str_dup(psinfo->pr_psargs);
+                                if (! pt[i].cmdline || ! *pt[i].cmdline) {
+                                        FREE(pt[i].cmdline);
+                                        pt[i].cmdline = Str_dup(psinfo->pr_fname);
+                                }
                         }
                         if (read_proc_file(buf, sizeof(buf), "status", pt[i].pid, NULL)) {
                                 memcpy(&pstatus, buf, sizeof(pstatus_t));
