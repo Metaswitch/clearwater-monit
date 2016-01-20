@@ -64,10 +64,9 @@ AC_ARG_ENABLE(optimized,
         AS_HELP_STRING([--enable-optimized],
                 [Build software optimized]),
     [
-        CFLAGS=`echo $CFLAGS|sed 's/-O.* //'`
+        CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
         if test "x$enableval" = "xyes" ; then
-                CFLAGS=`echo $CFLAGS|sed 's/-g[^ ]*//'`
-                CFLAGS=`echo $CFLAGS|sed 's/-O.//'`
+                CFLAGS=`echo $CFLAGS|sed 's/-g[^ ]*//g'`
                 CFLAGS="$CFLAGS -O3"
                 OPTIMIZED=1
         else
@@ -84,7 +83,8 @@ AC_ARG_ENABLE(profiling,
                 [Build with debug and profiling options]),
     [
         if test "x$enableval" = "xyes" ; then
-                CFLAGS=`echo $CFLAGS|sed 's/-O.//'`
+                CFLAGS=`echo $CFLAGS|sed 's/-g[^ ]*//g'`
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
                 CFLAGS="$CFLAGS -g -pg"
                 profile="true"
         else
@@ -598,7 +598,7 @@ then
 elif test "$architecture" = "AIX"
 then
    ARCH="AIX"
-   CFLAGS=`echo $CFLAGS|sed 's/-g//'`
+   CFLAGS=`echo $CFLAGS|sed 's/-g//g'`
    CFLAGS="$CFLAGS -D_THREAD_SAFE -D_REENTRANT"
    LIBS="$LIBS -lodm -lperfstat"
    AC_DEFINE([HAVE_CPU_WAIT], [1], [Define to 1 if CPU wait information is available.])
