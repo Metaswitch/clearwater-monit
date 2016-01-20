@@ -190,16 +190,14 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
 
         ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
-        double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid          = procs[i].pi_pid;
                 pt[i].ppid         = procs[i].pi_ppid;
                 pt[i].cred.euid    = procs[i].pi_uid;
                 pt[i].threads      = procs[i].pi_thcount;
-                pt[i].uptime       = now / 10. - procs[i].pi_start;
+                pt[i].uptime       = systeminfo.time / 10. - procs[i].pi_start;
                 pt[i].memory.usage = (procs[i].pi_drss + procs[i].pi_trss) * page_size;
-                pt[i].time         = now;
-                pt[i].cputime      = procs[i].pi_ru.ru_utime.tv_sec * 10 + (double)procs[i].pi_ru.ru_utime.tv_usec / 100000. + procs[i].pi_ru.ru_stime.tv_sec * 10 + (double)procs[i].pi_ru.ru_stime.tv_usec / 100000.;
+                pt[i].cpu.time     = procs[i].pi_ru.ru_utime.tv_sec * 10 + (double)procs[i].pi_ru.ru_utime.tv_usec / 100000. + procs[i].pi_ru.ru_stime.tv_sec * 10 + (double)procs[i].pi_ru.ru_stime.tv_usec / 100000.;
                 pt[i].zombie       = procs[i].pi_state == SZOMB ? true: false;
 
                 char filename[STRLEN];

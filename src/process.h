@@ -39,7 +39,6 @@ int initprocesstree(ProcessTree_T **, int *);
 void delprocesstree(ProcessTree_T **, int *);
 void process_testmatch(char *);
 boolean_t read_proc_file(char *, int, char *, int, int *);
-double get_float_time(void);
 void fillprocesstree(ProcessTree_T *, int);
 
 #endif

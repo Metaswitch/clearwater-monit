@@ -200,7 +200,6 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         /* Insert data from /proc directory */
-        double now = get_float_time();
         time_t starttime = get_starttime();
         for (int i = 0; i < treesize; i++) {
                 stat_pid = atoi(globbuf.gl_pathv[i] + 6); // skip "/proc/"
@@ -273,10 +272,9 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 pt[i].cred.euid = stat_euid;
                 pt[i].cred.gid = stat_gid;
                 pt[i].threads = stat_item_threads;
-                pt[i].uptime = starttime > 0 ? (now / 10. - (starttime + (time_t)(stat_item_starttime / hz))) : 0;
+                pt[i].uptime = starttime > 0 ? (systeminfo.time / 10. - (starttime + (time_t)(stat_item_starttime / hz))) : 0;
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
-                pt[i].time = now;
-                pt[i].cputime = (double)(stat_item_utime + stat_item_stime) / hz * 10.; // jiffies -> seconds = 1/hz
+                pt[i].cpu.time = (double)(stat_item_utime + stat_item_stime) / hz * 10.; // jiffies -> seconds = 1/hz
                 pt[i].memory.usage = stat_item_rss * page_size;
                 pt[i].zombie = stat_item_state == 'Z' ? true : false;
         }

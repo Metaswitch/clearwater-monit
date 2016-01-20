@@ -142,7 +142,6 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
         ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         StringBuffer_T cmdline = StringBuffer_create(64);
-        double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid          = pinfo[i].ki_pid;
                 pt[i].ppid         = pinfo[i].ki_ppid;
@@ -150,11 +149,10 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 pt[i].cred.euid    = pinfo[i].ki_uid;
                 pt[i].cred.gid     = pinfo[i].ki_rgid;
                 pt[i].threads      = pinfo[i].ki_numthreads;
-                pt[i].uptime       = now / 10. - pinfo[i].ki_start.tv_sec;
-                pt[i].cputime      = (double)pinfo[i].ki_runtime / 100000.;
+                pt[i].uptime       = systeminfo.time / 10. - pinfo[i].ki_start.tv_sec;
+                pt[i].cpu.time     = (double)pinfo[i].ki_runtime / 100000.;
                 pt[i].memory.usage = pinfo[i].ki_rssize * pagesize;
                 pt[i].zombie       = pinfo[i].ki_stat == SZOMB ? true : false;
-                pt[i].time         = now;
                 char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
                 if (args) {
                         StringBuffer_clear(cmdline);

@@ -228,13 +228,15 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
         if (oldpt) {
                 *pt_r = NULL;
                 *size_r = 0;
-                // We need only process' cputime from the old ptree, so free dynamically allocated parts which we don't need before initializing new ptree (so the memory can be reused, otherwise the memory footprint will hold two ptrees)
+                // We need only process' cpu.time from the old ptree, so free dynamically allocated parts which we don't need before initializing new ptree (so the memory can be reused, otherwise the memory footprint will hold two ptrees)
                 for (int i = 0; i < oldsize; i++) {
                         FREE(oldpt[i].cmdline);
                         FREE(oldpt[i].children.list);
                 }
         }
 
+        systeminfo.time_prev = systeminfo.time;
+        systeminfo.time = Time_milli() * 100.;
         if ((*size_r = initprocesstree_sysdep(pt_r)) <= 0 || ! *pt_r) {
                 DEBUG("System statistic -- cannot initialize the process tree -- process resource monitoring disabled\n");
                 Run.flags &= ~Run_ProcessEngineEnabled;
@@ -252,12 +254,8 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r) {
                 if (oldpt) {
                         int oldentry = _findProcess(pt[i].pid, oldpt, oldsize);
                         if (oldentry != -1) {
-                                pt[i].cputime_prev = oldpt[oldentry].cputime;
-                                pt[i].time_prev    = oldpt[oldentry].time;
-
-                                /* The cpu_percent may be set already (for example by HPUX module) */
-                                if (pt[i].cpu.usage == 0 && pt[i].cputime_prev != 0 && pt[i].cputime != 0 && pt[i].cputime > pt[i].cputime_prev) {
-                                        pt[i].cpu.usage = (100. * (pt[i].cputime - pt[i].cputime_prev) / (pt[i].time - pt[i].time_prev)) / systeminfo.cpus;
+                                if (oldpt[i].cpu.time != 0 && pt[i].cpu.time != 0 && pt[i].cpu.time > oldpt[i].cpu.time) {
+                                        pt[i].cpu.usage = (100. * (pt[i].cpu.time - oldpt[i].cpu.time) / (systeminfo.time - systeminfo.time_prev)) / systeminfo.cpus;
                                         if (pt[i].cpu.usage > 100.)
                                                 pt[i].cpu.usage = 100.;
                                 }
@@ -405,16 +403,5 @@ boolean_t read_proc_file(char *buf, int buf_size, char *name, int pid, int *byte
                 LogError("proc file %s close failed -- %s\n", filename, STRERROR);
 
         return rv;
-}
-
-
-/**
- * Get the actual time as a floating point number
- * @return time in 1/10 seconds
- */
-double get_float_time(void) {
-        struct timeval t;
-        gettimeofday(&t, NULL);
-        return (double) t.tv_sec * 10 + (double) t.tv_usec / 100000.;
 }
 

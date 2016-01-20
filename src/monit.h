@@ -543,7 +543,8 @@ typedef struct myprocesstree {
         struct {
                 float usage;
                 float usage_total;
-        } cpu; //FIXME: maybe drop ... can compute directly when populating Info_T
+                double time;                                     /**< 1/10 seconds */
+        } cpu;
         struct {
                 int count;
                 int total;
@@ -555,14 +556,6 @@ typedef struct myprocesstree {
         } memory;
         time_t uptime;
         char *cmdline;
-
-        /** For internal use */
-        //FIXME: structure ... move it above to the cpu struct?
-        double        time;                                      /**< 1/10 seconds */ //FIXME: this can be stored globally in initprocesstree static variable ... no need for per process. or move to SystemInfo_T
-        double        time_prev;                                 /**< 1/10 seconds */ //FIXME: ditto
-        double        cputime;                                   /**< 1/10 seconds */
-        double        cputime_prev;                              /**< 1/10 seconds */ //FIXME: is _prev needed at all? we read it from oldptree
-
 } ProcessTree_T;
 
 
@@ -582,6 +575,8 @@ typedef struct mysysteminfo {
         double loadavg[3];                                /**< Load average triple */
         struct utsname uname;        /**< Platform information provided by uname() */
         struct timeval collected;                    /**< When were data collected */
+        double time;                                             /**< 1/10 seconds */
+        double time_prev;                                        /**< 1/10 seconds */
 } SystemInfo_T;
 
 
