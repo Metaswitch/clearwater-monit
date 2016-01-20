@@ -165,22 +165,23 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 return 0;
         }
 
-        int kthread = 0;
+        int count = 0;
         StringBuffer_T cmdline = NULL;
         if (pflags & ProcessEngine_CollectCommandLine)
                 cmdline = StringBuffer_create(64);;
         for (int i = 0; i < treesize; i++) {
+                int index = count;
                 if (pinfo[i].p_tid < 0) {
-                        kthread            = i;
-                        pt[i].pid          = pinfo[i].p_pid;
-                        pt[i].ppid         = pinfo[i].p_ppid;
-                        pt[i].cred.uid     = pinfo[i].p_ruid;
-                        pt[i].cred.euid    = pinfo[i].p_uid;
-                        pt[i].cred.gid     = pinfo[i].p_rgid;
-                        pt[i].uptime       = systeminfo.time / 10. - pinfo[i].p_ustart_sec;
-                        pt[i].cpu.time     = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
-                        pt[i].memory.usage = pinfo[i].p_vm_rssize * pagesize;
-                        pt[i].zombie       = pinfo[i].p_stat == SZOMB ? true : false;
+                        count++;
+                        pt[index].pid          = pinfo[i].p_pid;
+                        pt[index].ppid         = pinfo[i].p_ppid;
+                        pt[index].cred.uid     = pinfo[i].p_ruid;
+                        pt[index].cred.euid    = pinfo[i].p_uid;
+                        pt[index].cred.gid     = pinfo[i].p_rgid;
+                        pt[index].uptime       = systeminfo.time / 10. - pinfo[i].p_ustart_sec;
+                        pt[index].cpu.time     = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
+                        pt[index].memory.usage = pinfo[i].p_vm_rssize * pagesize;
+                        pt[index].zombie       = pinfo[i].p_stat == SZOMB ? true : false;
                         if (pflags & ProcessEngine_CollectCommandLine) {
                                 char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
                                 if (args) {
@@ -188,15 +189,15 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                                         for (int j = 0; args[j]; j++)
                                                 StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
                                         if (StringBuffer_length(cmdline))
-                                                pt[i].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
+                                                pt[index].cmdline = Str_dup(StringBuffer_toString(StringBuffer_trim(cmdline)));
                                 }
-                                if (! pt[i].cmdline || ! *pt[i].cmdline) {
-                                        FREE(pt[i].cmdline);
-                                        pt[i].cmdline = Str_dup(pinfo[i].p_comm);
+                                if (! pt[index].cmdline || ! *pt[index].cmdline) {
+                                        FREE(pt[index].cmdline);
+                                        pt[index].cmdline = Str_dup(pinfo[i].p_comm);
                                 }
                         }
                 } else {
-                        pt[kthread].threads++;
+                        pt[index].threads++;
                 }
         }
         if (pflags & ProcessEngine_CollectCommandLine)
@@ -206,7 +207,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
 
         *reference = pt;
 
-        return treesize;
+        return count;
 }
 
 
