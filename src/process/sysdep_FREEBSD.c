@@ -125,45 +125,38 @@ boolean_t init_process_info_sysdep(void) {
  * @return treesize>0 if succeeded otherwise =0.
  */
 int initprocesstree_sysdep(ProcessTree_T **reference) {
-        int                treesize;
-        static kvm_t      *kvm_handle;
-        ProcessTree_T     *pt;
-        struct kinfo_proc *pinfo;
-
-        if (! (kvm_handle = kvm_open(NULL, _PATH_DEVNULL, NULL, O_RDONLY, prog))) {
+        static kvm_t *kvm_handle = kvm_open(NULL, _PATH_DEVNULL, NULL, O_RDONLY, prog);
+        if (! kvm_handle) {
                 LogError("system statistic error -- cannot initialize kvm interface\n");
                 return 0;
         }
 
-        pinfo = kvm_getprocs(kvm_handle, KERN_PROC_PROC, 0, &treesize);
+        int treesize;
+        struct kinfo_proc *pinfo = kvm_getprocs(kvm_handle, KERN_PROC_PROC, 0, &treesize);
         if (! pinfo || (treesize < 1)) {
                 LogError("system statistic error -- cannot get process tree\n");
                 kvm_close(kvm_handle);
                 return 0;
         }
 
-        pt = CALLOC(sizeof(ProcessTree_T), treesize);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
         StringBuffer_T cmdline = StringBuffer_create(64);
         double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
-                pt[i].pid       = pinfo[i].ki_pid;
-                pt[i].ppid      = pinfo[i].ki_ppid;
-                pt[i].uid       = pinfo[i].ki_ruid;
-                pt[i].euid      = pinfo[i].ki_uid;
-                pt[i].gid       = pinfo[i].ki_rgid;
-                pt[i].threads   = pinfo[i].ki_numthreads;
-                pt[i].uptime    = now / 10. - pinfo[i].ki_start.tv_sec;
-                pt[i].cputime   = (double)pinfo[i].ki_runtime / 100000.;
-                pt[i].mem       = pinfo[i].ki_rssize * pagesize;
-                int flags       = pinfo[i].ki_stat;
-                char * procname = pinfo[i].ki_comm;
-                if (flags == SZOMB)
-                        pt[i].zombie = true;
-                pt[i].cpu_percent = 0.;
-                pt[i].time = now;
-                char **args;
-                if ((args = kvm_getargv(kvm_handle, &pinfo[i], 0))) {
+                pt[i].pid          = pinfo[i].ki_pid;
+                pt[i].ppid         = pinfo[i].ki_ppid;
+                pt[i].cred.uid     = pinfo[i].ki_ruid;
+                pt[i].cred.euid    = pinfo[i].ki_uid;
+                pt[i].cred.gid     = pinfo[i].ki_rgid;
+                pt[i].threads      = pinfo[i].ki_numthreads;
+                pt[i].uptime       = now / 10. - pinfo[i].ki_start.tv_sec;
+                pt[i].cputime      = (double)pinfo[i].ki_runtime / 100000.;
+                pt[i].memory.usage = pinfo[i].ki_rssize * pagesize;
+                pt[i].zombie       = pinfo[i].ki_stat == SZOMB ? true : false;
+                pt[i].time         = now;
+                char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
+                if (args) {
                         StringBuffer_clear(cmdline);
                         for (int j = 0; args[j]; j++)
                                 StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);
@@ -172,7 +165,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference) {
                 }
                 if (! pt[i].cmdline || ! *pt[i].cmdline) {
                         FREE(pt[i].cmdline);
-                        pt[i].cmdline = Str_dup(procname);
+                        pt[i].cmdline = Str_dup(pinfo[i].ki_comm);
                 }
         }
         StringBuffer_free(&cmdline);

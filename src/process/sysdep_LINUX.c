@@ -269,18 +269,16 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 /* Set the data in ptree only if all process related reads succeeded (prevent partial data in the case that continue was called during data gathering) */
                 pt[i].pid = stat_pid;
                 pt[i].ppid = stat_ppid;
-                pt[i].uid = stat_uid;
-                pt[i].euid = stat_euid;
-                pt[i].gid = stat_gid;
+                pt[i].cred.uid = stat_uid;
+                pt[i].cred.euid = stat_euid;
+                pt[i].cred.gid = stat_gid;
                 pt[i].threads = stat_item_threads;
                 pt[i].uptime = starttime > 0 ? (now / 10. - (starttime + (time_t)(stat_item_starttime / hz))) : 0;
                 pt[i].cmdline = Str_dup(*buf ? buf : procname);
                 pt[i].time = now;
                 pt[i].cputime = (double)(stat_item_utime + stat_item_stime) / hz * 10.; // jiffies -> seconds = 1/hz
-                pt[i].cpu_percent = 0.;
-                pt[i].mem = stat_item_rss * page_size;
-                if (stat_item_state == 'Z') // State is Zombie -> then we are a Zombie ... clear or? (-:
-                        pt[i].zombie = true;
+                pt[i].memory.usage = stat_item_rss * page_size;
+                pt[i].zombie = stat_item_state == 'Z' ? true : false;
         }
 
         *reference = pt;

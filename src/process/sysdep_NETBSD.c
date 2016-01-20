@@ -156,21 +156,19 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         StringBuffer_T cmdline = StringBuffer_create(64);
         double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
-                pt[i].pid         = pinfo[i].p_pid;
-                pt[i].ppid        = pinfo[i].p_ppid;
-                pt[i].uid         = pinfo[i].p_ruid;
-                pt[i].euid        = pinfo[i].p_uid;
-                pt[i].gid         = pinfo[i].p_rgid;
-                pt[i].threads     = pinfo[i].p_nlwps;
-                pt[i].uptime      = now / 10. - pinfo[i].p_ustart_sec;
-                pt[i].time        = now;
-                pt[i].cputime     = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
-                pt[i].cpu_percent = 0.;
-                pt[i].mem         = pinfo[i].p_vm_rssize * pagesize;
-                if (pinfo[i].p_stat == SZOMB)
-                        pt[i].zombie = true;
-                char **args;
-                if ((args = kvm_getargv2(kvm_handle, &pinfo[i], 0))) {
+                pt[i].pid          = pinfo[i].p_pid;
+                pt[i].ppid         = pinfo[i].p_ppid;
+                pt[i].cred.uid     = pinfo[i].p_ruid;
+                pt[i].cred.euid    = pinfo[i].p_uid;
+                pt[i].cred.gid     = pinfo[i].p_rgid;
+                pt[i].threads      = pinfo[i].p_nlwps;
+                pt[i].uptime       = now / 10. - pinfo[i].p_ustart_sec;
+                pt[i].time         = now;
+                pt[i].cputime      = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
+                pt[i].memory.usage = pinfo[i].p_vm_rssize * pagesize;
+                pt[i].zombie       = pinfo[i].p_stat == SZOMB ? true : false;
+                char **args = kvm_getargv2(kvm_handle, &pinfo[i], 0);
+                if (args) {
                         StringBuffer_clear(cmdline);
                         for (int j = 0; args[j]; j++)
                                 StringBuffer_append(cmdline, args[j + 1] ? "%s " : "%s", args[j]);

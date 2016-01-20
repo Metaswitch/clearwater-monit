@@ -186,17 +186,17 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
 
         double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
-                pt[i].pid         = psall[i].pst_pid;
-                pt[i].ppid        = psall[i].pst_ppid;
-                pt[i].uid         = psall[i].pst_uid;
-                pt[i].euid        = psall[i].pst_euid;
-                pt[i].gid         = psall[i].pst_gid;
-                pt[i].uptime      = now / 10. - psall[i].pst_start;
-                pt[i].time        = now;
-                pt[i].cputime     = (psall[i].pst_utime + psall[i].pst_stime) * 10;
-                pt[i].cpu_percent = 100. * psall[i].pst_pctcpu / (float)systeminfo.cpus;
-                pt[i].mem         = psall[i].pst_rssize * page_size;
-                pt[i].cmdline     = (psall[i].pst_cmd && *psall[i].pst_cmd) ? Str_dup(psall[i].pst_cmd) : Str_dup(psall[i].pst_ucomm);
+                pt[i].pid          = psall[i].pst_pid;
+                pt[i].ppid         = psall[i].pst_ppid;
+                pt[i].cred.uid     = psall[i].pst_uid;
+                pt[i].cred.euid    = psall[i].pst_euid;
+                pt[i].cred.gid     = psall[i].pst_gid;
+                pt[i].uptime       = now / 10. - psall[i].pst_start;
+                pt[i].time         = now;
+                pt[i].cputime      = (psall[i].pst_utime + psall[i].pst_stime) * 10;
+                pt[i].cpu.usage    = 100. * psall[i].pst_pctcpu / (float)systeminfo.cpus;
+                pt[i].memory.usage = psall[i].pst_rssize * page_size;
+                pt[i].cmdline      = (psall[i].pst_cmd && *psall[i].pst_cmd) ? Str_dup(psall[i].pst_cmd) : Str_dup(psall[i].pst_ucomm);
 
                 if (psall[i].pst_stat == PS_ZOMBIE)
                         pt[i].zombie = true;

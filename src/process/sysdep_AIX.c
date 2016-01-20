@@ -192,16 +192,15 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
 
         double now = get_float_time();
         for (int i = 0; i < treesize; i++) {
-                pt[i].pid         = procs[i].pi_pid;
-                pt[i].ppid        = procs[i].pi_ppid;
-                pt[i].euid        = procs[i].pi_uid;
-                pt[i].threads     = procs[i].pi_thcount;
-                pt[i].uptime      = now / 10. - procs[i].pi_start;
-                pt[i].mem         = (procs[i].pi_drss + procs[i].pi_trss) * page_size;
-                pt[i].time        = now;
-                pt[i].cputime     = procs[i].pi_ru.ru_utime.tv_sec * 10 + (double)procs[i].pi_ru.ru_utime.tv_usec / 100000. + procs[i].pi_ru.ru_stime.tv_sec * 10 + (double)procs[i].pi_ru.ru_stime.tv_usec / 100000.;
-                pt[i].cpu_percent = 0.;
-                pt[i].zombie      = procs[i].pi_state == SZOMB ? true: false;
+                pt[i].pid          = procs[i].pi_pid;
+                pt[i].ppid         = procs[i].pi_ppid;
+                pt[i].cred.euid    = procs[i].pi_uid;
+                pt[i].threads      = procs[i].pi_thcount;
+                pt[i].uptime       = now / 10. - procs[i].pi_start;
+                pt[i].memory.usage = (procs[i].pi_drss + procs[i].pi_trss) * page_size;
+                pt[i].time         = now;
+                pt[i].cputime      = procs[i].pi_ru.ru_utime.tv_sec * 10 + (double)procs[i].pi_ru.ru_utime.tv_usec / 100000. + procs[i].pi_ru.ru_stime.tv_sec * 10 + (double)procs[i].pi_ru.ru_stime.tv_usec / 100000.;
+                pt[i].zombie       = procs[i].pi_state == SZOMB ? true: false;
 
                 char filename[STRLEN];
                 snprintf(filename, sizeof(filename), "/proc/%d/psinfo", pt[i].pid);
@@ -219,8 +218,8 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
                 }
                 if (close(fd) < 0)
                         LogError("Socket close failed -- %s\n", STRERROR);
-                pt[i].uid = ps.pr_uid;
-                pt[i].gid = ps.pr_gid;
+                pt[i].cred.uid = ps.pr_uid;
+                pt[i].cred.gid = ps.pr_gid;
                 if (ps.pr_argc == 0) {
                         pt[i].cmdline = Str_dup(procs[i].pi_comm); // Kernel thread
                 } else {
