@@ -59,6 +59,18 @@ Fixed: Issue #60: The process match check may report false positive.
 Fixed: Issue #214: The process match check had high CPU requirements on low power
 systems.
 
+Fixed: Issue #230: The process CPU usage calculation now reflects the number of process
+threads. Originally monit showed process' CPU usage as its fraction of all available CPU
+resourcesautilization (number of CPU cores). For single-threaded applications that was
+however tricky, as such process may utilize one CPU core only and if it was working
+on its limits, on 8-CPU-cores machine monit showed 12.5% CPU utilization (100/8). If you
+wanted to check that the process is not stuck on 100%, you had to adjust the limit reflecting
+the CPU cores on the machine. Monit now calculates the CPU usage based on number of threads
+vs. available CPU cores. If the process has one thread, the 100% CPU usage equals to 100%
+utilization of one CPU core. If it has more 2 cores, 100% CPU usage is reported when it used
+2 CPU cores on 100%, etc. If the process has more threads then the machine's available CPU
+cores, then the 100% CPU usage corresponds to utilization of all available CPU cores.
+
 Fixed: Issue #279: Monit CLI status displayed file size for timestamp.
 
 Fixed: Issue #283: The monitor and unmonitor action event falsely described

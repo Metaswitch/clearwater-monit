@@ -111,6 +111,36 @@ static void _fillProcessTree(ProcessTree_T *pt, int index) {
 }
 
 
+/**
+ * Adjust the CPU usage based on the available system resources: number of CPU cores the application may utilize. Single threaded application may utilized only one CPU core, 4 threaded application 4 cores, etc.. If the application
+ * has more threads then the machine has cores, it is limited by number of cores, not threads.
+ * @param now Current process informations
+ * @param prev Process informations from previous cycle
+ * @param delta The delta of system time between current and previous cycle
+ * @return Process' CPU usage [%] since last cycle
+ */
+static float _cpuUsage(ProcessTree_T *now, ProcessTree_T *prev, double delta) {
+        if (systeminfo.cpus > 0 && delta > 0 && prev->cpu.time > 0 && now->cpu.time > prev->cpu.time) {
+                int divisor;
+                if (now->threads > 1) {
+                        if (now->threads >= systeminfo.cpus) {
+                                // Multithreaded application with more threads then CPU cores
+                                divisor = systeminfo.cpus;
+                        } else {
+                                // Multithreaded application with less threads then CPU cores
+                                divisor = now->threads;
+                        }
+                } else {
+                        // Single threaded application
+                        divisor = 1;
+                }
+                float usage = (100. * (now->cpu.time - prev->cpu.time) / delta) / divisor;
+                return usage > 100. ? 100. : usage;
+        }
+        return 0.;
+}
+
+
 /* ------------------------------------------------------------------ Public */
 
 
@@ -254,13 +284,8 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflag
         for (int i = 0; i < (volatile int)*size_r; i ++) {
                 if (oldpt) {
                         int oldentry = _findProcess(pt[i].pid, oldpt, oldsize);
-                        if (oldentry != -1) {
-                                if (systeminfo.cpus > 0 && time_delta > 0 && oldpt[oldentry].cpu.time != 0 && pt[i].cpu.time != 0 && pt[i].cpu.time > oldpt[oldentry].cpu.time) {
-                                        pt[i].cpu.usage = (100. * (pt[i].cpu.time - oldpt[oldentry].cpu.time) / time_delta) / systeminfo.cpus;
-                                        if (pt[i].cpu.usage > 100.)
-                                                pt[i].cpu.usage = 100.;
-                                }
-                        }
+                        if (oldentry != -1)
+                                pt[i].cpu.usage = _cpuUsage(&pt[i], &oldpt[oldentry], time_delta);
                 }
                 if (pt[i].pid == pt[i].ppid) {
                         root = pt[i].parent = i;
