@@ -250,12 +250,13 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflag
 
         int root = -1; // Main process. Not all systems have main process with PID 1 (such as Solaris zones and FreeBSD jails), so we try to find process which is parent of itself
         ProcessTree_T *pt = *pt_r;
+        double time_delta = systeminfo.time - systeminfo.time_prev;
         for (int i = 0; i < (volatile int)*size_r; i ++) {
                 if (oldpt) {
                         int oldentry = _findProcess(pt[i].pid, oldpt, oldsize);
                         if (oldentry != -1) {
-                                if (oldpt[i].cpu.time != 0 && pt[i].cpu.time != 0 && pt[i].cpu.time > oldpt[i].cpu.time) {
-                                        pt[i].cpu.usage = (100. * (pt[i].cpu.time - oldpt[i].cpu.time) / (systeminfo.time - systeminfo.time_prev)) / systeminfo.cpus;
+                                if (systeminfo.cpus > 0 && time_delta > 0 && oldpt[oldentry].cpu.time != 0 && pt[i].cpu.time != 0 && pt[i].cpu.time > oldpt[oldentry].cpu.time) {
+                                        pt[i].cpu.usage = (100. * (pt[i].cpu.time - oldpt[oldentry].cpu.time) / time_delta) / systeminfo.cpus;
                                         if (pt[i].cpu.usage > 100.)
                                                 pt[i].cpu.usage = 100.;
                                 }
