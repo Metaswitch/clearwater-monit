@@ -126,7 +126,7 @@ boolean_t init_process_info_sysdep(void) {
  * @return treesize > 0 if succeeded otherwise 0.
  */
 int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
-        static kvm_t *kvm_handle = kvm_open(NULL, _PATH_DEVNULL, NULL, O_RDONLY, prog);
+        kvm_t *kvm_handle = kvm_open(NULL, _PATH_DEVNULL, NULL, O_RDONLY, prog);
         if (! kvm_handle) {
                 LogError("system statistic error -- cannot initialize kvm interface\n");
                 return 0;
