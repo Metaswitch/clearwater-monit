@@ -56,47 +56,6 @@ AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 
 
-# ---------------------------------------------------------------------------
-# Build options
-# ---------------------------------------------------------------------------
-
-AC_ARG_ENABLE(optimized,
-        AS_HELP_STRING([--enable-optimized],
-                [Build software optimized]),
-    [
-        CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
-        if test "x$enableval" = "xyes" ; then
-                CFLAGS=`echo $CFLAGS|sed 's/-g[^ ]*//g'`
-                CFLAGS="$CFLAGS -O3"
-                OPTIMIZED=1
-        else
-                OPTIMIZED=0
-        fi
-    ],
-    [
-        OPTIMIZED=0
-    ]
-)
-
-AC_ARG_ENABLE(profiling,
-        AS_HELP_STRING([--enable-profiling],
-                [Build with debug and profiling options]),
-    [
-        if test "x$enableval" = "xyes" ; then
-                CFLAGS=`echo $CFLAGS|sed 's/-g[^ ]*//g'`
-                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
-                CFLAGS="$CFLAGS -g -pg"
-                profile="true"
-        else
-                profile="false"
-        fi
-    ],
-    [
-        profile="false"
-    ]
-)
-AM_CONDITIONAL([ENABLE_PROFILING], [test x$profile = xtrue])
-
 # ------------------------------------------------------------------------
 # Libraries 
 # ------------------------------------------------------------------------
@@ -108,6 +67,7 @@ AC_CHECK_LIB([nsl],    [inet_addr])
 AC_CHECK_LIB([resolv], [inet_aton])
 AC_CHECK_LIB([c], [crypt], [:], [AC_CHECK_LIB([crypt], [crypt])])
 AC_CHECK_LIB([pthread], [pthread_create], [], [AC_MSG_ERROR([POSIX thread library is required])])
+
 
 # ------------------------------------------------------------------------
 # Header files 
@@ -963,6 +923,48 @@ if test "$use_sslstatic" = "1" -o "$use_ssl" = "1"; then
                 AC_DEFINE([HAVE_ASN1_TIME_DIFF], 1, [Define to 1 if you have openssl with ASN1_TIME_diff])
         fi
 fi
+
+
+# ---------------------------------------------------------------------------
+# Build options
+# ---------------------------------------------------------------------------
+
+AC_ARG_ENABLE(optimized,
+        AS_HELP_STRING([--enable-optimized],
+                [Build software optimized]),
+    [
+        CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
+        if test "x$enableval" = "xyes" ; then
+                CFLAGS=`echo $CFLAGS|sed 's/-g.//g'`
+                CFLAGS="$CFLAGS -O3"
+                OPTIMIZED=1
+        else
+                OPTIMIZED=0
+        fi
+    ],
+    [
+        OPTIMIZED=0
+    ]
+)
+
+AC_ARG_ENABLE(profiling,
+        AS_HELP_STRING([--enable-profiling],
+                [Build with debug and profiling options]),
+    [
+        if test "x$enableval" = "xyes" ; then
+                CFLAGS=`echo $CFLAGS|sed 's/-g.//g'`
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
+                CFLAGS="$CFLAGS -g -pg"
+                profile="true"
+        else
+                profile="false"
+        fi
+    ],
+    [
+        profile="false"
+    ]
+)
+AM_CONDITIONAL([ENABLE_PROFILING], [test x$profile = xtrue])
 
 
 # ------------------------------------------------------------------------
