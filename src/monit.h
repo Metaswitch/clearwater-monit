@@ -1076,9 +1076,8 @@ typedef struct myservice {
         EventAction_T action_INVALID;    /**< Description of the action upon event */
 
         /** Internal monit events */
-        EventAction_T action_MONIT_START;         /**< Monit instance start action */
+        EventAction_T action_MONIT_START;  /**< Monit instance start/reload action */
         EventAction_T action_MONIT_STOP;           /**< Monit instance stop action */
-        EventAction_T action_MONIT_RELOAD;       /**< Monit instance reload action */
         EventAction_T action_ACTION;           /**< Action requested by CLI or GUI */
 
         /** Runtime parameters */

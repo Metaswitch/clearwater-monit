@@ -383,7 +383,7 @@ static void do_reinit() {
                 monit_http(Httpd_Start);
 
         /* send the monit startup notification */
-        Event_post(Run.system, Event_Instance, State_Changed, Run.system->action_MONIT_RELOAD, "Monit reloaded");
+        Event_post(Run.system, Event_Instance, State_Changed, Run.system->action_MONIT_START, "Monit reloaded");
 
         if (Run.mmonits) {
                 Thread_create(heartbeatThread, heartbeat, NULL);

@@ -257,8 +257,6 @@ static void _gc_service(Service_T *s) {
                 _gc_eventaction(&(*s)->action_MONIT_START);
         if ((*s)->action_MONIT_STOP)
                 _gc_eventaction(&(*s)->action_MONIT_STOP);
-        if ((*s)->action_MONIT_RELOAD)
-                _gc_eventaction(&(*s)->action_MONIT_RELOAD);
         if ((*s)->action_ACTION)
                 _gc_eventaction(&(*s)->action_ACTION);
         if ((*s)->eventlist)

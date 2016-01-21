@@ -2817,6 +2817,8 @@ static void postparse() {
                         addservice(Run.system);
                 }
         }
+        addeventaction(&(Run.system->action_MONIT_START), Action_Start, Action_Ignored);
+        addeventaction(&(Run.system->action_MONIT_STOP), Action_Stop,  Action_Ignored);
 
         if (Run.mmonits) {
                 if (Run.httpd.flags & Httpd_Net) {
@@ -2903,9 +2905,6 @@ static Service_T createservice(Service_Type type, char *name, char *value, State
         addeventaction(&(current)->action_INVALID,  Action_Restart,   Action_Alert);
 
         /* Initialize internal event handlers */
-        addeventaction(&(current)->action_MONIT_START,  Action_Start, Action_Ignored);
-        addeventaction(&(current)->action_MONIT_STOP,   Action_Stop,  Action_Ignored);
-        addeventaction(&(current)->action_MONIT_RELOAD, Action_Start, Action_Ignored);
         addeventaction(&(current)->action_ACTION,       Action_Alert, Action_Ignored);
 
         gettimeofday(&current->collected, NULL);
