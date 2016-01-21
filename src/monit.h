@@ -172,6 +172,7 @@ typedef enum {
 
 
 typedef enum {
+        ProcessEngine_None               = 0x0,
         ProcessEngine_CollectCommandLine = 0x1
 } __attribute__((__packed__)) ProcessEngine_Flags;
 
@@ -1133,7 +1134,6 @@ typedef struct myservicegroup {
 struct myrun {
         uint8_t debug;                                            /**< Debug level */
         volatile Run_Flags flags;
-        ProcessEngine_Flags pflags;
         Handler_Type handler_flag;                    /**< The handlers state flag */
         struct {
                 char *control;            /**< The file to read configuration from */

@@ -160,7 +160,7 @@ static Process_Status _waitProcessStart(Service_T s, int64_t *timeout) {
         long wait = RETRY_INTERVAL;
         do {
                 Time_usleep(wait);
-                if (Util_isProcessRunning(s, true))
+                if (Util_isProcessRunning(s))
                         return Process_Started;
                 *timeout -= wait;
                 wait = wait < 1000000 ? wait * 2 : 1000000; // double the wait during each cycle until 1s is reached (Util_isProcessRunning can be heavy and we don't want to drain power every 100ms on mobile devices)
@@ -226,7 +226,7 @@ static boolean_t _doStart(Service_T s) {
         }
         if (rv) {
                 if (s->start) {
-                        if (s->type != Service_Process || ! Util_isProcessRunning(s, false)) {
+                        if (s->type != Service_Process || ! Util_isProcessRunning(s)) {
                                 LogInfo("'%s' start: %s\n", s->name, s->start->arg[0]);
                                 char msg[STRLEN];
                                 int64_t timeout = s->start->timeout * USEC_PER_SEC;
@@ -281,7 +281,7 @@ static boolean_t _doStop(Service_T s, boolean_t unmonitor) {
                         char msg[STRLEN];
                         int64_t timeout = s->stop->timeout * USEC_PER_SEC;
                         if (s->type == Service_Process) {
-                                int pid = Util_isProcessRunning(s, true);
+                                int pid = Util_isProcessRunning(s);
                                 if (pid) {
                                         exitStatus = _executeStop(s, msg, sizeof(msg), &timeout);
                                         rv = _waitProcessStop(pid, &timeout) == Process_Stopped ? true : false;

@@ -1035,7 +1035,7 @@ int validate() {
         Event_queue_process();
 
         update_system_load();
-        initprocesstree(&ptree, &ptreesize, Run.pflags);
+        initprocesstree(&ptree, &ptreesize, ProcessEngine_None);
         gettimeofday(&systeminfo.collected, NULL);
 
         /* In the case that at least one action is pending, perform quick loop to handle the actions ASAP */
@@ -1074,7 +1074,7 @@ State_Type check_process(Service_T s) {
         ASSERT(s);
         ASSERT(s->inf);
         State_Type rv = State_Succeeded;
-        pid_t pid = Util_isProcessRunning(s, false);
+        pid_t pid = Util_isProcessRunning(s);
         if (! pid) {
                 for (Nonexist_T l = s->nonexistlist; l; l = l->next)
                         Event_post(s, Event_Nonexist, State_Failed, l->action, "process is not running");
