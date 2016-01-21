@@ -92,11 +92,12 @@ void init_env() {
                         THROW(AssertException, "Cannot open /dev/null -- %s", STRERROR);
         }
         // Get password struct with user info
-        struct passwd *pw = getpwuid(geteuid());
-        if (! pw)
-                THROW(AssertException, "%s: You don't exist. Go away", prog);
-        Run.Env.home = Str_dup(pw->pw_dir);
-        Run.Env.user = Str_dup(pw->pw_name);
+        char buf[4096];
+        struct passwd pw, *result = NULL;
+        if (getpwuid_r(geteuid(), &pw, buf, sizeof(buf), &result) != 0 || ! result)
+                THROW(AssertException, "getpwuid_r failed -- %s", STRERROR);
+        Run.Env.home = Str_dup(pw.pw_dir);
+        Run.Env.user = Str_dup(pw.pw_name);
         // Get CWD
         char t[PATH_MAX];
         if (! Dir_cwd(t, PATH_MAX))
