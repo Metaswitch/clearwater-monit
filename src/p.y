@@ -3936,26 +3936,20 @@ static void addmailserver(MailServer_T mailserver) {
  * otherwise the user parameter is used.
  */
 static uid_t get_uid(char *user, uid_t uid) {
-        struct passwd *pwd;
-
+        char buf[4096];
+        struct passwd pwd, *result = NULL;
         if (user) {
-                pwd = getpwnam(user);
-
-                if (! pwd) {
+                if (getpwnam_r(user, &pwd, buf, sizeof(buf), &result) != 0 || ! result) {
                         yyerror2("Requested user not found on the system");
                         return(0);
                 }
-
         } else {
-
-                if (! (pwd = getpwuid(uid))) {
+                if (getpwuid_r(uid, &pwd, buf, sizeof(buf), &result) != 0 || ! result) {
                         yyerror2("Requested uid not found on the system");
                         return(0);
                 }
         }
-
-        return(pwd->pw_uid);
-
+        return(pwd.pw_uid);
 }
 
 
