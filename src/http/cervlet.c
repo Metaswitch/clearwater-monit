@@ -1892,7 +1892,7 @@ static void print_service_rules_content(HttpResponse res, Service_T s) {
                         StringBuffer_append(res->outputbuffer, "</td></tr>");
                 }
                 for (Match_T ml = s->matchlist; ml; ml = ml->next) {
-                        StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Content</td><td>");
+                        StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Content match</td><td>");
                         Util_printRule(res->outputbuffer, ml->action, "If content %s \"%s\"", ml->not ? "!=" : "=", ml->match_string);
                         StringBuffer_append(res->outputbuffer, "</td></tr>");
                 }
@@ -2292,7 +2292,7 @@ static void print_service_status_file_size(HttpResponse res, Service_T s) {
 
 static void print_service_status_file_content(HttpResponse res, Service_T s) {
         if (s->matchlist) {
-                StringBuffer_append(res->outputbuffer, "<tr><td>Content matched</td>");
+                StringBuffer_append(res->outputbuffer, "<tr><td>Content matches pattern(s)</td>");
                 if (! Util_hasServiceStatus(s))
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else
