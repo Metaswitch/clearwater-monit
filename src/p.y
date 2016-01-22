@@ -2035,14 +2035,14 @@ resourceswap    : SWAP operator value unit {
 resourcethreads : THREADS operator NUMBER {
                     resourceset.resource_id = Resource_Threads;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = (int) $3;
+                    resourceset.limit = $<number>3;
                   }
                 ;
 
 resourcechild   : CHILDREN operator NUMBER {
                     resourceset.resource_id = Resource_Children;
                     resourceset.operator = $<number>2;
-                    resourceset.limit = (int) $3;
+                    resourceset.limit = $<number>3;
                   }
                 ;
 

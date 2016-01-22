@@ -1327,7 +1327,7 @@ void Util_printService(Service_T s) {
 
                         case Resource_Threads:
                         case Resource_Children:
-                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %ld", operatornames[o->operator], o->limit)));
+                                printf("%s", StringBuffer_toString(Util_printRule(buf, o->action, "if %s %.0f", operatornames[o->operator], o->limit)));
                                 break;
 
                         default:

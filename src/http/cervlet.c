@@ -2043,7 +2043,7 @@ static void print_service_rules_resource(HttpResponse res, Service_T s) {
 
                         case Resource_Threads:
                         case Resource_Children:
-                                Util_printRule(res->outputbuffer, q->action, "If %s %ld", operatornames[q->operator], q->limit);
+                                Util_printRule(res->outputbuffer, q->action, "If %s %.0f", operatornames[q->operator], q->limit);
                                 break;
                         default:
                                 break;
