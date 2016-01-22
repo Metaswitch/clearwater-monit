@@ -2291,12 +2291,14 @@ static void print_service_status_file_size(HttpResponse res, Service_T s) {
 
 
 static void print_service_status_file_content(HttpResponse res, Service_T s) {
-        StringBuffer_append(res->outputbuffer, "<tr><td>Content regex</td>");
-        if (! Util_hasServiceStatus(s))
-                StringBuffer_append(res->outputbuffer, "<td>-</td>");
-        else
-                StringBuffer_append(res->outputbuffer, "<td class='%s'>%s</td>", (s->error & Event_Content) ? "red-text" : "", (s->error & Event_Content) ? "yes" : "no");
-        StringBuffer_append(res->outputbuffer, "</tr>");
+        if (s->matchlist) {
+                StringBuffer_append(res->outputbuffer, "<tr><td>Content matched</td>");
+                if (! Util_hasServiceStatus(s))
+                        StringBuffer_append(res->outputbuffer, "<td>-</td>");
+                else
+                        StringBuffer_append(res->outputbuffer, "<td class='%s'>%s</td>", (s->error & Event_Content) ? "red-text" : "", (s->error & Event_Content) ? "yes" : "no");
+                StringBuffer_append(res->outputbuffer, "</tr>");
+        }
 }
 
 
