@@ -138,7 +138,7 @@ char *actionnames[] = {"ignore", "alert", "restart", "stop", "exec", "unmonitor"
 char *modenames[] = {"active", "passive", "manual"};
 char *checksumnames[] = {"UNKNOWN", "MD5", "SHA1"};
 char *operatornames[] = {"less than", "greater than", "equal to", "not equal to", "changed"};
-char *operatorshortnames[] = {">", "<", "=", "!=", "<>"};
+char *operatorshortnames[] = {"<", ">", "=", "!=", "<>"};
 char *statusnames[] = {"Accessible", "Accessible", "Accessible", "Running", "Online with all services", "Running", "Accessible", "Status ok", "UP"};
 char *servicetypes[] = {"Filesystem", "Directory", "File", "Process", "Remote Host", "System", "Fifo", "Program", "Network"};
 char *pathnames[] = {"Path", "Path", "Path", "Pid file", "Path", "", "Path"};
