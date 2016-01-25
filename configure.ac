@@ -935,8 +935,9 @@ AC_ARG_ENABLE(optimized,
     [
         CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
         if test "x$enableval" = "xyes" ; then
-                CFLAGS=`echo $CFLAGS|sed 's/-g.//g'`
-                CFLAGS="$CFLAGS -O3"
+                CFLAGS=`echo $CFLAGS|sed 's/-g[[^ ]]*//g'`
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
+                CFLAGS="$CFLAGS -O3 -DNDEBUG"
                 OPTIMIZED=1
         else
                 OPTIMIZED=0
