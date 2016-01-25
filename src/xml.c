@@ -329,6 +329,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                 (long long)S->inf->priv.process.uptime);
                                         if (Run.flags & Run_ProcessEngineEnabled) {
                                                 StringBuffer_append(B,
+                                                        "<threads>%d</threads>"
                                                         "<children>%d</children>"
                                                         "<memory>"
                                                         "<percent>%.1f</percent>"
@@ -340,6 +341,7 @@ static void status_service(Service_T S, StringBuffer_T B, Level_Type L, int V) {
                                                         "<percent>%.1f</percent>"
                                                         "<percenttotal>%.1f</percenttotal>"
                                                         "</cpu>",
+                                                        S->inf->priv.process.threads,
                                                         S->inf->priv.process.children,
                                                         S->inf->priv.process.mem_percent,
                                                         S->inf->priv.process.total_mem_percent,
