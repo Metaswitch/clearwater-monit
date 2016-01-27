@@ -3490,7 +3490,6 @@ static void appendmatch(Match_T *list, Match_T item) {
  */
 static void addmatch(Match_T ms, int actionnumber, int linenumber) {
         Match_T m;
-        int     reg_return;
 
         ASSERT(ms);
 
@@ -3509,7 +3508,7 @@ static void addmatch(Match_T ms, int actionnumber, int linenumber) {
         addeventaction(&(m->action), actionnumber, Action_Ignored);
 
 #ifdef HAVE_REGEX_H
-        reg_return = regcomp(m->regex_comp, ms->match_string, REG_NOSUB|REG_EXTENDED);
+        int reg_return = regcomp(m->regex_comp, ms->match_string, REG_NOSUB|REG_EXTENDED);
 
         if (reg_return != 0) {
                 char errbuf[STRLEN];
