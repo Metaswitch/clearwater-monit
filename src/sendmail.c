@@ -248,7 +248,7 @@ boolean_t sendmail(Mail_T mail) {
                                 _request(&S, "EHLO %s\r\n", S.localhost);
                                 _response(&S);
                         } else {
-                                THROW(IOException, "TLS required but the mail server doesn't support it");
+                                THROW(IOException, "STARTTLS required but the mail server doesn't support it");
                         }
                 }
                 // Authenticate if possible
