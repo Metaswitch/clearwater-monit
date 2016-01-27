@@ -37,6 +37,10 @@
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_KINFO_H
+#include <kinfo.h>
+#endif
+
 #ifdef HAVE_KVM_H
 #include <kvm.h>
 #endif
@@ -75,7 +79,7 @@
 
 
 /**
- *  System dependent resource gathering code for FreeBSD.
+ *  System dependent resource gathering code for DragonFly.
  *
  *  @file
  */
@@ -133,7 +137,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
         }
 
         int treesize;
-        struct kinfo_proc *pinfo = kvm_getprocs(kvm_handle, KERN_PROC_PROC, 0, &treesize);
+        struct kinfo_proc *pinfo = kvm_getprocs(kvm_handle, KERN_PROC_ALL, 0, &treesize);
         if (! pinfo || (treesize < 1)) {
                 LogError("system statistic error -- cannot get process tree\n");
                 kvm_close(kvm_handle);
@@ -146,16 +150,16 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
         if (pflags & ProcessEngine_CollectCommandLine)
                 cmdline = StringBuffer_create(64);
         for (int i = 0; i < treesize; i++) {
-                pt[i].pid          = pinfo[i].ki_pid;
-                pt[i].ppid         = pinfo[i].ki_ppid;
-                pt[i].cred.uid     = pinfo[i].ki_ruid;
-                pt[i].cred.euid    = pinfo[i].ki_uid;
-                pt[i].cred.gid     = pinfo[i].ki_rgid;
-                pt[i].threads      = pinfo[i].ki_numthreads;
-                pt[i].uptime       = systeminfo.time / 10. - pinfo[i].ki_start.tv_sec;
-                pt[i].cpu.time     = (double)pinfo[i].ki_runtime / 100000.;
-                pt[i].memory.usage = pinfo[i].ki_rssize * pagesize;
-                pt[i].zombie       = pinfo[i].ki_stat == SZOMB ? true : false;
+                pt[i].pid          = pinfo[i].kp_pid;
+                pt[i].ppid         = pinfo[i].kp_ppid;
+                pt[i].cred.uid     = pinfo[i].kp_ruid;
+                pt[i].cred.euid    = pinfo[i].kp_uid;
+                pt[i].cred.gid     = pinfo[i].kp_rgid;
+                pt[i].threads      = pinfo[i].kp_nthreads;
+                pt[i].uptime       = systeminfo.time / 10. - pinfo[i].kp_start.tv_sec;
+                pt[i].cpu.time     = (double)((pinfo[i].kp_lwp.kl_uticks + pinfo[i].kp_lwp.kl_sticks + pinfo[i].kp_lwp.kl_iticks) / 1000000.);
+                pt[i].memory.usage = (unsigned long)(pinfo[i].kp_vm_rssize * pagesize);
+                pt[i].zombie       = pinfo[i].kp_stat == SZOMB ? true : false;
                 if (pflags & ProcessEngine_CollectCommandLine) {
                         char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
                         if (args) {
@@ -167,7 +171,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                         }
                         if (! pt[i].cmdline || ! *pt[i].cmdline) {
                                 FREE(pt[i].cmdline);
-                                pt[i].cmdline = Str_dup(pinfo[i].ki_comm);
+                                pt[i].cmdline = Str_dup(pinfo[i].kp_comm);
                         }
                 }
         }
@@ -221,33 +225,26 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
         si->total_mem = (active + wired) * pagesize;
 
         /* Swap */
-        int mib[16] = {};
-        unsigned long long total = 0ULL;
-        unsigned long long used  = 0ULL;
-        size_t miblen = sizeof(mib) / sizeof(mib[0]);
-        if (sysctlnametomib("vm.swap_info", mib, &miblen) == -1) {
+        unsigned int used;
+        if (sysctlbyname("vm.swap_anon_use", &used, &len, NULL, 0) == -1) {
                 LogError("system statistic error -- cannot get swap usage: %s\n", STRERROR);
                 si->swap_max = 0;
                 return false;
         }
-        int n = 0;
-        while (true) {
-                struct xswdev xsw;
-                mib[miblen] = n;
-                len = sizeof(struct xswdev);
-                if (sysctl(mib, miblen + 1, &xsw, &len, NULL, 0) == -1)
-                        break;
-                if (xsw.xsw_version != XSWDEV_VERSION) {
-                        LogError("system statistic error -- cannot get swap usage: xswdev version mismatch\n");
-                        si->swap_max = 0;
-                        return false;
-                }
-                total += xsw.xsw_nblks;
-                used  += xsw.xsw_used;
-                n++;
-        }
-        si->swap_max = total * pagesize;
         si->total_swap = used * pagesize;
+        if (sysctlbyname("vm.swap_cache_use", &used, &len, NULL, 0) == -1) {
+                LogError("system statistic error -- cannot get swap usage: %s\n", STRERROR);
+                si->swap_max = 0;
+                return false;
+        }
+        si->total_swap += used * pagesize;
+        unsigned int free;
+        if (sysctlbyname("vm.swap_size", &free, &len, NULL, 0) == -1) {
+                LogError("system statistic error -- cannot get swap usage: %s\n", STRERROR);
+                si->swap_max = 0;
+                return false;
+        }
+        si->swap_max = free * pagesize + si->total_swap;
         return true;
 }
 
@@ -290,4 +287,3 @@ boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
 
         return true;
 }
-
