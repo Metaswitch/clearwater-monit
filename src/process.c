@@ -287,7 +287,8 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflag
                         if (oldentry != -1)
                                 pt[i].cpu.usage = _cpuUsage(&pt[i], &oldpt[oldentry], time_delta);
                 }
-                if (pt[i].pid == pt[i].ppid) {
+                // Note: on DragonFly, main process is swapper with pid 0 and ppid -1, so take also this case into consideration
+                if ((pt[i].pid == pt[i].ppid) || (pt[i].ppid == -1)) {
                         root = pt[i].parent = i;
                 } else {
                         // Find this process' parent
