@@ -209,7 +209,12 @@ static void update_v2() {
                                 service->inf->priv.file.readpos = state.priv.file.readpos;
 
                                 if(service->timestamplist) {
-                                    //TODO: initialize the TimeStamp check service
+                                    for (Timestamp_T t = service->timestamplist; t; t = t->next) {
+                                        //only restore when previous timestamp value is needed
+                                        if (t->test_changes) {
+                                            t->timestamp = state.priv.file.timestamp;
+                                        }
+                                    }
                                 }
                                 if(service->checksum) {
                                     snprintf(service->checksum->hash, sizeof(service->checksum->hash), "%s", state.priv.file.cs_sum);
