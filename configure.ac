@@ -95,6 +95,7 @@ AC_CHECK_HEADERS([ \
 	glob.h \
 	grp.h \
 	ifaddrs.h \
+	kinfo.h \
 	kvm.h \
 	paths.h \
 	kstat.h \
@@ -353,6 +354,9 @@ AC_CHECK_TYPES([boolean_t], [], [],
          #ifdef HAVE_VM_VM_H
          #include <vm/vm.h>
          #endif
+         #ifdef HAVE_KINFO_H
+         #include <kinfo.h>
+         #endif
         ])
 
 AC_TYPE_MODE_T
@@ -547,6 +551,11 @@ then
 elif test "$architecture" = "NetBSD"
 then
    ARCH="NETBSD"
+   CFLAGS="$CFLAGS -D _REENTRANT"
+   test_kvm="true"
+elif test "$architecture" = "DragonFly"
+then
+   ARCH="DRAGONFLY"
    CFLAGS="$CFLAGS -D _REENTRANT"
    test_kvm="true"
 elif test "$architecture" = "Darwin"

@@ -29,6 +29,10 @@
 #include "config.h"
 #include <assert.h>
 
+#ifdef HAVE_KINFO_H
+#include <kinfo.h>
+#endif
+
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
