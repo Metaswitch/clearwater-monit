@@ -412,7 +412,9 @@ L<status|/"PROGRAM STATUS TESTING"> test allows one to check the
 program's exit status. If the program does not finish executing within
 <number> seconds, Monit will terminate it. The default program timeout
 is 300 seconds (5 minutes). The output of the program is recorded and
-made available in the User Interface and in alerts (up to 1kB).
+made available in the User Interface and in alerts (by default up to
+512B, you can customize the limit using the L<set limits|"LIMITS">
+statement).
 
 =item 9. CHECK NETWORK <unique name> <ADDRESS <ipaddress> | INTERFACE <name>>
 
@@ -1589,24 +1591,28 @@ data during testing.
 Syntax:
 
  SET LIMIT {
+   PROGRAMOUTPUT:     <number> <unit>,
    SENDEXPECTBUFFER:  <number> <unit>,
    FILECONTENTBUFFER: <number> <unit>,
    HTTPCONTENTBUFFER: <number> <unit>,
-   NETWORKTIMEOUT:    <number> SECONDS
+   NETWORKTIMEOUT:    <number> <timeunit>
  }
 
-Where the I<unit> is "B" (byte), "kB" (kilobyte) or "MB" (megabyte).
+Where:
+ I<unit> is "B" (byte), "kB" (kilobyte) or "MB" (megabyte)
+ I<timeunit> is "MS" (millisecond) or "S" (second)
 
 Options legend:
 
- -----------------------------------------------------------------------------
- | Option            | Description                                 | Default |
- -----------------------------------------------------------------------------
- | sendExpectBuffer  | limit for send/expect protocol test         | 256 B   |
- | fileContentBuffer | limit for file content test (line)          | 512 B   |
- | httpContentBuffer | limit for HTTP content test (response body) | 1 MB    |
- | networkTimeout    | timeout for network I/O                     | 5 sec   |
- -----------------------------------------------------------------------------
+ ------------------------------------------------------------------------------------
+ | Option            | Description                                        | Default |
+ ------------------------------------------------------------------------------------
+ | programOutput     | limit for check program output (truncate the rest) | 512 B   |
+ | sendExpectBuffer  | limit for send/expect protocol test                | 256 B   |
+ | fileContentBuffer | limit for file content test (line)                 | 512 B   |
+ | httpContentBuffer | limit for HTTP content test (response body)        | 1 MB    |
+ | networkTimeout    | timeout for network I/O                            | 5 sec   |
+ ------------------------------------------------------------------------------------
 
 
 =head3 GENERAL SYNTAX

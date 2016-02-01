@@ -311,7 +311,7 @@ static int verifyMaxForward(int);
 %token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CERTIFICATE CACERTIFICATEFILE CACERTIFICATEPATH VALID
 %token INTERFACE LINK PACKET BYTEIN BYTEOUT PACKETIN PACKETOUT SPEED SATURATION UPLOAD DOWNLOAD TOTAL
 %token IDFILE STATEFILE SEND EXPECT CYCLE COUNT REMINDER REPEAT
-%token LIMITS SENDEXPECTBUFFER EXPECTBUFFER FILECONTENTBUFFER HTTPCONTENTBUFFER NETWORKTIMEOUT
+%token LIMITS SENDEXPECTBUFFER EXPECTBUFFER FILECONTENTBUFFER HTTPCONTENTBUFFER PROGRAMOUTPUT NETWORKTIMEOUT
 %token PIDFILE START STOP PATHTOK
 %token HOST HOSTNAME PORT IPV4 IPV6 TYPE UDP TCP TCPSSL PROTOCOL CONNECTION
 %token ALERT NOALERT MAILFORMAT UNIXSOCKET SIGNATURE
@@ -330,7 +330,7 @@ static int verifyMaxForward(int);
 %token MODE ACTIVE PASSIVE MANUAL CPU TOTALCPU CPUUSER CPUSYSTEM CPUWAIT
 %token GROUP REQUEST DEPENDS BASEDIR SLOT EVENTQUEUE SECRET HOSTHEADER
 %token UID EUID GID MMONIT INSTANCE USERNAME PASSWORD
-%token TIMESTAMP CHANGED SECOND MINUTE HOUR DAY MONTH
+%token TIMESTAMP CHANGED MILLISECOND SECOND MINUTE HOUR DAY MONTH
 %token SSLAUTO SSLV2 SSLV3 TLSV1 TLSV11 TLSV12 CERTMD5 AUTO
 %token BYTE KILOBYTE MEGABYTE GIGABYTE
 %token INODE SPACE TFREE PERMISSION SIZE MATCH NOT IGNORE ACTION UPTIME
@@ -611,6 +611,12 @@ limit           : SENDEXPECTBUFFER ':' NUMBER unit {
                   }
                 | HTTPCONTENTBUFFER ':' NUMBER unit {
                         Run.limits.httpContentBuffer = $3 * $<number>4;
+                  }
+                | PROGRAMOUTPUT ':' NUMBER unit {
+                        Run.limits.programOutput = $3 * $<number>4;
+                  }
+                | NETWORKTIMEOUT ':' NUMBER MILLISECOND {
+                        Run.limits.networkTimeout= $3;
                   }
                 | NETWORKTIMEOUT ':' NUMBER SECOND {
                         Run.limits.networkTimeout= $3 * 1000;
@@ -2101,6 +2107,9 @@ currenttime     : /* EMPTY */ { $<number>$ = Time_Second; }
 repeat          : /* EMPTY */ {
                         repeat = 0;
                   }
+                | REPEAT EVERY CYCLE {
+                        repeat = 1;
+                  }
                 | REPEAT EVERY NUMBER CYCLE {
                         if ($<number>3 < 0) {
                                 yyerror2("The number of repeat cycles must be greater or equal to 0");
@@ -2728,6 +2737,7 @@ static void preparse() {
         Run.limits.sendExpectBuffer  = LIMIT_SENDEXPECTBUFFER;
         Run.limits.fileContentBuffer = LIMIT_FILECONTENTBUFFER;
         Run.limits.httpContentBuffer = LIMIT_HTTPCONTENTBUFFER;
+        Run.limits.programOutput     = LIMIT_PROGRAMOUTPUT;
         Run.limits.networkTimeout    = LIMIT_NETWORKTIMEOUT;
         Run.mmonitcredentials        = NULL;
         Run.httpd.flags              = Httpd_Disabled | Httpd_Signature;

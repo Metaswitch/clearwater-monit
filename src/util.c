@@ -787,6 +787,7 @@ void Util_printRunList() {
         printf(" %-18s = %s\n", "Is Daemon", (Run.flags & Run_Daemon) ? "True" : "False");
         printf(" %-18s = %s\n", "Use process engine", (Run.flags & Run_ProcessEngineEnabled) ? "True" : "False");
         printf(" %-18s = {\n", "Limits");
+        printf(" %-18s =   programOutput:     %s\n", " ", Str_bytesToSize(Run.limits.programOutput, buf));
         printf(" %-18s =   sendExpectBuffer:  %s\n", " ", Str_bytesToSize(Run.limits.sendExpectBuffer, buf));
         printf(" %-18s =   fileContentBuffer: %s\n", " ", Str_bytesToSize(Run.limits.fileContentBuffer, buf));
         printf(" %-18s =   httpContentBuffer: %s\n", " ", Str_bytesToSize(Run.limits.httpContentBuffer, buf));

@@ -131,7 +131,7 @@ static void _programOutput(InputStream_T I, StringBuffer_T S) {
                         buf[n] = 0;
                         StringBuffer_append(S, "%s", buf);
                 }
-        } while (n > 0 && StringBuffer_length(S) < 1024);
+        } while (n > 0 && StringBuffer_length(S) < Run.limits.programOutput);
 }
 
 

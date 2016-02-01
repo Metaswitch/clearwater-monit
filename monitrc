@@ -52,6 +52,7 @@ set logfile syslog
 ## Set limits for various tests. The following example shows the default values:
 ##
 # set limits {
+#     programOutput:     512 B,    # check program's output truncate limit
 #     sendExpectBuffer:  256 B,    # limit for send/expect protocol test
 #     fileContentBuffer: 512 B,    # limit for file content test
 #     httpContentBuffer: 1 MB,     # limit for HTTP content test

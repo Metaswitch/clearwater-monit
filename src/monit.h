@@ -370,6 +370,7 @@ typedef enum {
 /* Default limits */
 #define LIMIT_SENDEXPECTBUFFER  256
 #define LIMIT_FILECONTENTBUFFER 512
+#define LIMIT_PROGRAMOUTPUT     512
 #define LIMIT_HTTPCONTENTBUFFER 1048576
 #define LIMIT_NETWORKTIMEOUT    5000
 
@@ -421,6 +422,7 @@ typedef struct mylimits {
         uint32_t sendExpectBuffer;  /**< Maximum send/expect response length [B] */
         uint32_t fileContentBuffer;  /**< Maximum tested file content length [B] */
         uint32_t httpContentBuffer;  /**< Maximum tested HTTP content length [B] */
+        uint32_t programOutput;           /**< Program output truncate limit [B] */
         uint32_t networkTimeout;               /**< Default network timeout [ms] */
 } Limits_T;
 

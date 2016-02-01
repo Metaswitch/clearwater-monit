@@ -131,6 +131,12 @@ byte        ("byte"|"bytes"|"b")("/s")?
 kilobyte    ("kilobyte"|"kilobytes"|"kb")("/s")?
 megabyte    ("megabyte"|"megabytes"|"mb")("/s")?
 gigabyte    ("gigabyte"|"gigabytes"|"gb")("/s")?
+millisecond ("millisecond"|"milliseconds"|"ms")
+second      ("second"|"seconds"|"s")
+minute      ("minute"|"minutes"|"m")
+hour        ("hour"|"hours"|"h")
+day         ("day"|"days")
+month       ("month"|"months")
 
 %x ARGUMENT_COND DEPEND_COND SERVICE_COND URL_COND STRING_COND EVERY_COND HTTP_HEADER_COND INCLUDE
 
@@ -317,11 +323,6 @@ child(ren)?       { return CHILDREN; }
 thread(s)?        { return THREADS; }
 timestamp         { return TIMESTAMP; }
 changed           { return CHANGED; }
-second(s)?        { return SECOND; }
-minute(s)?        { return MINUTE; }
-hour(s)?          { return HOUR; }
-day(s)?           { return DAY; }
-month(s)?         { return MONTH; }
 sslv2             { return SSLV2; }
 sslv3             { return SSLV3; }
 tlsv1             { return TLSV1; }
@@ -357,6 +358,7 @@ limits            { return LIMITS; }
 sendexpectbuffer  { return SENDEXPECTBUFFER; }
 filecontentbuffer { return FILECONTENTBUFFER; }
 httpcontentbuffer { return HTTPCONTENTBUFFER; }
+programoutput     { return PROGRAMOUTPUT; }
 networktimeout    { return NETWORKTIMEOUT; }
 cleartext         { return CLEARTEXT; }
 md5               { return MD5HASH; }
@@ -401,6 +403,12 @@ fips              { return FIPS; }
 {less}            { return LESS; }
 {equal}           { return EQUAL; }
 {notequal}        { return NOTEQUAL; }
+{millisecond}     { return MILLISECOND; }
+{second}          { return SECOND; }
+{minute}          { return MINUTE; }
+{hour}            { return HOUR; }
+{day}             { return DAY; }
+{month}           { return MONTH; }
 
 include           { BEGIN(INCLUDE); }
 
