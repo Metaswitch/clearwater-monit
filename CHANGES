@@ -39,7 +39,7 @@ possible options with their default values:
      sendExpectBuffer:  256 B,    # limit for send/expect protocol test
      fileContentBuffer: 512 B,    # limit for file content test (line)
      httpContentBuffer: 1 MB,     # limit for HTTP content test (response body)
-     networkTimeout:    5 seconds # timeout for network I/O //FIXME: refactor to milliseconds (add "ms" and "milliseconds" to keywords)
+     networkTimeout:    5 seconds # timeout for network I/O
  }
 
 New: The file content test syntax has changed from "IF [NOT] MATCH <pattern>" to
