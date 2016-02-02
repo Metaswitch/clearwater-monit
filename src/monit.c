@@ -822,19 +822,19 @@ static void help() {
  */
 static void version() {
         printf("This is Monit version %s\n", VERSION);
-        printf("Built with ");
+        printf("Built with");
 #ifndef HAVE_OPENSSL
-        printf("no ");
+        printf("out");
 #endif
-        printf("ssl, ");
+        printf(" ssl, with");
 #ifndef HAVE_LIBPAM
-        printf("no ");
+        printf("out");
 #endif
-        printf("pam and ");
+        printf(" pam and with");
 #ifndef HAVE_LARGEFILES
-        printf("no ");
+        printf("out");
 #endif
-        printf("large files\n");
+        printf(" large files\n");
         printf("Copyright (C) 2001-2016 Tildeslash Ltd. All Rights Reserved.\n");
 }
 
