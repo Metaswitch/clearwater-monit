@@ -13,9 +13,11 @@
   portsnap fetch
   portsnap update
   cd /usr/ports/sysutils
+  rm -rf monit-new
   cp -rp monit monit-new
   perl -p -i -e 's/^PORTVERSION=.*/PORTVERSION=    <new_version>' monit-new/Makefile
   make -C monit-new makesum
+  rm -rf /tmp/monit_port
   mkdir /tmp/monit_port
   diff -ruN monit monit-new > /tmp/monit_port/monit.patch
   cd monit-new
