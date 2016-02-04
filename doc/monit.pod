@@ -479,9 +479,10 @@ a wake-up signal to the daemon, forcing it to check services
 immediately. Calling C<monit> with the quit argument will kill a
 running Monit daemon process instead of waking it up.
 
-The start delay option allows to postpone the first check by given
-number of seconds (can be useful for example when the system boots).
-By default Monit starts service checks immediately after start.
+The start delay option can be used to wait (once) before Monit starts
+checking services. This can be useful for example when the system
+boots. Monit will by default start checking services immediately at
+startup.
 
 
 =head1 INIT SUPPORT
@@ -1585,8 +1586,10 @@ control file.
 
 =head3 LIMITS
 
-Monit applies default limits on various tests, to limit the ammount of
-data during testing.
+You can configure and set various limits to tweak buffer sizes and
+timeouts used by Monit. In most situations the default values are
+fine. If needed, below are the limits you can currently modify in
+Monit.
 
 Syntax:
 
@@ -1604,24 +1607,24 @@ Where:
 
 Options legend:
 
- ------------------------------------------------------------------------------------
- | Option            | Description                                        | Default |
- ------------------------------------------------------------------------------------
- | programOutput     | limit for check program output (truncate the rest) | 512 B   |
- | sendExpectBuffer  | limit for send/expect protocol test                | 256 B   |
- | fileContentBuffer | limit for file content test (line)                 | 512 B   |
- | httpContentBuffer | limit for HTTP content test (response body)        | 1 MB    |
- | networkTimeout    | timeout for network I/O                            | 5 sec   |
- ------------------------------------------------------------------------------------
+ ----------------------------------------------------------------------------------
+ | Option            | Description                                      | Default |
+ ----------------------------------------------------------------------------------
+ | programOutput     | limit for check program output (truncated after) | 512 B   |
+ | sendExpectBuffer  | limit for send/expect protocol test              | 256 B   |
+ | fileContentBuffer | limit for file content test (line)               | 512 B   |
+ | httpContentBuffer | limit for HTTP content test (response body)      | 1 MB    |
+ | networkTimeout    | timeout for network I/O                          | 5 sec   |
+ ----------------------------------------------------------------------------------
 
 
 =head3 GENERAL SYNTAX
 
-Monit provides several tests you can use in a 'check' statement to test
-a service.
+Monit offers several if-tests you can use in a 'check' statement to test
+various aspects of a service.
 
-You can test either for some expected value or range and take
-actions if the value changed.
+You can test both for a predefined value or for a range and take actions if the
+value changes.
 
 General syntax for testing a specific value or range:
 
@@ -1701,13 +1704,14 @@ from the console.
 =back
 
 
-=head3 FAILURE TOLERANCE
+=head3 FAULT TOLERANCE
 
-By default the action is executed if it matches and the service set in
-an error state. However, you can require a test to fail more than once
-before the error event is triggered and the service state changed to
-failed. This is useful to avoid getting alerts on spurious errors,
-which can happen, especially with network tests.
+By default an action is executed if it matches and the corresponding
+service is set in an error state. However, you can require a test to
+fail more than once before the error event is triggered and the
+service state is changed to failed. This is useful to avoid getting
+alerts on spurious errors, which can happen, especially with network
+tests.
 
 Syntax:
 
@@ -1751,8 +1755,9 @@ Note: the maximum value for cycles is 64.
 
 =head2 EXISTENCE TESTING
 
-This test is always active for the process, file, directory and fifo
-checks and is if not defined, it defaults to a restart action.
+This test is implicite and always active for service checks of type,
+I<process>, I<file>, I<directory> and I<fifo>. If not defined, it
+defaults to a restart action.
 
 You can override the default action with the following statement:
 
