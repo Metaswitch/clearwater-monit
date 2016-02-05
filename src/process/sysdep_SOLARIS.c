@@ -111,7 +111,7 @@ static long   old_total = 0;
 boolean_t init_process_info_sysdep(void) {
         systeminfo.cpus = sysconf( _SC_NPROCESSORS_ONLN);
         page_size = getpagesize();
-        systeminfo.mem_max = sysconf(_SC_PHYS_PAGES) * page_size;
+        systeminfo.mem_max = (uint64_t)sysconf(_SC_PHYS_PAGES) * (uint64_t)page_size;
 
         return true;
 }
@@ -158,7 +158,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                         pt[i].cred.gid     = psinfo->pr_gid;
                         pt[i].uptime       = systeminfo.time / 10. - psinfo->pr_start.tv_sec;
                         pt[i].zombie       = psinfo->pr_nlwp == 0 ? true : false; // If we don't have any light-weight processes (LWP) then we are definitely a zombie
-                        pt[i].memory.usage = psinfo->pr_rssize * 1024;
+                        pt[i].memory.usage = (uint64_t)psinfo->pr_rssize * 1024;
                         if (pflags & ProcessEngine_CollectCommandLine) {
                                 pt[i].cmdline = Str_dup(psinfo->pr_psargs);
                                 if (! pt[i].cmdline || ! *pt[i].cmdline) {
@@ -222,7 +222,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                         }
                         kstat_named_t *rss = kstat_data_lookup(kstat, "rss");
                         if (rss)
-                                si->total_mem = rss->value.i64;
+                                si->total_mem = (uint64_t)rss->value.i64;
                 } else {
                         /* Solaris Zone */
                         size_t nres;
@@ -232,7 +232,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                                 kstat_close(kctl);
                                 return false;
                         }
-                        si->total_mem = result.vmu_rss_all;
+                        si->total_mem = (uint64_t)result.vmu_rss_all;
                 }
         } else {
                 kstat = kstat_lookup(kctl, "unix", 0, "system_pages");
@@ -243,7 +243,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 }
                 knamed = kstat_data_lookup(kstat, "freemem");
                 if (knamed)
-                        si->total_mem = systeminfo.mem_max - knamed->value.ul * page_size;
+                        si->total_mem = systeminfo.mem_max - (uint64_t)knamed->value.ul * (uint64_t)page_size;
         }
         kstat_close(kctl);
 
@@ -284,8 +284,8 @@ again:
         }
         FREE(s);
         FREE(strtab);
-        si->swap_max = total * page_size;
-        si->total_swap = used  * page_size;
+        si->swap_max = (uint64_t)total * (uint64_t)page_size;
+        si->total_swap = (uint64_t)used * (uint64_t)page_size;
 
         return true;
 }

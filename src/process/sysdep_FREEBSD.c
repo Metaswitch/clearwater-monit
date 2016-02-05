@@ -154,7 +154,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 pt[i].threads      = pinfo[i].ki_numthreads;
                 pt[i].uptime       = systeminfo.time / 10. - pinfo[i].ki_start.tv_sec;
                 pt[i].cpu.time     = (double)pinfo[i].ki_runtime / 100000.;
-                pt[i].memory.usage = pinfo[i].ki_rssize * pagesize;
+                pt[i].memory.usage = (uint64_t)pinfo[i].ki_rssize * (uint64_t)pagesize;
                 pt[i].zombie       = pinfo[i].ki_stat == SZOMB ? true : false;
                 if (pflags & ProcessEngine_CollectCommandLine) {
                         char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
@@ -218,7 +218,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- wired memory usage statics error\n");
                 return false;
         }
-        si->total_mem = (active + wired) * pagesize;
+        si->total_mem = (uint64_t)(active + wired) * (uint64_t)pagesize;
 
         /* Swap */
         int mib[16] = {};
@@ -227,7 +227,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
         size_t miblen = sizeof(mib) / sizeof(mib[0]);
         if (sysctlnametomib("vm.swap_info", mib, &miblen) == -1) {
                 LogError("system statistic error -- cannot get swap usage: %s\n", STRERROR);
-                si->swap_max = 0;
+                si->swap_max = 0ULL;
                 return false;
         }
         int n = 0;
@@ -239,15 +239,15 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                         break;
                 if (xsw.xsw_version != XSWDEV_VERSION) {
                         LogError("system statistic error -- cannot get swap usage: xswdev version mismatch\n");
-                        si->swap_max = 0;
+                        si->swap_max = 0ULL;
                         return false;
                 }
                 total += xsw.xsw_nblks;
                 used  += xsw.xsw_used;
                 n++;
         }
-        si->swap_max = total * pagesize;
-        si->total_swap = used * pagesize;
+        si->swap_max = (uint64_t)total * (uint64_t)pagesize;
+        si->total_swap = (uint64_t)used * (uint64_t)pagesize;
         return true;
 }
 

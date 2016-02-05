@@ -166,7 +166,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 pt[i].threads      = pinfo[i].p_nlwps;
                 pt[i].uptime       = systeminfo.time / 10. - pinfo[i].p_ustart_sec;
                 pt[i].cpu.time     = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
-                pt[i].memory.usage = pinfo[i].p_vm_rssize * pagesize;
+                pt[i].memory.usage = (uint64_t)pinfo[i].p_vm_rssize * (uint64_t)pagesize;
                 pt[i].zombie       = pinfo[i].p_stat == SZOMB ? true : false;
                 if (pflags & ProcessEngine_CollectCommandLine) {
                         char **args = kvm_getargv2(kvm_handle, &pinfo[i], 0);
@@ -219,9 +219,9 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 si->swap_max = 0ULL;
                 return false;
         }
-        si->total_mem = (vm.active + vm.wired) * vm.pagesize;
-        si->swap_max = vm.swpages * vm.pagesize;
-        si->total_swap = vm.swpginuse * vm.pagesize;
+        si->total_mem = (uint64_t)(vm.active + vm.wired) * (uint64_t)vm.pagesize;
+        si->swap_max = (uint64_t)vm.swpages * (uint64_t)vm.pagesize;
+        si->total_swap = (uint64_t)vm.swpginuse * (uint64_t)vm.pagesize;
         return true;
 }
 

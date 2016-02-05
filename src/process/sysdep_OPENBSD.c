@@ -106,7 +106,7 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system statistic error -- cannot get real memory amount: %s\n", STRERROR);
                 return false;
         }
-        systeminfo.mem_max = physmem;
+        systeminfo.mem_max = (uint64_t)physmem;
 
         mib[1] = HW_PAGESIZE;
         len    = sizeof(pagesize);
@@ -180,7 +180,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                         pt[index].cred.gid     = pinfo[i].p_rgid;
                         pt[index].uptime       = systeminfo.time / 10. - pinfo[i].p_ustart_sec;
                         pt[index].cpu.time     = pinfo[i].p_rtime_sec * 10 + (double)pinfo[i].p_rtime_usec / 100000.;
-                        pt[index].memory.usage = pinfo[i].p_vm_rssize * pagesize;
+                        pt[index].memory.usage = (uint64_t)pinfo[i].p_vm_rssize * (uint64_t)pagesize;
                         pt[index].zombie       = pinfo[i].p_stat == SZOMB ? true : false;
                         if (pflags & ProcessEngine_CollectCommandLine) {
                                 char **args = kvm_getargv(kvm_handle, &pinfo[i], 0);
@@ -236,9 +236,9 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- cannot get memory usage: %s\n", STRERROR);
                 return false;
         }
-        si->total_mem = (vm.active + vm.wired) * pagesize;
-        si->swap_max = vm.swpages * pagesize;
-        si->total_swap = vm.swpginuse * pagesize;
+        si->total_mem = (uint64_t)(vm.active + vm.wired) * (uint64_t)pagesize;
+        si->swap_max = (uint64_t)vm.swpages * (uint64_t)pagesize;
+        si->total_swap = (uint64_t)vm.swpginuse * (uint64_t)pagesize;
         return true;
 }
 

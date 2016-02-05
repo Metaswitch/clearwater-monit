@@ -184,7 +184,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 } else if (rv < sizeof(tinfo)) {
                         LogError("proc_pidinfo for pid %d -- invalid result size\n", pt[i].pid);
                 } else {
-                        pt[i].memory.usage = tinfo.pti_resident_size;
+                        pt[i].memory.usage = (uint64_t)tinfo.pti_resident_size;
                         pt[i].cpu.time     = (double)(tinfo.pti_total_user + tinfo.pti_total_system) / 100000000.; // The time is in nanoseconds, we store it as 1/10s
                         pt[i].threads      = tinfo.pti_threadnum;
                 }
@@ -226,7 +226,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 DEBUG("system statistic error -- cannot get memory usage\n");
                 return false;
         }
-        si->total_mem = (page_info.wire_count + page_info.active_count) * pagesize;
+        si->total_mem = (uint64_t)(page_info.wire_count + page_info.active_count) * (uint64_t)pagesize;
 
         /* Swap */
         int mib[2] = {CTL_VM, VM_SWAPUSAGE};
@@ -237,8 +237,8 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 si->swap_max = 0ULL;
                 return false;
         }
-        si->swap_max   = swap.xsu_total;
-        si->total_swap = swap.xsu_used;
+        si->swap_max = (uint64_t)swap.xsu_total;
+        si->total_swap = (uint64_t)swap.xsu_used;
 
         return true;
 }

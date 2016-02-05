@@ -218,8 +218,8 @@ boolean_t update_system_load() {
                         LogError("'%s' statistic error -- memory usage gathering failed\n", Run.system->name);
                         goto error2;
                 }
-                systeminfo.total_mem_percent  = systeminfo.mem_max > 0 ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
-                systeminfo.total_swap_percent = systeminfo.swap_max > 0 ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
+                systeminfo.total_mem_percent  = systeminfo.mem_max > 0ULL ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
+                systeminfo.total_swap_percent = systeminfo.swap_max > 0ULL ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
 
                 if (! used_system_cpu_sysdep(&systeminfo)) {
                         LogError("'%s' statistic error -- cpu usage gathering failed\n", Run.system->name);
@@ -236,6 +236,8 @@ error1:
 error2:
         systeminfo.total_mem = 0ULL;
         systeminfo.total_mem_percent = 0.;
+        systeminfo.total_swap = 0ULL;
+        systeminfo.total_swap_percent = 0.;
 error3:
         systeminfo.total_cpu_user_percent = 0.;
         systeminfo.total_cpu_syst_percent = 0.;

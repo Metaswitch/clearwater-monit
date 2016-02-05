@@ -4,6 +4,9 @@
 
 Version 5.17
 
+Fixed: 32-bit systems with more then 4GB of RAM reported wrong system memory and swap
+value.
+
 
 Version 5.16
 

@@ -145,7 +145,7 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system statistic error -- cannot get real memory amount\n");
                 return false;
         }
-        systeminfo.mem_max = mem_max * 1024;
+        systeminfo.mem_max = (uint64_t)mem_max * 1024;
 
         if ((systeminfo.cpus = sysconf(_SC_NPROCESSORS_CONF)) < 0) {
                 DEBUG("system statistic error -- cannot get cpu count: %s\n", STRERROR);
@@ -276,7 +276,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 pt[i].threads = stat_item_threads;
                 pt[i].uptime = starttime > 0 ? (systeminfo.time / 10. - (starttime + (time_t)(stat_item_starttime / hz))) : 0;
                 pt[i].cpu.time = (double)(stat_item_utime + stat_item_stime) / hz * 10.; // jiffies -> seconds = 1/hz
-                pt[i].memory.usage = stat_item_rss * page_size;
+                pt[i].memory.usage = (uint64_t)stat_item_rss * (uint64_t)page_size;
                 pt[i].zombie = stat_item_state == 'Z' ? true : false;
         }
 
@@ -343,7 +343,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 DEBUG("system statistic error -- cannot get real memory cache amount\n");
         if (! (ptr = strstr(buf, "SReclaimable:")) || sscanf(ptr + 13, "%ld", &slabreclaimable) != 1)
                 DEBUG("system statistic error -- cannot get slab reclaimable memory amount\n");
-        si->total_mem = systeminfo.mem_max - (mem_free + buffers + cached + slabreclaimable) * 1024;
+        si->total_mem = systeminfo.mem_max - (uint64_t)(mem_free + buffers + cached + slabreclaimable) * 1024;
 
         /* Swap */
         if (! (ptr = strstr(buf, "SwapTotal:")) || sscanf(ptr + 10, "%ld", &swap_total) != 1) {
@@ -354,8 +354,8 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- cannot get swap free amount\n");
                 goto error;
         }
-        si->swap_max = swap_total * 1024;
-        si->total_swap = (swap_total - swap_free) * 1024;
+        si->swap_max = (uint64_t)swap_total * 1024;
+        si->total_swap = (uint64_t)(swap_total - swap_free) * 1024;
 
         return true;
 

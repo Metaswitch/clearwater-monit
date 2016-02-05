@@ -129,7 +129,7 @@ boolean_t init_process_info_sysdep(void) {
         }
 
         page_size          = getpagesize();
-        systeminfo.mem_max = mem.real_total * page_size;
+        systeminfo.mem_max = (uint64_t)mem.real_total * (uint64_t)page_size;
         systeminfo.cpus    = sysconf(_SC_NPROCESSORS_ONLN);
 
         return true;
@@ -197,7 +197,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 pt[i].cred.euid    = procs[i].pi_uid;
                 pt[i].threads      = procs[i].pi_thcount;
                 pt[i].uptime       = systeminfo.time / 10. - procs[i].pi_start;
-                pt[i].memory.usage = (procs[i].pi_drss + procs[i].pi_trss) * page_size;
+                pt[i].memory.usage = (uint64_t)(procs[i].pi_drss + procs[i].pi_trss) * (uint64_t)page_size;
                 pt[i].cpu.time     = procs[i].pi_ru.ru_utime.tv_sec * 10 + (double)procs[i].pi_ru.ru_utime.tv_usec / 100000. + procs[i].pi_ru.ru_stime.tv_sec * 10 + (double)procs[i].pi_ru.ru_stime.tv_usec / 100000.;
                 pt[i].zombie       = procs[i].pi_state == SZOMB ? true: false;
 
@@ -260,11 +260,11 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- perfstat_memory_total failed: %s\n", STRERROR);
                 return false;
         }
-        si->total_mem = (mem.real_total - mem.real_free - mem.numperm) * page_size;
+        si->total_mem = (uint64_t)(mem.real_total - mem.real_free - mem.numperm) * (uint64_t)page_size;
 
         /* Swap */
-        si->swap_max   = mem.pgsp_total * 4096;                   /* 4kB blocks */
-        si->total_swap = (mem.pgsp_total - mem.pgsp_free) * 4096; /* 4kB blocks */
+        si->swap_max   = (uint64_t)mem.pgsp_total * 4096;                   /* 4kB blocks */
+        si->total_swap = (uint64_t)(mem.pgsp_total - mem.pgsp_free) * 4096; /* 4kB blocks */
 
         return true;
 }

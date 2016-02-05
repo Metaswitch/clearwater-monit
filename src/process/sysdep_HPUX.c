@@ -119,7 +119,7 @@ boolean_t init_process_info_sysdep(void) {
                 return false;
 
         if (pstat_getstatic(&pst, sizeof(pst), (size_t) 1, 0) != -1) {
-                systeminfo.mem_max = pst.physical_memory * pst.page_size;
+                systeminfo.mem_max = (uint64_t)pst.physical_memory * (uint64_t)pst.page_size;
                 page_size = pst.page_size;
         } else {
                 return false;
@@ -191,7 +191,7 @@ int initprocesstree_sysdep(ProcessTree_T ** reference, ProcessEngine_Flags pflag
                 pt[i].cred.gid     = psall[i].pst_gid;
                 pt[i].uptime       = systeminfo.time / 10. - psall[i].pst_start;
                 pt[i].cpu.time     = (psall[i].pst_utime + psall[i].pst_stime) * 10;
-                pt[i].memory.usage = psall[i].pst_rssize * page_size;
+                pt[i].memory.usage = (uint64_t)psall[i].pst_rssize * (uint64_t)page_size;
                 pt[i].zombie       = psall[i].pst_stat == PS_ZOMBIE ? true : false;
                 if (pflags & ProcessEngine_CollectCommandLine)
                         pt[i].cmdline = (psall[i].pst_cmd && *psall[i].pst_cmd) ? Str_dup(psall[i].pst_cmd) : Str_dup(psall[i].pst_ucomm);
@@ -225,7 +225,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                 LogError("system statistic error -- pstat_getdynamic failed: %s\n", STRERROR);
                 return false;
         }
-        si->total_mem = (pst.physical_memory - psd.psd_free) * pst.page_size;
+        si->total_mem = (uint64_t)(pst.physical_memory - psd.psd_free) * (uint64_t)pst.page_size;
 
         /* Swap */
 again:
@@ -264,8 +264,8 @@ again:
         }
         FREE(s);
         FREE(strtab);
-        si->swap_max = total * page_size;
-        si->total_swap = used  * page_size;
+        si->swap_max = (uint64_t)total * (uint64_t)page_size;
+        si->total_swap = (uint64_t)used * (uint64_t)page_size;
 
         return true;
 }
