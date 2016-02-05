@@ -170,6 +170,7 @@ typedef struct mystate2 {
                 struct {
                         int duplex;
                         long long speed;
+                        //FIXME: when Link API is moved from libmonit to monit, save also link bytes in/out and packets in/out history, so the network statistics is not reset on each monit reload
                 } net;
         } priv;
 } State2_T;
