@@ -193,7 +193,7 @@ boolean_t do_wakeupcall() {
 
 static void _validateOnce() {
         if (State_open()) {
-                State_update();
+                State_restore();
                 validate();
                 State_close();
         }
@@ -376,7 +376,7 @@ static void do_reinit() {
         /* Update service data from the state repository */
         if (! State_open())
                 exit(1);
-        State_update();
+        State_restore();
 
         /* Start http interface */
         if (can_http())
@@ -534,7 +534,7 @@ static void do_default() {
 
                 if (! State_open())
                         exit(1);
-                State_update();
+                State_restore();
 
                 atexit(file_finalize);
 

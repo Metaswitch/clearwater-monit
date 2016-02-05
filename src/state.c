@@ -81,11 +81,14 @@
  *        Allows to skip the content match test for the content which was checked
  *        already to suppress duplicate events.
  *
+ *    5.) size, checksum, timestamp, permissions, link speed, filesystem flags
+ *        for the change observation test
+ *
  * Data is stored in binary form in the statefile using the following format:
  *    <MAGIC><VERSION>{<SERVICE_STATE>}+
  *
  * When the persistent field needs to be added, update the State_Version along
- * with State_update() and State_save(). The version allows to recognize the
+ * with State_restore() and State_save(). The version allows to recognize the
  * service state structure and file format.
  *
  * The backward compatibility of monitoring state restore is very important if
@@ -141,13 +144,36 @@ typedef struct mystate2 {
         int                ncycle;
         union {
                 struct {
-                        unsigned long long  inode;
-                        unsigned long long  readpos;
-                        time_t              timestamp;
-                        MD_T                cs_sum;
+                        time_t timestamp;
+                        int mode;
+                } directory;
+
+                struct {
+                        unsigned long long inode;
+                        unsigned long long readpos;
+                        unsigned long long size;
+                        unsigned long long timestamp;
+                        int mode;
+                        MD_T hash;
                 } file;
+
+                struct {
+                        unsigned long long timestamp;
+                        int mode;
+                } fifo;
+
+                struct {
+                        int mode;
+                        int flags;
+                } filesystem;
+
+                struct {
+                        int duplex;
+                        long long speed;
+                } net;
         } priv;
 } State2_T;
+
 
 static int file = -1;
 
@@ -155,70 +181,132 @@ static int file = -1;
 /* ----------------------------------------------------------------- Private */
 
 
-static void update_v0(int services) {
+static void _updateStart(Service_T S, int nstart, int ncycle) {
+        S->nstart = nstart;
+        S->ncycle = ncycle;
+}
+
+
+static void _updateMonitor(Service_T S, int monitor) {
+        if (monitor == Monitor_Not)
+                S->monitor = monitor;
+        else if (S->monitor == Monitor_Not)
+                S->monitor = Monitor_Init;
+}
+
+
+static void _updateFilePosition(Service_T S, unsigned long long inode, unsigned long long readpos) {
+        S->inf->priv.file.inode = (ino_t)inode;
+        S->inf->priv.file.readpos = (off_t)readpos;
+}
+
+
+static void _updateTimestamp(Service_T S, unsigned long long timestamp) {
+        for (Timestamp_T t = S->timestamplist; t; t = t->next)
+                if (t->test_changes)
+                        t->timestamp = (time_t)timestamp;
+}
+
+
+static void _updatePermission(Service_T S, int mode) {
+        if (S->perm && S->perm->test_changes)
+                S->perm->perm = mode;
+}
+
+
+static void _updateSize(Service_T S, unsigned long long size) {
+        for (Size_T s = S->sizelist; s; s = s->next)
+                if (s->test_changes)
+                        s->size = size;
+}
+
+
+static void _updateChecksum(Service_T S, char *hash) {
+        if (S->checksum && S->checksum->test_changes) {
+                S->checksum->initialized = false;
+                strncpy(S->checksum->hash, hash, sizeof(S->checksum->hash));
+        }
+}
+
+
+static void _updateFilesystemFlags(Service_T S, int flags) {
+        if (S->fsflaglist)
+                S->inf->priv.filesystem.flags = flags;
+}
+
+
+static void _updateLinkSpeed(Service_T S, int duplex, long long speed) {
+        for (LinkSpeed_T l = S->linkspeedlist; l; l = l->next) {
+                l->duplex = duplex;
+                l->speed = speed;
+        }
+}
+
+
+static void _restoreV0(int services) {
         for (int i = 0; i < services; i++) {
                 State0_T state;
                 if (read(file, &state, sizeof(state)) != sizeof(state))
                         THROW(IOException, "Unable to read service state");
-                Service_T service;
-                if ((service = Util_getService(state.name))) {
-                        service->nstart = state.nstart;
-                        service->ncycle = state.ncycle;
-                        if (state.monitor == Monitor_Not)
-                                service->monitor = state.monitor;
-                        else if (service->monitor == Monitor_Not)
-                                service->monitor = Monitor_Init;
+                Service_T service = Util_getService(state.name);
+                if (service) {
+                        _updateStart(service, state.nstart, state.ncycle);
+                        _updateMonitor(service, state.monitor);
                 }
         }
 }
 
 
-static void update_v1() {
+static void _restoreV1() {
         State1_T state;
         while (read(file, &state, sizeof(state)) == sizeof(state)) {
-                Service_T service;
-                if ((service = Util_getService(state.name)) && service->type == state.type) {
-                        service->nstart = state.nstart;
-                        service->ncycle = state.ncycle;
-                        if (state.monitor == Monitor_Not)
-                                service->monitor = state.monitor;
-                        else if (service->monitor == Monitor_Not)
-                                service->monitor = Monitor_Init;
-                        if (service->type == Service_File) {
-                                service->inf->priv.file.inode = state.priv.file.inode;
-                                service->inf->priv.file.readpos = state.priv.file.readpos;
-                        }
+                Service_T service = Util_getService(state.name);
+                if (service && service->type == state.type) {
+                        _updateStart(service, state.nstart, state.ncycle);
+                        _updateMonitor(service, state.monitor);
+                        if (service->type == Service_File)
+                                _updateFilePosition(service, state.priv.file.inode, state.priv.file.readpos);
                 }
         }
 }
 
-static void update_v2() {
+static void _restoreV2() {
         State2_T state;
         while (read(file, &state, sizeof(state)) == sizeof(state)) {
-                Service_T service;
-                if ((service = Util_getService(state.name)) && service->type == state.type) {
-                        service->nstart = state.nstart;
-                        service->ncycle = state.ncycle;
-                        if (state.monitor == Monitor_Not)
-                                service->monitor = state.monitor;
-                        else if (service->monitor == Monitor_Not)
-                                service->monitor = Monitor_Init;
+                Service_T service = Util_getService(state.name);
+                if (service && service->type == state.type) {
+                        _updateStart(service, state.nstart, state.ncycle);
+                        _updateMonitor(service, state.monitor);
+                        switch (service->type) {
+                                case Service_Directory:
+                                        _updatePermission(service, state.priv.directory.mode);
+                                        _updateTimestamp(service, state.priv.directory.timestamp);
+                                        break;
 
-                        if (service->type == Service_File) {
-                                service->inf->priv.file.inode = state.priv.file.inode;
-                                service->inf->priv.file.readpos = state.priv.file.readpos;
+                                case Service_Fifo:
+                                        _updatePermission(service, state.priv.fifo.mode);
+                                        _updateTimestamp(service, state.priv.fifo.timestamp);
+                                        break;
 
-                                if(service->timestamplist) {
-                                    for (Timestamp_T t = service->timestamplist; t; t = t->next) {
-                                        //only restore when previous timestamp value is needed
-                                        if (t->test_changes) {
-                                            t->timestamp = state.priv.file.timestamp;
-                                        }
-                                    }
-                                }
-                                if(service->checksum) {
-                                    snprintf(service->checksum->hash, sizeof(service->checksum->hash), "%s", state.priv.file.cs_sum);
-                                }
+                                case Service_File:
+                                        _updatePermission(service, state.priv.file.mode);
+                                        _updateTimestamp(service, state.priv.file.timestamp);
+                                        _updateFilePosition(service, state.priv.file.inode, state.priv.file.readpos);
+                                        _updateSize(service, state.priv.file.size);
+                                        _updateChecksum(service, state.priv.file.hash);
+                                        break;
+
+                                case Service_Filesystem:
+                                        _updatePermission(service, state.priv.filesystem.mode);
+                                        _updateFilesystemFlags(service, state.priv.filesystem.flags);
+                                        break;
+
+                                case Service_Net:
+                                        _updateLinkSpeed(service, state.priv.net.duplex, state.priv.net.speed);
+                                        break;
+
+                                default:
+                                        break;
                         }
                 }
         }
@@ -271,11 +359,45 @@ void State_save() {
                         state.monitor = service->monitor & ~Monitor_Waiting;
                         state.nstart = service->nstart;
                         state.ncycle = service->ncycle;
-                        if (service->type == Service_File) {
-                                state.priv.file.inode = service->inf->priv.file.inode;
-                                state.priv.file.readpos = service->inf->priv.file.readpos;
-                                state.priv.file.timestamp = service->inf->priv.file.timestamp;
-                                snprintf(state.priv.file.cs_sum, sizeof(state.priv.file.cs_sum), "%s", service->inf->priv.file.cs_sum);
+                        switch (service->type) {
+                                case Service_Directory:
+                                        state.priv.directory.timestamp = (unsigned long long)service->inf->priv.directory.timestamp;
+                                        if (service->perm)
+                                                state.priv.directory.mode = service->perm->perm;
+                                        break;
+
+                                case Service_Fifo:
+                                        state.priv.fifo.timestamp = (unsigned long long)service->inf->priv.fifo.timestamp;
+                                        if (service->perm)
+                                                state.priv.fifo.mode = service->perm->perm;
+                                        break;
+
+                                case Service_File:
+                                        state.priv.file.inode = service->inf->priv.file.inode;
+                                        state.priv.file.readpos = service->inf->priv.file.readpos;
+                                        state.priv.file.size = (unsigned long long)service->inf->priv.file.size;
+                                        state.priv.file.timestamp = (unsigned long long)service->inf->priv.file.timestamp;
+                                        if (service->checksum)
+                                                strncpy(state.priv.file.hash, service->inf->priv.file.cs_sum, sizeof(state.priv.file.hash));
+                                        if (service->perm)
+                                                state.priv.file.mode = service->perm->perm;
+                                        break;
+
+                                case Service_Filesystem:
+                                        if (service->perm)
+                                                state.priv.filesystem.mode = service->perm->perm;
+                                        state.priv.filesystem.flags = service->inf->priv.filesystem.flags;
+                                        break;
+
+                                case Service_Net:
+                                        if (service->linkspeedlist) {
+                                                state.priv.net.duplex = service->linkspeedlist->duplex;
+                                                state.priv.net.speed = service->linkspeedlist->speed;
+                                        }
+                                        break;
+
+                                default:
+                                        break;
                         }
                         if (write(file, &state, sizeof(state)) != sizeof(state))
                                 THROW(IOException, "Unable to write service state");
@@ -291,7 +413,7 @@ void State_save() {
 }
 
 
-void State_update() {
+void State_restore() {
         /* Ignore empty state file */
         if ((lseek(file, 0L, SEEK_END) == 0))
                 return;
@@ -304,19 +426,23 @@ void State_update() {
                         THROW(IOException, "Unable to read magic");
                 if (magic > 0) {
                         // The statefile format of Monit <= 5.3, the magic is number of services, followed by State0_T structures
-                        update_v0(magic);
+                        _restoreV0(magic);
                 } else {
                         // The extended statefile format (Monit >= 5.4)
                         int version;
                         if (read(file, &version, sizeof(version)) != sizeof(version))
                                 THROW(IOException, "Unable to read version");
-                        // Currently the extended format has only one version, additional versions can be added here
-                        if (version == StateVersion1)
-                                update_v1();
-                        else if (version == StateVersion2)
-                                update_v2();
-                        else
-                                LogWarning("State file '%s': incompatible version %d\n", Run.files.state, version);
+                        switch (version) {
+                                case StateVersion1:
+                                        _restoreV1();
+                                        break;
+                                case StateVersion2:
+                                        _restoreV2();
+                                        break;
+                                default:
+                                        LogWarning("State file '%s': incompatible version %d\n", Run.files.state, version);
+                                        break;
+                        }
                 }
         }
         ELSE

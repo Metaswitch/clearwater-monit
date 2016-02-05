@@ -4,8 +4,15 @@
 
 Version 5.17
 
-Fixed: 32-bit systems with more then 4GB of RAM reported wrong system memory and swap
-value.
+Fixed: Issue #316: The "if changed checksum" and "if changed timestamp" tests value
+is persistent across monit restart/reload now, so if the checksum changed while monit
+was stopped or reloading, it will catch the change. Thanks to Duke Bartholomew for fix.
+
+Fixed: Save the file size, filesystem flags, file/directory/fifo/filesystem permissions,
+network link speed so the "if changed" tests keep the last value across monit restart/reload.
+
+Fixed: A 32-bit platform with more then 4GB of RAM reported wrong system memory and
+swap value.
 
 
 Version 5.16
