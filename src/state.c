@@ -101,7 +101,8 @@
 /* Extended format version */
 typedef enum {
         StateVersion0 = 0,
-        StateVersion1
+        StateVersion1,
+        StateVersion2
 } State_Version;
 
 
@@ -131,6 +132,22 @@ typedef struct mystate1 {
         } priv;
 } State1_T;
 
+/* Extended format version 2 */
+typedef struct mystate2 {
+        char               name[STRLEN];
+        int                type;
+        int                monitor;
+        int                nstart;
+        int                ncycle;
+        union {
+                struct {
+                        unsigned long long  inode;
+                        unsigned long long  readpos;
+                        time_t              timestamp;
+                        MD_T                cs_sum;
+                } file;
+        } priv;
+} State2_T;
 
 static int file = -1;
 
@@ -175,6 +192,38 @@ static void update_v1() {
         }
 }
 
+static void update_v2() {
+        State2_T state;
+        while (read(file, &state, sizeof(state)) == sizeof(state)) {
+                Service_T service;
+                if ((service = Util_getService(state.name)) && service->type == state.type) {
+                        service->nstart = state.nstart;
+                        service->ncycle = state.ncycle;
+                        if (state.monitor == Monitor_Not)
+                                service->monitor = state.monitor;
+                        else if (service->monitor == Monitor_Not)
+                                service->monitor = Monitor_Init;
+
+                        if (service->type == Service_File) {
+                                service->inf->priv.file.inode = state.priv.file.inode;
+                                service->inf->priv.file.readpos = state.priv.file.readpos;
+
+                                if(service->timestamplist) {
+                                    for (Timestamp_T t = service->timestamplist; t; t = t->next) {
+                                        //only restore when previous timestamp value is needed
+                                        if (t->test_changes) {
+                                            t->timestamp = state.priv.file.timestamp;
+                                        }
+                                    }
+                                }
+                                if(service->checksum) {
+                                    snprintf(service->checksum->hash, sizeof(service->checksum->hash), "%s", state.priv.file.cs_sum);
+                                }
+                        }
+                }
+        }
+}
+
 
 /* ------------------------------------------------------------------ Public */
 
@@ -211,11 +260,11 @@ void State_save() {
                 if (write(file, &magic, sizeof(magic)) != sizeof(magic))
                         THROW(IOException, "Unable to write magic");
                 // Save always using the latest format version
-                int version = StateVersion1;
+                int version = StateVersion2;
                 if (write(file, &version, sizeof(version)) != sizeof(version))
                         THROW(IOException, "Unable to write format version");
                 for (Service_T service = servicelist; service; service = service->next) {
-                        State1_T state;
+                        State2_T state;
                         memset(&state, 0, sizeof(state));
                         snprintf(state.name, sizeof(state.name), "%s", service->name);
                         state.type = service->type;
@@ -225,6 +274,8 @@ void State_save() {
                         if (service->type == Service_File) {
                                 state.priv.file.inode = service->inf->priv.file.inode;
                                 state.priv.file.readpos = service->inf->priv.file.readpos;
+                                state.priv.file.timestamp = service->inf->priv.file.timestamp;
+                                snprintf(state.priv.file.cs_sum, sizeof(state.priv.file.cs_sum), "%s", service->inf->priv.file.cs_sum);
                         }
                         if (write(file, &state, sizeof(state)) != sizeof(state))
                                 THROW(IOException, "Unable to write service state");
@@ -262,6 +313,8 @@ void State_update() {
                         // Currently the extended format has only one version, additional versions can be added here
                         if (version == StateVersion1)
                                 update_v1();
+                        else if (version == StateVersion2)
+                                update_v2();
                         else
                                 LogWarning("State file '%s': incompatible version %d\n", Run.files.state, version);
                 }
