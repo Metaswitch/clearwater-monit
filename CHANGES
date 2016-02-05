@@ -11,10 +11,10 @@ was stopped or reloading, it will catch the change. Thanks to Duke Bartholomew f
 Fixed: Save the file size, filesystem flags, file/directory/fifo/filesystem permissions,
 network link speed so the "if changed" tests keep the last value across monit restart/reload.
 
-Fixed: Issue #318: The favicon.ico didn't display when monit was behind reverse HTTP proxy.
+Fixed: Issue #318: The favicon.ico didn't display when monit was behind a reverse HTTP proxy.
 
 Fixed: A 32-bit platform with more then 4GB of RAM reported wrong system memory and
-swap value.
+swap value (regression in Monit 5.16).
 
 
 Version 5.16
