@@ -1,6 +1,6 @@
 Name: monit
 Summary: Process monitor and restart utility
-Version: 6.0
+Version: 5.17
 Release: 1
 URL: http://mmonit.com/monit/
 Source: http://mmonit.com/monit/dist/%{name}-%{version}.tar.gz
@@ -68,7 +68,7 @@ fi
 
 %changelog
 * Thu Feb 04 2016 Martin Pala <martinp@tildeslash.com>
-- Upgraded to monit-6.0
+- Upgraded to monit-5.17
 
 * Thu Nov 05 2015 Martin Pala <martinp@tildeslash.com>
 - Upgraded to monit-5.16
