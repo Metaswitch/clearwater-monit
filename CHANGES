@@ -16,6 +16,8 @@ Fixed: Issue #318: The favicon.ico didn't display when monit was behind a revers
 Fixed: A 32-bit platform with more then 4GB of RAM reported wrong system memory and
 swap value (regression in Monit 5.16).
 
+Fixed: Save state on exit when monit is executed in non-deamon mode (validate once).
+
 
 Version 5.16
 

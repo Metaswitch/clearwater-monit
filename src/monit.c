@@ -195,6 +195,7 @@ static void _validateOnce() {
         if (State_open()) {
                 State_restore();
                 validate();
+                State_save();
                 State_close();
         }
 }
