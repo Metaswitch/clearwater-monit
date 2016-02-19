@@ -371,6 +371,9 @@ static void _gcportlist(Port_T *p) {
                 FREE((*p)->parameters.mysql.password);
         } else if ((*p)->protocol->check == check_sip) {
                 FREE((*p)->parameters.sip.target);
+        } else if ((*p)->protocol->check == check_smtp) {
+                FREE((*p)->parameters.smtp.username);
+                FREE((*p)->parameters.smtp.password);
         } else if ((*p)->protocol->check == check_radius) {
                 FREE((*p)->parameters.radius.secret);
         } else if ((*p)->protocol->check == check_websocket) {

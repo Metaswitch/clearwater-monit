@@ -248,7 +248,7 @@ T _createIpSocket(const char *host, const struct sockaddr *addr, socklen_t addrl
                                         S->host = Str_dup(host);
                                         S->port = _getPort(addr, addrlen);
                                         S->connection_type = Connection_Client;
-                                        if (ssl.use_ssl) {
+                                        if (ssl.use_ssl && ssl.startTls == false) {
                                                 TRY
                                                 {
                                                         Socket_enableSsl(S, ssl, host);

@@ -62,7 +62,6 @@
 		52F6E84713A74F220023F87A /* smtp.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E79D13A74F220023F87A /* smtp.c */; };
 		52F6E84813A74F220023F87A /* ssh.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E79E13A74F220023F87A /* ssh.c */; };
 		52F6E84913A74F220023F87A /* tns.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E79F13A74F220023F87A /* tns.c */; };
-		52F6E84A13A74F220023F87A /* sendmail.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7A013A74F220023F87A /* sendmail.c */; };
 		52F6E84C13A74F220023F87A /* signal.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7A313A74F220023F87A /* signal.c */; };
 		52F6E84D13A74F220023F87A /* socket.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7A413A74F220023F87A /* socket.c */; };
 		52F6E84E13A74F220023F87A /* spawn.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7A613A74F220023F87A /* spawn.c */; };
@@ -75,6 +74,7 @@
 		9305FD5E1A96873200B7F8A2 /* Ssl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9305FD591A96873200B7F8A2 /* Ssl.c */; };
 		930E68271C4FD0D600D9F213 /* libssl.1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 930E68261C4FD0D600D9F213 /* libssl.1.0.0.dylib */; };
 		930E68291C4FD15900D9F213 /* libcrypto.1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 930E68281C4FD15900D9F213 /* libcrypto.1.0.0.dylib */; };
+		934574641C771C9C00FF170F /* SMTP.c in Sources */ = {isa = PBXBuildFile; fileRef = 934574611C771C9C00FF170F /* SMTP.c */; };
 		9357B19B19F2F5A400329B3F /* mongodb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19919F2F5A400329B3F /* mongodb.c */; };
 		9357B19C19F2F5A400329B3F /* redis.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19A19F2F5A400329B3F /* redis.c */; };
 		9378737B1A13907100CF8C5E /* sieve.c in Sources */ = {isa = PBXBuildFile; fileRef = 9378737A1A13907100CF8C5E /* sieve.c */; };
@@ -266,7 +266,6 @@
 		52F6E79D13A74F220023F87A /* smtp.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = smtp.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E79E13A74F220023F87A /* ssh.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = ssh.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E79F13A74F220023F87A /* tns.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = tns.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		52F6E7A013A74F220023F87A /* sendmail.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = sendmail.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7A313A74F220023F87A /* signal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = signal.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7A413A74F220023F87A /* socket.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = socket.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7A513A74F220023F87A /* socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = socket.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
@@ -286,6 +285,8 @@
 		9305FD5D1A96873200B7F8A2 /* SslServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SslServer.h; sourceTree = "<group>"; };
 		930E68261C4FD0D600D9F213 /* libssl.1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libssl.1.0.0.dylib; path = ../../../../opt/local/lib/libssl.1.0.0.dylib; sourceTree = "<group>"; };
 		930E68281C4FD15900D9F213 /* libcrypto.1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.0.0.dylib; path = ../../../../opt/local/lib/libcrypto.1.0.0.dylib; sourceTree = "<group>"; };
+		934574611C771C9C00FF170F /* SMTP.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SMTP.c; sourceTree = "<group>"; };
+		934574621C771C9C00FF170F /* SMTP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SMTP.h; sourceTree = "<group>"; };
 		9357B19919F2F5A400329B3F /* mongodb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mongodb.c; sourceTree = "<group>"; };
 		9357B19A19F2F5A400329B3F /* redis.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = redis.c; sourceTree = "<group>"; };
 		9378737A1A13907100CF8C5E /* sieve.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sieve.c; sourceTree = "<group>"; };
@@ -455,6 +456,7 @@
 		52F6E74313A74F220023F87A /* src */ = {
 			isa = PBXGroup;
 			children = (
+				9345745E1C771C9C00FF170F /* notification */,
 				52F6E74B13A74F220023F87A /* device */,
 				52F6E75E13A74F220023F87A /* http */,
 				52F6E77313A74F220023F87A /* process */,
@@ -485,7 +487,6 @@
 				52F6E77213A74F220023F87A /* p.y */,
 				52F6E77F13A74F220023F87A /* process.c */,
 				52F6E78013A74F220023F87A /* process.h */,
-				52F6E7A013A74F220023F87A /* sendmail.c */,
 				52AE77CA14037DA300D2861D /* sha1.c */,
 				52AE77CB14037DA300D2861D /* sha1.h */,
 				52F6E7A313A74F220023F87A /* signal.c */,
@@ -604,6 +605,15 @@
 				9305FD5D1A96873200B7F8A2 /* SslServer.h */,
 			);
 			path = ssl;
+			sourceTree = "<group>";
+		};
+		9345745E1C771C9C00FF170F /* notification */ = {
+			isa = PBXGroup;
+			children = (
+				934574611C771C9C00FF170F /* SMTP.c */,
+				934574621C771C9C00FF170F /* SMTP.h */,
+			);
+			path = notification;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -728,6 +738,7 @@
 				52F6E82E13A74F220023F87A /* apache_status.c in Sources */,
 				52F6E82F13A74F220023F87A /* clamav.c in Sources */,
 				52F6E83013A74F220023F87A /* default.c in Sources */,
+				934574641C771C9C00FF170F /* SMTP.c in Sources */,
 				52F6E83113A74F220023F87A /* dns.c in Sources */,
 				52F6E83213A74F220023F87A /* dwp.c in Sources */,
 				52F6E83313A74F220023F87A /* ftp.c in Sources */,
@@ -758,7 +769,6 @@
 				9303FB8018C47E7000138D72 /* websocket.c in Sources */,
 				52F6E84813A74F220023F87A /* ssh.c in Sources */,
 				52F6E84913A74F220023F87A /* tns.c in Sources */,
-				52F6E84A13A74F220023F87A /* sendmail.c in Sources */,
 				52AE77CC14037DA300D2861D /* sha1.c in Sources */,
 				52F6E84C13A74F220023F87A /* signal.c in Sources */,
 				52F6E84D13A74F220023F87A /* socket.c in Sources */,

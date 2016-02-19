@@ -24,63 +24,36 @@
 
 #include "config.h"
 
-#ifdef HAVE_STRING_H
-#include <string.h>
-#endif
-
 #include "protocol.h"
-
-// libmonit
-#include "exceptions/IOException.h"
-
-
-/* --------------------------------------------------------------- Private */
-
-
-static void say(Socket_T socket, char *msg) {
-        if (Socket_write(socket, msg, strlen(msg)) < 0)
-                THROW(IOException, "SMTP: error sending data -- %s", STRERROR);
-}
-
-
-static void expect(Socket_T socket, int expect) {
-        int status;
-        char buf[STRLEN];
-        do {
-                if (! Socket_readLine(socket, buf, STRLEN))
-                        THROW(IOException, "SMTP: error receiving data -- %s", STRERROR);
-                Str_chomp(buf);
-        } while (buf[3] == '-'); // Discard multi-line response
-        if (sscanf(buf, "%d", &status) != 1 || status != expect)
-                THROW(IOException, "SMTP error: %s", buf);
-}
+#include "SMTP.h"
 
 
 /* --------------------------------------------------------------- Public */
 
 
 /**
- * Check the server for greeting code 220 and send EHLO. If that failed try HELO and test for return code 250 and finally send QUIT and check for return code 221
+ * Check the SMTP server.
  *
- *  @file
+ * @file
  */
 void check_smtp(Socket_T socket) {
         ASSERT(socket);
-
-        /* Try HELO also before giving up as of rfc2821 4.1.1.1 */
-        expect(socket, 220);
-        say(socket, "EHLO localhost\r\n");
+        SMTP_T smtp = SMTP_new(socket);
         TRY
         {
-                expect(socket, 250);
-                //FIXME: if ssl is set to TLS, try the STARTTLS command
+                Port_T port = Socket_getPort(socket);
+                SMTP_greeting(smtp);
+                SMTP_helo(smtp, "localhost");
+                if (port->family != Socket_Unix && port->target.net.ssl.startTls == true)
+                        SMTP_starttls(smtp, port->target.net.ssl);
+                if (port->parameters.smtp.username && port->parameters.smtp.password)
+                        SMTP_auth(smtp, port->parameters.smtp.username, port->parameters.smtp.password);
+                SMTP_quit(smtp);
         }
-        ELSE
+        FINALLY
         {
-                say(socket, "HELO localhost\r\n");
-                expect(socket, 250);
+                SMTP_free(&smtp);
         }
         END_TRY;
-        say(socket, "QUIT\r\n");
-        expect(socket, 221);
 }
+

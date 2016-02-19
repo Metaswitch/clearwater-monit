@@ -330,6 +330,7 @@ tlsv11            { return TLSV11; }
 tlsv12            { return TLSV12; }
 auto              { return AUTO; }
 sslauto           { return SSLAUTO; }
+starttls          { return STARTTLS; }
 inode(s)?         { return INODE; }
 space             { return SPACE; }
 free              { return TFREE; }

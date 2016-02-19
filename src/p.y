@@ -331,7 +331,7 @@ static int verifyMaxForward(int);
 %token GROUP REQUEST DEPENDS BASEDIR SLOT EVENTQUEUE SECRET HOSTHEADER
 %token UID EUID GID MMONIT INSTANCE USERNAME PASSWORD
 %token TIMESTAMP CHANGED MILLISECOND SECOND MINUTE HOUR DAY MONTH
-%token SSLAUTO SSLV2 SSLV3 TLSV1 TLSV11 TLSV12 CERTMD5 AUTO
+%token STARTTLS SSLAUTO SSLV2 SSLV3 TLSV1 TLSV11 TLSV12 CERTMD5 AUTO
 %token BYTE KILOBYTE MEGABYTE GIGABYTE
 %token INODE SPACE TFREE PERMISSION SIZE MATCH NOT IGNORE ACTION UPTIME
 %token EXEC UNMONITOR PING PING4 PING6 ICMP ICMPECHO NONEXIST EXIST INVALID DATA RECOVERED PASSED SUCCEEDED
@@ -710,6 +710,7 @@ credentials     : /* EMPTY */
 setssl          : SET SSL '{' ssloptionlist '}' {
                         Run.ssl.use_ssl = true;
                         Run.ssl.verify = sslset.verify;
+                        Run.ssl.startTls = sslset.startTls;
                         Run.ssl.allowSelfSigned = sslset.allowSelfSigned;
                         Run.ssl.version = sslset.version;
                         Run.ssl.minimumValidDays = sslset.minimumValidDays;
@@ -741,6 +742,14 @@ ssloption       : VERIFY ':' ENABLE {
                 | VERIFY ':' DISABLE {
                         sslset.use_ssl = true;
                         sslset.verify = false;
+                  }
+                | STARTTLS ':' ENABLE {
+                        sslset.use_ssl = true;
+                        sslset.startTls = true;
+                  }
+                | STARTTLS ':' DISABLE {
+                        sslset.use_ssl = true;
+                        sslset.startTls = false;
                   }
                 | SELFSIGNED ':' ALLOW {
                         sslset.use_ssl = true;
@@ -1496,10 +1505,10 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                 | PROTOCOL SIEVE {
                         portset.protocol = Protocol_get(Protocol_SIEVE);
                   }
-                | PROTOCOL SMTP {
+                | PROTOCOL SMTP smtplist {
                         portset.protocol = Protocol_get(Protocol_SMTP);
                   }
-                | PROTOCOL SMTPS {
+                | PROTOCOL SMTPS smtplist {
                         sslset.use_ssl = true;
                         portset.type = Socket_Tcp;
                         portset.protocol = Protocol_get(Protocol_SMTP);
@@ -1564,6 +1573,18 @@ websocket       : ORIGIN STRING {
                   }
                 | VERSIONOPT NUMBER {
                     portset.parameters.websocket.version = $<number>2;
+                  }
+                ;
+
+smtplist        : /* EMPTY */
+                | smtplist smtp
+                ;
+
+smtp            : username {
+                        portset.parameters.smtp.username = $<string>1;
+                  }
+                | password {
+                        portset.parameters.smtp.password = $<string>1;
                   }
                 ;
 
@@ -3090,6 +3111,7 @@ static void addport(Port_T *list, Port_T port) {
 #ifdef HAVE_OPENSSL
                         p->target.net.ssl.use_ssl = true;
                         p->target.net.ssl.verify = sslset.verify;
+                        p->target.net.ssl.startTls = sslset.startTls;
                         p->target.net.ssl.allowSelfSigned = sslset.allowSelfSigned;
                         p->target.net.ssl.minimumValidDays = sslset.minimumValidDays;
                         p->target.net.ssl.version = sslset.version;
@@ -3863,6 +3885,7 @@ static void addmmonit(Mmonit_T mmonit) {
         c->url = mmonit->url;
         c->ssl.use_ssl = sslset.use_ssl;
         c->ssl.verify = sslset.verify;
+        c->ssl.startTls = sslset.startTls;
         c->ssl.allowSelfSigned = sslset.allowSelfSigned;
         c->ssl.minimumValidDays = sslset.minimumValidDays;
         c->ssl.version = sslset.version;
@@ -3911,6 +3934,7 @@ static void addmailserver(MailServer_T mailserver) {
 
         s->ssl.use_ssl = sslset.use_ssl;
         s->ssl.verify = sslset.verify;
+        s->ssl.startTls = sslset.startTls;
         s->ssl.allowSelfSigned = sslset.allowSelfSigned;
         s->ssl.minimumValidDays = sslset.minimumValidDays;
         s->ssl.version = sslset.version;
@@ -4243,7 +4267,7 @@ static void setsyslog(char *facility) {
  */
 static void reset_sslset() {
         memset(&sslset, 0, sizeof(struct SslOptions_T));
-        sslset.version = sslset.verify = sslset.allowSelfSigned = sslset.minimumValidDays = -1;
+        sslset.version = sslset.verify = sslset.startTls = sslset.allowSelfSigned = sslset.minimumValidDays = -1;
 }
 
 

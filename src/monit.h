@@ -329,18 +329,6 @@ typedef enum {
 
 
 typedef enum {
-        MTA_DSN                 = 0x1,
-        MTA_ETRN                = 0x2,
-        MTA_8BitMIME            = 0x4,
-        MTA_Pipelining          = 0x8,
-        MTA_EnhancedStatusCodes = 0x10,
-        MTA_StartTLS            = 0x20,
-        MTA_AuthPlain           = 0x40,
-        MTA_AuthLogin           = 0x80
-} __attribute__((__packed__)) MTAFlags_t;
-
-
-typedef enum {
         Level_Full = 0,
         Level_Summary
 } __attribute__((__packed__)) Level_Type;
@@ -520,6 +508,7 @@ typedef struct mymailserver {
         char *username;                               /** < Username for SMTP_AUTH */
         char *password;                               /** < Password for SMTP_AUTH */
         SslOptions_T ssl;                                      /**< SSL definition */
+        Socket_T socket;                                     /**< Connected socket */
 
         /** For internal use */
         struct mymailserver *next;        /**< Next server to try on connect error */
@@ -685,6 +674,10 @@ typedef struct myport {
                         int maxforward;
                         char *target;
                 } sip;
+                struct {
+                        char *username;
+                        char *password;
+                } smtp;
                 struct {
                         int version;
                         char *host;

@@ -33,6 +33,7 @@
 typedef struct T {
         boolean_t use_ssl;             /**< true if SSL is required for connection */ //FIXME: drop this (can use version -> SSL_Disabled)
         short verify;             /**< true if certificate verification is enabled */
+        short startTls;                       /**< true if STARTTLS should be used */
         short allowSelfSigned;     /**< true if self signed certificate is allowed */
         short version;                  /**< The SSL version to use for connection */
         short checksumType;                                     /**< Checksum type */

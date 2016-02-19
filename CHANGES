@@ -4,6 +4,44 @@
 
 Version 5.17
 
+New: SMTP protocol test: added support for optional STARTTLS. Thanks to Robert Nelson
+for initial patch. To enable the STARTTLS as part of the SMTP protocol, use a SSL option
+statement with the "STARTTLS: <enable|disable>" option. The option is generic, but currently
+implemented only for the SMTP protocol. Note: you can also add other SSL options as usual to
+enable certificate verification and pre-expiry test:
+    if failed
+        port 25
+        protocol smtp
+        with ssl options { startTLS: enable }
+    then alert
+
+New: SMTP protocol test: added support for optional authentication test. Note: when
+authentication is used, either SMTPS or SMTP with STARTTLS should be always used to
+not disclose credentials. Example:
+    if failed
+        port 25
+        protocol smtp
+        username "MYUSER"
+        password "MYPASSWORD"
+        with ssl options { startTLS: enable }
+    then alert
+
+Changed: Warning: the "set mailserver" originally enabled STARTTLS if the SSL
+version was set to TLSv1* protocol. That was not correct, as the TLS protocol family
+doesn't mean that STARTTLS should be used and one can perform a SSL/TLS handshake
+to SMTPS port directly using TLS. We have introduced a new STARTTLS option for the
+SSL options statement, which can be use to establish plain connection and use STARTTLS
+to switch to a SSL/TLS connection. The original configuration which relied on SSL version
+to use STARTTLS will not work on a port such as 25, as it will try to do SSL/TLS
+handshake on connect, which will fail on port 25. If you used a TLSv1* trick like this:
+    set mailserver smtp.gmail.com port 587
+       username "MYUSER" password "MYPASSWORD"
+       using tlsv12
+then please switch to this:
+    set mailserver smtp.gmail.com port 587
+      username "MYUSER" password "MYPASSWORD"
+      with ssl options {startTLS: enable}
+
 Fixed: Issue #316: The "if changed checksum" and "if changed timestamp" tests value
 is persistent across monit restart/reload now, so if the checksum changed while monit
 was stopped or reloading, it will catch the change. Thanks to Duke Bartholomew for fix.
