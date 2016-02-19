@@ -2957,52 +2957,6 @@ Example:
  then alert
 
 
-=head4 SIP
-
-The SIP protocol is used by communication platform servers such
-as Asterisk and FreeSWITCH.
-
-Syntax:
-
- PROTOCOL SIP [TARGET valid@uri] [MAXFORWARD n]
-
-I<TARGET> you may specify an alternative recipient for the message,
-by adding a valid sip uri after this keyword.
-
-I<MAXFORWARD> Limit the number of proxies or gateways that can forward the
-request to the next server. It's value is an integer in the range
-0-255, set by default to 70. If max-forward = 0, the next server
-may respond 200 OK (test succeeded) or send a 483 Too Many Hops
-(test failed)
-
-For example:
-
- check host openser_all with address 127.0.0.1
-   if failed
-      port 5060 type udp protocol sip
-      with target "localhost:5060" and maxforward 6
-   then alert
-
-
-=head4 RADIUS
-
-Syntax:
-
- PROTOCOL RADIUS [SECRET string]
-
-I<SECRET> you may specify an alternative secret, default is "testing123".
-
-For example:
-
- check process radiusd with pidfile /var/run/radiusd.pid
-       start program = "/etc/init.d/freeradius start"
-       stop program = "/etc/init.d/freeradius stop"
-       if failed
-          host 127.0.0.1 port 1812 type udp protocol radius
-          secret pingpong
-       then alert
-
-
 =head4 MYSQL
 
 Syntax:
@@ -3043,6 +2997,90 @@ or with unix-socket and OS X start/stop commands
      if failed
         unixsocket /tmp/mysql.sock
         protocol mysql username "foo" password "bar"
+     then alert
+
+
+=head4 RADIUS
+
+Syntax:
+
+ PROTOCOL RADIUS [SECRET string]
+
+I<SECRET> you may specify an alternative secret, default is "testing123".
+
+For example:
+
+ check process radiusd with pidfile /var/run/radiusd.pid
+       start program = "/etc/init.d/freeradius start"
+       stop program = "/etc/init.d/freeradius stop"
+       if failed
+          host 127.0.0.1 port 1812 type udp protocol radius
+          secret pingpong
+       then alert
+
+
+=head4 SIP
+
+The SIP protocol is used by communication platform servers such
+as Asterisk and FreeSWITCH.
+
+Syntax:
+
+ PROTOCOL SIP [TARGET valid@uri] [MAXFORWARD n]
+
+I<TARGET> you may specify an alternative recipient for the message,
+by adding a valid sip uri after this keyword.
+
+I<MAXFORWARD> Limit the number of proxies or gateways that can forward the
+request to the next server. It's value is an integer in the range
+0-255, set by default to 70. If max-forward = 0, the next server
+may respond 200 OK (test succeeded) or send a 483 Too Many Hops
+(test failed)
+
+For example:
+
+ check host openser_all with address 127.0.0.1
+   if failed
+      port 5060 type udp protocol sip
+      with target "localhost:5060" and maxforward 6
+   then alert
+
+
+=head4 SMTP
+
+Syntax:
+
+ PROTOCOL SMTP[S] [USERNAME string PASSWORD string]
+
+I<USERNAME> SMTP username.
+
+I<PASSWORD> SMTP password (special characters can be used, but for non-alphanumerics
+the password has to be quoted).
+
+The credentials are B<optional> and when used, it is strongly recommended to use the SMTPS
+protocol to protect the credentials. If no credentials are set, Monit will perform just basic
+test.
+
+Basic example:
+
+ check process postfix with pidfile /var/spool/postfix/pid/master.pid
+     start program = "/etc/init.d/postfix start"
+     stop  program = "/etc/init.d/postfix stop"
+     if failed
+        port 25
+        protocol smtp
+     then alert
+
+Advanced test with STARTTLS and authentication:
+
+ check process postfix with pidfile /var/spool/postfix/pid/master.pid
+     start program = "/etc/init.d/postfix start"
+     stop  program = "/etc/init.d/postfix stop"
+     if failed
+        port 25
+        protocol smtps
+        username "foo"
+        password "bar"
      then alert
 
 

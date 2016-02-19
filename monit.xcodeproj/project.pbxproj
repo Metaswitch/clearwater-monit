@@ -281,7 +281,6 @@
 		9303FB7F18C47E7000138D72 /* websocket.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = websocket.c; sourceTree = "<group>"; };
 		9305FD591A96873200B7F8A2 /* Ssl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Ssl.c; sourceTree = "<group>"; };
 		9305FD5A1A96873200B7F8A2 /* Ssl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Ssl.h; sourceTree = "<group>"; };
-		9305FD5C1A96873200B7F8A2 /* SslOptions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SslOptions.h; sourceTree = "<group>"; };
 		9305FD5D1A96873200B7F8A2 /* SslServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SslServer.h; sourceTree = "<group>"; };
 		930E68261C4FD0D600D9F213 /* libssl.1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libssl.1.0.0.dylib; path = ../../../../opt/local/lib/libssl.1.0.0.dylib; sourceTree = "<group>"; };
 		930E68281C4FD15900D9F213 /* libcrypto.1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.0.0.dylib; path = ../../../../opt/local/lib/libcrypto.1.0.0.dylib; sourceTree = "<group>"; };
@@ -601,7 +600,6 @@
 			children = (
 				9305FD591A96873200B7F8A2 /* Ssl.c */,
 				9305FD5A1A96873200B7F8A2 /* Ssl.h */,
-				9305FD5C1A96873200B7F8A2 /* SslOptions.h */,
 				9305FD5D1A96873200B7F8A2 /* SslServer.h */,
 			);
 			path = ssl;

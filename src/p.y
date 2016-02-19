@@ -331,7 +331,7 @@ static int verifyMaxForward(int);
 %token GROUP REQUEST DEPENDS BASEDIR SLOT EVENTQUEUE SECRET HOSTHEADER
 %token UID EUID GID MMONIT INSTANCE USERNAME PASSWORD
 %token TIMESTAMP CHANGED MILLISECOND SECOND MINUTE HOUR DAY MONTH
-%token STARTTLS SSLAUTO SSLV2 SSLV3 TLSV1 TLSV11 TLSV12 CERTMD5 AUTO
+%token SSLAUTO SSLV2 SSLV3 TLSV1 TLSV11 TLSV12 CERTMD5 AUTO
 %token BYTE KILOBYTE MEGABYTE GIGABYTE
 %token INODE SPACE TFREE PERMISSION SIZE MATCH NOT IGNORE ACTION UPTIME
 %token EXEC UNMONITOR PING PING4 PING6 ICMP ICMPECHO NONEXIST EXIST INVALID DATA RECOVERED PASSED SUCCEEDED
@@ -708,9 +708,8 @@ credentials     : /* EMPTY */
                 ;
 
 setssl          : SET SSL '{' ssloptionlist '}' {
-                        Run.ssl.use_ssl = true;
+                        Run.ssl.flags = SSL_Enabled;
                         Run.ssl.verify = sslset.verify;
-                        Run.ssl.startTls = sslset.startTls;
                         Run.ssl.allowSelfSigned = sslset.allowSelfSigned;
                         Run.ssl.version = sslset.version;
                         Run.ssl.minimumValidDays = sslset.minimumValidDays;
@@ -726,7 +725,7 @@ setssl          : SET SSL '{' ssloptionlist '}' {
                 ;
 
 ssl             : SSL {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                   }
                 | SSL '{' ssloptionlist '}'
                 ;
@@ -736,34 +735,26 @@ ssloptionlist   : /* EMPTY */
                 ;
 
 ssloption       : VERIFY ':' ENABLE {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.verify = true;
                   }
                 | VERIFY ':' DISABLE {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.verify = false;
                   }
-                | STARTTLS ':' ENABLE {
-                        sslset.use_ssl = true;
-                        sslset.startTls = true;
-                  }
-                | STARTTLS ':' DISABLE {
-                        sslset.use_ssl = true;
-                        sslset.startTls = false;
-                  }
                 | SELFSIGNED ':' ALLOW {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.allowSelfSigned = true;
                   }
                 | SELFSIGNED ':' REJECTOPT {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.allowSelfSigned = false;
                   }
                 | VERSIONOPT ':' sslversion {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                   }
                 | CLIENTPEMFILE ':' PATH {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.clientpemfile = $3;
                         if (! File_exist(sslset.clientpemfile))
                                 yyerror2("SSL client PEM file doesn't exist");
@@ -775,7 +766,7 @@ ssloption       : VERIFY ':' ENABLE {
                 | CACERTIFICATEFILE ':' PATH {
                         if (sslset.CACertificateFile)
                                 yyerror2("Duplicate SSL CA certificates file doesn't exist");
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.CACertificateFile = $3;
                         if (! File_exist(sslset.CACertificateFile))
                                 yyerror2("SSL CA certificates file doesn't exist");
@@ -785,7 +776,7 @@ ssloption       : VERIFY ':' ENABLE {
                                 yyerror2("Cannot read CA certificates file");
                   }
                 | CACERTIFICATEPATH ':' PATH {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.CACertificatePath = $3;
                         if (! File_exist(sslset.CACertificatePath))
                                 yyerror2("SSL CA certificates directory doesn't exist");
@@ -797,7 +788,7 @@ ssloption       : VERIFY ':' ENABLE {
                 ;
 
 sslexpire       : CERTIFICATE VALID expireoperator NUMBER DAY {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.minimumValidDays = $<number>4;
                   }
                 ;
@@ -807,7 +798,7 @@ expireoperator  : /* EMPTY */
                 ;
 
 sslchecksum     : CERTIFICATE CHECKSUM checksumoperator STRING {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.checksum = $<string>4;
                         switch (cleanup_hash_string(sslset.checksum)) {
                                 case 32:
@@ -821,14 +812,14 @@ sslchecksum     : CERTIFICATE CHECKSUM checksumoperator STRING {
                         }
                   }
                 | CERTIFICATE CHECKSUM MD5HASH checksumoperator STRING {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.checksum = $<string>5;
                         if (cleanup_hash_string(sslset.checksum) != 32)
                                 yyerror2("Unknown checksum type: [%s] is not MD5", sslset.checksum);
                         sslset.checksumType = Hash_Md5;
                   }
                 | CERTIFICATE CHECKSUM SHA1HASH checksumoperator STRING {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.checksum = $<string>5;
                         if (cleanup_hash_string(sslset.checksum) != 40)
                                 yyerror2("Unknown checksum type: [%s] is not SHA1", sslset.checksum);
@@ -841,15 +832,15 @@ checksumoperator : /* EMPTY */
                  ;
 
 sslversion      : SSLV2 {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.version = SSL_V2;
                   }
                 | SSLV3 {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.version = SSL_V3;
                   }
                 | TLSV1 {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.version = SSL_TLSV1;
                   }
                 | TLSV11
@@ -857,7 +848,7 @@ sslversion      : SSLV2 {
 #ifndef HAVE_TLSV1_1
                         yyerror("Your SSL Library does not support TLS version 1.1");
 #endif
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.version = SSL_TLSV11;
                 }
                 | TLSV12
@@ -865,21 +856,21 @@ sslversion      : SSLV2 {
 #ifndef HAVE_TLSV1_2
                         yyerror("Your SSL Library does not support TLS version 1.2");
 #endif
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.version = SSL_TLSV12;
                 }
                 | SSLAUTO {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.version = SSL_Auto;
                   }
                 | AUTO {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.version = SSL_Auto;
                   }
                 ;
 
 certmd5         : CERTMD5 STRING { // Backward compatibility
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         sslset.checksum = $<string>2;
                         if (cleanup_hash_string(sslset.checksum) != 32)
                                 yyerror2("Unknown checksum type: [%s] is not MD5", sslset.checksum);
@@ -1415,7 +1406,7 @@ type            : TYPE TCP {
                   }
                 | TYPE TCPSSL typeoptlist { // The typelist is kept for backward compatibility (replaced by ssloptionlist)
                     portset.type = Socket_Tcp;
-                    sslset.use_ssl = true;
+                    sslset.flags = SSL_Enabled;
                   }
                 | TYPE UDP {
                     portset.type = Socket_Udp;
@@ -1454,7 +1445,7 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_HTTP);
                   }
                 | PROTOCOL HTTPS httplist {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         portset.type = Socket_Tcp;
                         portset.protocol = Protocol_get(Protocol_HTTP);
                  }
@@ -1462,7 +1453,7 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_IMAP);
                   }
                 | PROTOCOL IMAPS {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         portset.type = Socket_Tcp;
                         portset.protocol = Protocol_get(Protocol_IMAP);
                   }
@@ -1498,7 +1489,7 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_POP);
                   }
                 | PROTOCOL POPS {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         portset.type = Socket_Tcp;
                         portset.protocol = Protocol_get(Protocol_POP);
                   }
@@ -1509,7 +1500,7 @@ protocol        : PROTOCOL APACHESTATUS apache_stat_list {
                         portset.protocol = Protocol_get(Protocol_SMTP);
                   }
                 | PROTOCOL SMTPS smtplist {
-                        sslset.use_ssl = true;
+                        sslset.flags = SSL_Enabled;
                         portset.type = Socket_Tcp;
                         portset.protocol = Protocol_get(Protocol_SMTP);
                  }
@@ -3107,11 +3098,13 @@ static void addport(Port_T *list, Port_T port) {
                 p->target.unix.pathname = port->target.unix.pathname;
         } else {
                 p->target.net.port = port->target.net.port;
-                if (sslset.use_ssl == true) {
+                if (sslset.flags) {
 #ifdef HAVE_OPENSSL
-                        p->target.net.ssl.use_ssl = true;
+                        if (sslset.flags && (p->target.net.port == 25 || p->target.net.port == 587))
+                                p->target.net.ssl.flags = SSL_StartTLS;
+                        else
+                                p->target.net.ssl.flags = sslset.flags;
                         p->target.net.ssl.verify = sslset.verify;
-                        p->target.net.ssl.startTls = sslset.startTls;
                         p->target.net.ssl.allowSelfSigned = sslset.allowSelfSigned;
                         p->target.net.ssl.minimumValidDays = sslset.minimumValidDays;
                         p->target.net.ssl.version = sslset.version;
@@ -3842,7 +3835,7 @@ static void prepare_urlrequest(URL_T U) {
         portset.type = Socket_Tcp;
         portset.parameters.http.request = Str_cat("%s%s%s", U->path, U->query ? "?" : "", U->query ? U->query : "");
         if (IS(U->protocol, "https"))
-                sslset.use_ssl = true;
+                sslset.flags = SSL_Enabled;
 }
 
 
@@ -3883,9 +3876,8 @@ static void addmmonit(Mmonit_T mmonit) {
         Mmonit_T c;
         NEW(c);
         c->url = mmonit->url;
-        c->ssl.use_ssl = sslset.use_ssl;
+        c->ssl.flags = sslset.flags;
         c->ssl.verify = sslset.verify;
-        c->ssl.startTls = sslset.startTls;
         c->ssl.allowSelfSigned = sslset.allowSelfSigned;
         c->ssl.minimumValidDays = sslset.minimumValidDays;
         c->ssl.version = sslset.version;
@@ -3896,7 +3888,7 @@ static void addmmonit(Mmonit_T mmonit) {
         c->ssl.CACertificatePath = sslset.CACertificatePath;
         if (IS(c->url->protocol, "https")) {
 #ifdef HAVE_OPENSSL
-                c->ssl.use_ssl = true;
+                c->ssl.flags = SSL_Enabled;
 #else
                 yyerror("SSL check cannot be activated -- SSL disabled");
 #endif
@@ -3932,9 +3924,11 @@ static void addmailserver(MailServer_T mailserver) {
         s->username    = mailserver->username;
         s->password    = mailserver->password;
 
-        s->ssl.use_ssl = sslset.use_ssl;
+        if (sslset.flags && (mailserver->port == 25 || mailserver->port == 587))
+                s->ssl.flags = SSL_StartTLS;
+        else
+                s->ssl.flags = sslset.flags;
         s->ssl.verify = sslset.verify;
-        s->ssl.startTls = sslset.startTls;
         s->ssl.allowSelfSigned = sslset.allowSelfSigned;
         s->ssl.minimumValidDays = sslset.minimumValidDays;
         s->ssl.version = sslset.version;
@@ -4267,7 +4261,7 @@ static void setsyslog(char *facility) {
  */
 static void reset_sslset() {
         memset(&sslset, 0, sizeof(struct SslOptions_T));
-        sslset.version = sslset.verify = sslset.startTls = sslset.allowSelfSigned = sslset.minimumValidDays = -1;
+        sslset.version = sslset.verify = sslset.allowSelfSigned = sslset.minimumValidDays = -1;
 }
 
 

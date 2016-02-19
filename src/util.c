@@ -819,7 +819,7 @@ void Util_printRunList() {
                 for (c = Run.mmonits; c; c = c->next) {
                         printf("%s with timeout %s", c->url->url, Str_milliToTime(c->timeout, (char[23]){}));
 #ifdef HAVE_OPENSSL
-                        if (c->ssl.use_ssl) {
+                        if (c->ssl.flags) {
                                 printf(" using SSL/TLS");
                                 const char *options = Ssl_printOptions(&c->ssl, (char[STRLEN]){}, STRLEN);
                                 if (options && *options)
@@ -844,7 +844,7 @@ void Util_printRunList() {
                 for (mta = Run.mailservers; mta; mta = mta->next) {
                         printf("%s:%d", mta->host, mta->port);
 #ifdef HAVE_OPENSSL
-                        if (mta->ssl.use_ssl) {
+                        if (mta->ssl.flags) {
                                 printf(" using SSL/TLS");
                                 const char *options = Ssl_printOptions(&mta->ssl, (char[STRLEN]){}, STRLEN);
                                 if (options && *options)
@@ -1081,7 +1081,7 @@ void Util_printService(Service_T s) {
                 if (o->retry > 1)
                         StringBuffer_append(buf2, " and retry %d times", o->retry);
 #ifdef HAVE_OPENSSL
-                if (o->target.net.ssl.use_ssl) {
+                if (o->target.net.ssl.flags) {
                         StringBuffer_append(buf2, " using SSL/TLS");
                         const char *options = Ssl_printOptions(&o->target.net.ssl, (char[STRLEN]){}, STRLEN);
                         if (options && *options)
@@ -2003,7 +2003,7 @@ const char *Util_portRequestDescription(Port_T p) {
 
 char *Util_portDescription(Port_T p, char *buf, int bufsize) {
         if (p->family == Socket_Ip || p->family == Socket_Ip4 || p->family == Socket_Ip6) {
-                snprintf(buf, STRLEN, "[%s]:%d%s [%s/%s%s]", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? " SSL" : "");
+                snprintf(buf, STRLEN, "[%s]:%d%s [%s/%s%s]", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? " SSL" : "");
         } else if (p->family == Socket_Unix) {
                 snprintf(buf, STRLEN, "%s", p->target.unix.pathname);
         } else {

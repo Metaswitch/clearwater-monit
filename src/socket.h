@@ -57,18 +57,18 @@ typedef struct T *T;
  * Create a new Socket opened against host:port. The returned Socket
  * is a connected socket. This method can be used to create either TCP
  * or UDP sockets and the type parameter is used to select the socket
- * type. If the use_ssl parameter is true the socket is created using
- * SSL. Only TCP sockets may use SSL.
+ * type. If the flags parameter is Ssl_Enabled, the socket is created
+ * using SSL. Only TCP sockets may use SSL.
  * @param host The remote host to open the Socket against. The host
  * may be a hostname found in the DNS or an IP address string.
  * @param port The port number to connect to
  * @param type The socket type to use
  * @param family The socket family to use
- * @param use_ssl if true the socket is created supporting SSL
+ * @param flags SSL flags, if set to Ssl_Enabled, the SSL handshake is performed
  * @param timeout The timeout value in milliseconds
  * @return The connected Socket or NULL if an error occurred
  */
-T Socket_new(const char *host, int port, Socket_Type type, Socket_Family family, boolean_t use_ssl, int timeout);
+T Socket_new(const char *host, int port, Socket_Type type, Socket_Family family, Ssl_Flags flags, int timeout);
 
 
 /**

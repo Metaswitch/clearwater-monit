@@ -31,6 +31,12 @@
 
 typedef enum {
         SSL_Disabled = 0,
+        SSL_Enabled,
+        SSL_StartTLS
+} __attribute__((__packed__)) Ssl_Flags;
+
+
+typedef enum {
         SSL_Auto,
         SSL_V2,
         SSL_V3,
@@ -38,6 +44,20 @@ typedef enum {
         SSL_TLSV11,
         SSL_TLSV12
 } __attribute__((__packed__)) Ssl_Version;
+
+
+typedef struct SslOptions_T {
+        Ssl_Flags flags;                                            /**< SSL flags */
+        short verify;             /**< true if certificate verification is enabled */
+        short allowSelfSigned;     /**< true if self signed certificate is allowed */
+        short version;                  /**< The SSL version to use for connection */
+        short checksumType;                                     /**< Checksum type */
+        int minimumValidDays;         /**< Minimum valid days left for certificate */
+        char *checksum;      /**< The expected md5 sum of the server's certificate */
+        char *clientpemfile;                      /**< Optional client certificate */
+        char *CACertificateFile;             /**< Path to CA certificates PEM file */
+        char *CACertificatePath;            /**< Path to CA certificates directory */
+} SslOptions_T;
 
 
 #define T Ssl_T

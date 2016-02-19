@@ -248,7 +248,7 @@ T _createIpSocket(const char *host, const struct sockaddr *addr, socklen_t addrl
                                         S->host = Str_dup(host);
                                         S->port = _getPort(addr, addrlen);
                                         S->connection_type = Connection_Client;
-                                        if (ssl.use_ssl && ssl.startTls == false) {
+                                        if (ssl.flags == SSL_Enabled) {
                                                 TRY
                                                 {
                                                         Socket_enableSsl(S, ssl, host);
@@ -349,8 +349,8 @@ static T _createUnixSocket(const char *pathname, Socket_Type type, int timeout) 
 /* ------------------------------------------------------------------ Public */
 
 
-T Socket_new(const char *host, int port, Socket_Type type, Socket_Family family, boolean_t use_ssl, int timeout) {
-        return Socket_create(host, port, type, family, (SslOptions_T){.use_ssl = use_ssl, .version = SSL_Auto}, timeout);
+T Socket_new(const char *host, int port, Socket_Type type, Socket_Family family, Ssl_Flags flags, int timeout) {
+        return Socket_create(host, port, type, family, (SslOptions_T){.flags = flags, .version = SSL_Auto}, timeout);
 }
 
 

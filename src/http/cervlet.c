@@ -502,7 +502,7 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 {
                         StringBuffer_append(res->outputbuffer, "%s with timeout %s", c->url->url, Str_milliToTime(c->timeout, (char[23]){}));
 #ifdef HAVE_OPENSSL
-                        if (c->ssl.use_ssl) {
+                        if (c->ssl.flags) {
                                 StringBuffer_append(res->outputbuffer, " using SSL/TLS");
                                 const char *options = Ssl_printOptions(&c->ssl, (char[STRLEN]){}, STRLEN);
                                 if (options && *options)
@@ -523,7 +523,7 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 for (MailServer_T mta = Run.mailservers; mta; mta = mta->next) {
                         StringBuffer_append(res->outputbuffer, "%s:%d", mta->host, mta->port);
 #ifdef HAVE_OPENSSL
-                        if (mta->ssl.use_ssl) {
+                        if (mta->ssl.flags) {
                                 StringBuffer_append(res->outputbuffer, " using SSL/TLS");
                                 const char *options = Ssl_printOptions(&mta->ssl, (char[STRLEN]){}, STRLEN);
                                 if (options && *options)
@@ -1631,7 +1631,7 @@ static void print_service_rules_port(HttpResponse res, Service_T s) {
                 if (p->retry > 1)
                         StringBuffer_append(buf, " and retry %d times", p->retry);
 #ifdef HAVE_OPENSSL
-                if (p->target.net.ssl.use_ssl) {
+                if (p->target.net.ssl.flags) {
                         StringBuffer_append(buf, " using SSL/TLS");
                         const char *options = Ssl_printOptions(&p->target.net.ssl, (char[STRLEN]){}, STRLEN);
                         if (options && *options)
@@ -2062,9 +2062,9 @@ static void print_service_status_port(HttpResponse res, Service_T s) {
                 if (! status || p->is_available == Connection_Init)
                         StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-<td>");
                 else if (p->is_available == Connection_Failed)
-                        StringBuffer_append(res->outputbuffer, "<td class='red-text'>failed to [%s]:%d%s type %s/%s %sprotocol %s</td>", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
+                        StringBuffer_append(res->outputbuffer, "<td class='red-text'>failed to [%s]:%d%s type %s/%s %sprotocol %s</td>", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
                 else
-                        StringBuffer_append(res->outputbuffer, "<td>%s to %s:%d%s type %s/%s %s protocol %s</td>", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
+                        StringBuffer_append(res->outputbuffer, "<td>%s to %s:%d%s type %s/%s %s protocol %s</td>", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
                 StringBuffer_append(res->outputbuffer, "</tr>");
         }
 }
@@ -2835,7 +2835,7 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                 if (p->is_available == Connection_Failed)
                                         StringBuffer_append(res->outputbuffer,
                                                     "  %-33s FAILED to [%s]:%d%s type %s/%s %sprotocol %s\n",
-                                                    "port response time", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
+                                                    "port response time", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
                                 else if (p->is_available == Connection_Init)
                                         StringBuffer_append(res->outputbuffer,
                                                             "  %-33s -\n",
@@ -2843,7 +2843,7 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                 else
                                         StringBuffer_append(res->outputbuffer,
                                                     "  %-33s %s to [%s]:%d%s type %s/%s %sprotocol %s\n",
-                                                    "port response time", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.use_ssl ? "using SSL/TLS " : "", p->protocol->name);
+                                                    "port response time", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
                         }
                         for (Port_T p = s->socketlist; p; p = p->next) {
                                 if (p->is_available == Connection_Failed)

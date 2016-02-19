@@ -44,7 +44,7 @@ void check_smtp(Socket_T socket) {
                 Port_T port = Socket_getPort(socket);
                 SMTP_greeting(smtp);
                 SMTP_helo(smtp, "localhost");
-                if (port->family != Socket_Unix && port->target.net.ssl.startTls == true)
+                if (port->family != Socket_Unix && port->target.net.ssl.flags == SSL_StartTLS)
                         SMTP_starttls(smtp, port->target.net.ssl);
                 if (port->parameters.smtp.username && port->parameters.smtp.password)
                         SMTP_auth(smtp, port->parameters.smtp.username, port->parameters.smtp.password);

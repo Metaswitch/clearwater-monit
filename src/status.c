@@ -81,13 +81,19 @@ boolean_t status(const char *level, const char *group, const char *service) {
                 return status;
         }
         Socket_T S = NULL;
-        if (Run.httpd.flags & Httpd_Net)
+        if (Run.httpd.flags & Httpd_Net) {
                 // FIXME: Monit HTTP support IPv4 only currently ... when IPv6 is implemented change the family to Socket_Ip
-                S = Socket_create(Run.httpd.socket.net.address ? Run.httpd.socket.net.address : "localhost", Run.httpd.socket.net.port, Socket_Tcp, Socket_Ip4, (SslOptions_T){.use_ssl = Run.httpd.flags & Httpd_Ssl, .clientpemfile = Run.httpd.socket.net.ssl.clientpem, .allowSelfSigned = Run.httpd.flags & Httpd_AllowSelfSignedCertificates}, Run.limits.networkTimeout);
-        else if (Run.httpd.flags & Httpd_Unix)
+                SslOptions_T options = {
+                        .flags = (Run.httpd.flags & Httpd_Ssl) ? SSL_Enabled : SSL_Disabled,
+                        .clientpemfile = Run.httpd.socket.net.ssl.clientpem,
+                        .allowSelfSigned = Run.httpd.flags & Httpd_AllowSelfSignedCertificates
+                };
+                S = Socket_create(Run.httpd.socket.net.address ? Run.httpd.socket.net.address : "localhost", Run.httpd.socket.net.port, Socket_Tcp, Socket_Ip4, options, Run.limits.networkTimeout);
+        } else if (Run.httpd.flags & Httpd_Unix) {
                 S = Socket_createUnix(Run.httpd.socket.unix.path, Socket_Tcp, Run.limits.networkTimeout);
-        else
+        } else {
                 LogError("Status not available - monit http interface is not enabled, please add the 'set httpd' statement\n");
+        }
         if (S) {
                 Socket_print(S, "GET /_status?format=text&level=%s", level);
                 if (group) {
