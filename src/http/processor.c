@@ -502,18 +502,16 @@ static void send_response(HttpResponse res) {
  * Returns a new HttpRequest object wrapping the client request
  */
 static HttpRequest create_HttpRequest(Socket_T S) {
-        HttpRequest req = NULL;
-        char url[REQ_STRLEN];
         char line[REQ_STRLEN];
-        char protocol[STRLEN];
-        char method[REQ_STRLEN];
-
-        if (Socket_readLine(S, line, REQ_STRLEN) == NULL) {
+        if (Socket_readLine(S, line, sizeof(line)) == NULL) {
                 internal_error(S, SC_BAD_REQUEST, "No request found");
                 return NULL;
         }
         Str_chomp(line);
-        if (sscanf(line, "%1023s %1023s HTTP/%3[1.0]", method, url, protocol) != 3) {
+        char method[STRLEN];
+        char url[REQ_STRLEN];
+        char protocol[STRLEN];
+        if (sscanf(line, "%255s %1023s HTTP/%3[1.0]", method, url, protocol) != 3) {
                 internal_error(S, SC_BAD_REQUEST, "Cannot parse request");
                 return NULL;
         }
@@ -521,6 +519,7 @@ static HttpRequest create_HttpRequest(Socket_T S) {
                 internal_error(S, SC_BAD_REQUEST, "[error] URL too long");
                 return NULL;
         }
+        HttpRequest req = NULL;
         NEW(req);
         req->S = S;
         Util_urlDecode(url);
@@ -558,18 +557,11 @@ static HttpResponse create_HttpResponse(Socket_T S) {
  * Create HTTP headers for the given request
  */
 static void create_headers(HttpRequest req) {
-        Socket_T S;
-        char *value;
-        HttpHeader header = NULL;
-        char line[REQ_STRLEN];
-
-        S = req->S;
-        while (true) {
-                if (! Socket_readLine(S, line, sizeof(line)))
-                        break;
-                if (Str_isEqual(line, "\r\n") || Str_isEqual(line, "\n"))
-                        break;
-                if (NULL != (value = strchr(line, ':'))) {
+        char line[REQ_STRLEN] = {0};
+        while (Socket_readLine(req->S, line, sizeof(line)) && ! (Str_isEqual(line, "\r\n") || Str_isEqual(line, "\n"))) {
+                char *value = strchr(line, ':');
+                if (value) {
+                        HttpHeader header = NULL;
                         NEW(header);
                         *value++ = 0;
                         Str_trim(line);
@@ -589,37 +581,37 @@ static void create_headers(HttpRequest req) {
  * occurs.
  */
 static boolean_t create_parameters(HttpRequest req) {
-        char query_string[REQ_STRLEN] = {0};
-
-        if (IS(req->method, METHOD_POST) && get_header(req, "Content-Length")) {
-                int n;
+        char *query_string = NULL;
+        if (IS(req->method, METHOD_POST)) {
                 int len;
-                Socket_T S = req->S;
-                const char *cl = get_header(req, "Content-Length");
-                if (! cl || sscanf(cl, "%d", &len) != 1)
+                const char *content_length = get_header(req, "Content-Length");
+                if (! content_length || sscanf(content_length, "%d", &len) != 1 || len < 0 || len > Run.limits.httpContentBuffer)
                         return false;
-                if (len < 0 || len >= REQ_STRLEN)
-                        return false;
-                if (len == 0)
-                        return true;
-                if (((n = Socket_read(S, query_string, len)) <= 0) || (n != len))
-                        return false;
-                query_string[n] = 0;
+                if (len != 0) {
+                        query_string = CALLOC(1, Run.limits.httpContentBuffer + 1);
+                        int n = Socket_read(req->S, query_string, len);
+                        if (n != len) {
+                                FREE(query_string);
+                                return false;
+                        }
+                }
         } else if (IS(req->method, METHOD_GET)) {
-                char *p;
-                if (NULL != (p = strchr(req->url, '?'))) {
+                char *p = strchr(req->url, '?');
+                if (p) {
                         *p++ = 0;
-                        strncpy(query_string, p, sizeof(query_string) - 1);
-                        query_string[sizeof(query_string) - 1] = 0;
+                        query_string = Str_dup(p);
                 }
         }
-        if (*query_string) {
-                char *p;
-                if (NULL != (p = strchr(query_string, '/'))) {
-                        *p++ = 0;
-                        req->pathinfo = Str_dup(p);
+        if (query_string) {
+                if (*query_string) {
+                        char *p = strchr(query_string, '/');
+                        if (p) {
+                                *p++ = 0;
+                                req->pathinfo = Str_dup(p);
+                        }
+                        req->params = parse_parameters(query_string);
                 }
-                req->params = parse_parameters(query_string);
+                FREE(query_string);
         }
         return true;
 }
