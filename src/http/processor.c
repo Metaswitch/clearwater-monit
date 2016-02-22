@@ -99,6 +99,9 @@
  */
 
 
+static int _httpPostLimit;
+
+
 /* -------------------------------------------------------------- Prototypes */
 
 
@@ -160,6 +163,15 @@ void *http_processor(Socket_T s) {
 void add_Impl(void(*doGet)(HttpRequest, HttpResponse), void(*doPost)(HttpRequest, HttpResponse)) {
         Impl.doGet = doGet;
         Impl.doPost = doPost;
+}
+
+
+void Processor_setHttpPostLimit() {
+        // Base buffer size (space for e.g. "action=<name>")
+        _httpPostLimit = STRLEN;
+        // Add space for each service
+        for (Service_T s = servicelist; s; s = s->next)
+                _httpPostLimit += strlen("&service=") + strlen(s->name);
 }
 
 
@@ -585,10 +597,10 @@ static boolean_t create_parameters(HttpRequest req) {
         if (IS(req->method, METHOD_POST)) {
                 int len;
                 const char *content_length = get_header(req, "Content-Length");
-                if (! content_length || sscanf(content_length, "%d", &len) != 1 || len < 0 || len > Run.limits.httpContentBuffer)
+                if (! content_length || sscanf(content_length, "%d", &len) != 1 || len < 0 || len > _httpPostLimit)
                         return false;
                 if (len != 0) {
-                        query_string = CALLOC(1, Run.limits.httpContentBuffer + 1);
+                        query_string = CALLOC(1, _httpPostLimit + 1);
                         int n = Socket_read(req->S, query_string, len);
                         if (n != len) {
                                 FREE(query_string);

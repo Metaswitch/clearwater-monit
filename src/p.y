@@ -120,6 +120,7 @@
 #include "alert.h"
 #include "process.h"
 #include "device.h"
+#include "processor.h"
 
 // libmonit
 #include "io/File.h"
@@ -2865,6 +2866,8 @@ static void postparse() {
 #ifdef HAVE_OPENSSL
         Ssl_setFipsMode(Run.flags & Run_FipsEnabled);
 #endif
+
+        Processor_setHttpPostLimit();
 }
 
 

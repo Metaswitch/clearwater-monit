@@ -105,5 +105,6 @@ void escapeHTML(StringBuffer_T sb, const char *s);
 void send_error(HttpRequest, HttpResponse, int status, const char *message, ...);
 const char *get_parameter(HttpRequest req, const char *parameter_name);
 void set_header(HttpResponse res, const char *name, const char *value);
+void Processor_setHttpPostLimit();
 
 #endif
