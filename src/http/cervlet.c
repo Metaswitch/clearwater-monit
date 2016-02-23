@@ -1056,29 +1056,22 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 _printServiceStatus(res->outputbuffer, s);
                 StringBuffer_append(res->outputbuffer,
                                     "</td>");
-                if (! Util_hasServiceStatus(s)) {
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>-</td>");
-                        if (Run.flags & Run_ProcessEngineEnabled) {
-                                StringBuffer_append(res->outputbuffer,
-                                                    "<td align='right'>-</td>"
-                                                    "<td align='right'>-</td>");
-                        }
+                if (! Util_hasServiceStatus(s) || s->inf->priv.process.uptime < 0) {
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                 } else {
                         char *uptime = Util_getUptime(s->inf->priv.process.uptime, "&nbsp;");
-                        StringBuffer_append(res->outputbuffer,
-                                            "<td align='right'>%s</td>", uptime);
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%s</td>", uptime);
                         FREE(uptime);
-                        if (Run.flags & Run_ProcessEngineEnabled) {
-                                StringBuffer_append(res->outputbuffer,
-                                                    "<td align='right' class='%s'>%.1f%%</td>",
-                                                    (s->error & Event_Resource) ? "red-text" : "",
-                                                    s->inf->priv.process.total_cpu_percent);
-                                StringBuffer_append(res->outputbuffer,
-                                                    "<td align='right' class='%s'>%.1f%% [%s]</td>",
-                                                    (s->error & Event_Resource) ? "red-text" : "",
-                                                    s->inf->priv.process.total_mem_percent, Str_bytesToSize(s->inf->priv.process.total_mem, buf));
-                        }
+                }
+                if (Run.flags & Run_ProcessEngineEnabled) {
+                        if (! Util_hasServiceStatus(s) || s->inf->priv.process.total_cpu_percent < 0)
+                                StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                        else
+                                StringBuffer_append(res->outputbuffer, "<td align='right' class='%s'>%.1f%%</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.total_cpu_percent);
+                        if (! Util_hasServiceStatus(s) || s->inf->priv.process.total_mem_percent < 0)
+                                StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
+                        else
+                                StringBuffer_append(res->outputbuffer, "<td align='right' class='%s'>%.1f%% [%s]</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.total_mem_percent, Str_bytesToSize(s->inf->priv.process.total_mem, buf));
                 }
                 StringBuffer_append(res->outputbuffer, "</tr>");
                 on = ! on;
@@ -2318,41 +2311,41 @@ static void print_service_status_file_checksum(HttpResponse res, Service_T s) {
 
 static void print_service_status_process_pid(HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer, "<tr><td>Process id</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || s->inf->priv.process.pid < 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
-                StringBuffer_append(res->outputbuffer, "<td>%d</td>", s->inf->priv.process.pid > 0 ? s->inf->priv.process.pid : 0);
+                StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_Pid) ? "red-text" : "", s->inf->priv.process.pid);
         StringBuffer_append(res->outputbuffer, "</tr>");
 }
 
 
 static void print_service_status_process_ppid(HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer, "<tr><td>Parent process id</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || s->inf->priv.process.ppid < 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
-                StringBuffer_append(res->outputbuffer, "<td>%d</td>", s->inf->priv.process.ppid > 0 ? s->inf->priv.process.ppid : 0);
+                StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_PPid) ? "red-text" : "", s->inf->priv.process.ppid);
         StringBuffer_append(res->outputbuffer, "</tr>");
 }
 
 
 static void print_service_status_process_euid(HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer, "<tr><td>Effective UID</td>");
-        if (! Util_hasServiceStatus(s))
+        if (! Util_hasServiceStatus(s) || s->inf->priv.process.euid < 0)
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         else
-                StringBuffer_append(res->outputbuffer, "<td>%d</td>", s->inf->priv.process.euid);
+                StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_Uid) ? "red-text" : "", s->inf->priv.process.euid);
         StringBuffer_append(res->outputbuffer, "</tr>");
 }
 
 
 static void print_service_status_process_uptime(HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer, "<tr><td>Process uptime</td>");
-        if (! Util_hasServiceStatus(s)) {
+        if (! Util_hasServiceStatus(s) || s->inf->priv.process.uptime < 0) {
                 StringBuffer_append(res->outputbuffer, "<td>-</td>");
         } else {
                 char *uptime = Util_getUptime(s->inf->priv.process.uptime, "&nbsp;");
-                StringBuffer_append(res->outputbuffer, "<td>%s</td>", uptime);
+                StringBuffer_append(res->outputbuffer, "<td class='%s'>%s</td>", (s->error & Event_Uptime) ? "red-text" : "", uptime);
                 FREE(uptime);
         }
         StringBuffer_append(res->outputbuffer, "</tr>");
@@ -2362,7 +2355,7 @@ static void print_service_status_process_uptime(HttpResponse res, Service_T s) {
 static void print_service_status_process_threads(HttpResponse res, Service_T s) {
         if (Run.flags & Run_ProcessEngineEnabled) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Threads</td>");
-                if (! Util_hasServiceStatus(s))
+                if (! Util_hasServiceStatus(s) || s->inf->priv.process.threads < 0)
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else
                         StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.threads);
@@ -2374,7 +2367,7 @@ static void print_service_status_process_threads(HttpResponse res, Service_T s) 
 static void print_service_status_process_children(HttpResponse res, Service_T s) {
         if (Run.flags & Run_ProcessEngineEnabled) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Children</td>");
-                if (! Util_hasServiceStatus(s))
+                if (! Util_hasServiceStatus(s) || s->inf->priv.process.children < 0)
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else
                         StringBuffer_append(res->outputbuffer, "<td class='%s'>%d</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.children);
@@ -2386,10 +2379,10 @@ static void print_service_status_process_children(HttpResponse res, Service_T s)
 static void print_service_status_process_cpu(HttpResponse res, Service_T s) {
         if (Run.flags & Run_ProcessEngineEnabled) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>CPU usage</td>");
-                if (! Util_hasServiceStatus(s))
+                if (! Util_hasServiceStatus(s) || s->inf->priv.process.cpu_percent < 0.)
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else
-                        StringBuffer_append(res->outputbuffer, "<td class='%s'>%.1f%% (Usage / Number of CPUs)</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.cpu_percent);
+                        StringBuffer_append(res->outputbuffer, "<td class='%s'>%.1f%%</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.cpu_percent);
                 StringBuffer_append(res->outputbuffer, "</tr>");
         }
 }
@@ -2398,7 +2391,7 @@ static void print_service_status_process_cpu(HttpResponse res, Service_T s) {
 static void print_service_status_process_cputotal(HttpResponse res, Service_T s) {
         if (Run.flags & Run_ProcessEngineEnabled) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Total CPU usage (incl. children)</td>");
-                if (! Util_hasServiceStatus(s))
+                if (! Util_hasServiceStatus(s) || s->inf->priv.process.total_cpu_percent < 0.)
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else
                         StringBuffer_append(res->outputbuffer, "<td class='%s'>%.1f%%</td>", (s->error & Event_Resource) ? "red-text"  :"", s->inf->priv.process.total_cpu_percent);
@@ -2410,7 +2403,7 @@ static void print_service_status_process_cputotal(HttpResponse res, Service_T s)
 static void print_service_status_process_memory(HttpResponse res, Service_T s) {
         if (Run.flags & Run_ProcessEngineEnabled) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Memory usage</td>");
-                if (! Util_hasServiceStatus(s))
+                if (! Util_hasServiceStatus(s) || s->inf->priv.process.mem_percent < 0.)
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else
                         StringBuffer_append(res->outputbuffer, "<td class='%s'>%.1f%% [%s]</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.mem_percent, Str_bytesToSize(s->inf->priv.process.mem, (char[10]){}));
@@ -2422,7 +2415,7 @@ static void print_service_status_process_memory(HttpResponse res, Service_T s) {
 static void print_service_status_process_memorytotal(HttpResponse res, Service_T s) {
         if (Run.flags & Run_ProcessEngineEnabled) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Total memory usage (incl. children)</td>");
-                if (! Util_hasServiceStatus(s))
+                if (! Util_hasServiceStatus(s) || s->inf->priv.process.total_mem_percent < 0.)
                         StringBuffer_append(res->outputbuffer, "<td>-</td>");
                 else
                         StringBuffer_append(res->outputbuffer, "<td class='%s'>%.1f%% [%s]</td>", (s->error & Event_Resource) ? "red-text" : "", s->inf->priv.process.total_mem_percent, Str_bytesToSize(s->inf->priv.process.total_mem, (char[10]){}));
@@ -2622,7 +2615,6 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                     "  %-33s %s\n",
                                     "monitoring status", get_monitoring_status(s, buf, sizeof(buf)));
 
-                char *uptime = NULL;
                 if (Util_hasServiceStatus(s)) {
                         switch (s->type) {
                                 case Service_File:
@@ -2774,43 +2766,66 @@ static void status_service_txt(Service_T s, HttpResponse res, Level_Type level) 
                                         break;
 
                                 case Service_Process:
-                                        uptime = Util_getUptime(s->inf->priv.process.uptime, " ");
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %d\n"
-                                                            "  %-33s %d\n"
-                                                            "  %-33s %d\n"
-                                                            "  %-33s %d\n"
-                                                            "  %-33s %d\n"
-                                                            "  %-33s %s\n",
-                                                            "pid", s->inf->priv.process.pid > 0 ? s->inf->priv.process.pid : 0,
-                                                            "parent pid", s->inf->priv.process.ppid > 0 ? s->inf->priv.process.ppid : 0,
-                                                            "uid", s->inf->priv.process.uid,
-                                                            "effective uid", s->inf->priv.process.euid,
-                                                            "gid", s->inf->priv.process.gid,
-                                                            "uptime", uptime);
-                                        FREE(uptime);
+                                        if (s->inf->priv.process.pid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "pid", s->inf->priv.process.pid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "pid");
+                                        if (s->inf->priv.process.ppid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "parent pid", s->inf->priv.process.ppid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "parent pid");
+                                        if (s->inf->priv.process.uid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", s->inf->priv.process.uid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
+                                        if (s->inf->priv.process.euid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "effective uid", s->inf->priv.process.euid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "effective uid");
+                                        if (s->inf->priv.process.gid >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", s->inf->priv.process.gid);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
+                                        if (s->inf->priv.process.uptime >= 0) {
+                                                char *uptime = Util_getUptime(s->inf->priv.process.uptime, " ");
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "uptime", uptime);
+                                                FREE(uptime);
+                                        } else {
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uptime");
+                                        }
                                         if (Run.flags & Run_ProcessEngineEnabled) {
-                                                StringBuffer_append(res->outputbuffer,
-                                                                    "  %-33s %d\n",
-                                                                    "threads", s->inf->priv.process.threads);
-                                                StringBuffer_append(res->outputbuffer,
-                                                                    "  %-33s %d\n",
-                                                                    "children", s->inf->priv.process.children);
-                                                StringBuffer_append(res->outputbuffer,
-                                                                    "  %-33s %s\n",
-                                                                    "memory", Str_bytesToSize(s->inf->priv.process.mem, buf));
-                                                StringBuffer_append(res->outputbuffer,
-                                                                    "  %-33s %s\n",
-                                                                    "memory total", Str_bytesToSize(s->inf->priv.process.total_mem, buf));
-                                                StringBuffer_append(res->outputbuffer,
-                                                                    "  %-33s %.1f%%\n"
-                                                                    "  %-33s %.1f%%\n"
-                                                                    "  %-33s %.1f%%\n"
-                                                                    "  %-33s %.1f%%\n",
-                                                                    "memory percent", s->inf->priv.process.mem_percent,
-                                                                    "memory percent total", s->inf->priv.process.total_mem_percent,
-                                                                    "cpu percent", s->inf->priv.process.cpu_percent,
-                                                                    "cpu percent total", s->inf->priv.process.total_cpu_percent);
+                                                if (s->inf->priv.process.threads >= 0)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "threads", s->inf->priv.process.threads);
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "threads");
+                                                if (s->inf->priv.process.children >= 0)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "children", s->inf->priv.process.children);
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "children");
+                                                if (s->inf->priv.process.mem > 0)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "memory", Str_bytesToSize(s->inf->priv.process.mem, buf));
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory");
+                                                if (s->inf->priv.process.total_mem > 0)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "memory total", Str_bytesToSize(s->inf->priv.process.total_mem, buf));
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory total");
+                                                if (s->inf->priv.process.mem_percent >= 0.)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "memory percent", s->inf->priv.process.mem_percent);
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory percent");
+                                                if (s->inf->priv.process.total_mem_percent >= 0.)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "memory percent total", s->inf->priv.process.total_mem_percent);
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory percent total");
+                                                if (s->inf->priv.process.cpu_percent >= 0.)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "cpu percent", s->inf->priv.process.cpu_percent);
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "cpu percent");
+                                                if (s->inf->priv.process.total_cpu_percent >= 0.)
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "cpu percent total", s->inf->priv.process.total_cpu_percent);
+                                                else
+                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "cpu percent total");
                                         }
                                         break;
 

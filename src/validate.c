@@ -243,7 +243,7 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                                 } else {
                                         cpu = s->inf->priv.process.cpu_percent;
                                 }
-                                if (cpu < 0) {
+                                if (cpu < 0.) {
                                         DEBUG("'%s' cpu usage check skipped (initializing)\n", s->name);
                                         return State_Init;
                                 } else if (Util_evalDoubleQExpression(r->operator, cpu, r->limit)) {
@@ -312,7 +312,10 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                                         snprintf(report, STRLEN, "mem usage check succeeded [current mem usage=%.1f%%]", systeminfo.total_mem_percent);
                                 }
                         } else {
-                                if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.mem_percent, r->limit)) {
+                                if (s->inf->priv.process.mem_percent < 0.) {
+                                        DEBUG("'%s' memory usage check skipped (initializing)\n", s->name);
+                                        return State_Init;
+                                } else if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.mem_percent, r->limit)) {
                                         rv = State_Failed;
                                         snprintf(report, STRLEN, "mem usage of %.1f%% matches resource limit [mem usage%s%.1f%%]", s->inf->priv.process.mem_percent, operatorshortnames[r->operator], r->limit);
                                 } else {
@@ -330,7 +333,10 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                                         snprintf(report, STRLEN, "mem amount check succeeded [current mem amount=%s]", Str_bytesToSize(systeminfo.total_mem, buf1));
                                 }
                         } else {
-                                if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.mem, r->limit)) {
+                                if (s->inf->priv.process.mem == 0) {
+                                        DEBUG("'%s' process memory usage check skipped (initializing)\n", s->name);
+                                        return State_Init;
+                                } else if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.mem, r->limit)) {
                                         rv = State_Failed;
                                         snprintf(report, STRLEN, "mem amount of %s matches resource limit [mem amount%s%s]", Str_bytesToSize(s->inf->priv.process.mem, buf1), operatorshortnames[r->operator], Str_bytesToSize(r->limit, buf2));
                                 } else {
@@ -389,7 +395,10 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_Threads:
-                        if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.threads, r->limit)) {
+                        if (s->inf->priv.process.threads < 0) {
+                                DEBUG("'%s' process threads count check skipped (initializing)\n", s->name);
+                                return State_Init;
+                        } else if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.threads, r->limit)) {
                                 rv = State_Failed;
                                 snprintf(report, STRLEN, "threads count %i matches resource limit [threads%s%.0f]", s->inf->priv.process.threads, operatorshortnames[r->operator], r->limit);
                         } else {
@@ -398,7 +407,10 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_Children:
-                        if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.children, r->limit)) {
+                        if (s->inf->priv.process.children < 0) {
+                                DEBUG("'%s' process children count check skipped (initializing)\n", s->name);
+                                return State_Init;
+                        } else if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.children, r->limit)) {
                                 rv = State_Failed;
                                 snprintf(report, STRLEN, "children count %i matches resource limit [children%s%.0f]", s->inf->priv.process.children, operatorshortnames[r->operator], r->limit);
                         } else {
@@ -407,7 +419,10 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_MemoryKbyteTotal:
-                        if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.total_mem, r->limit)) {
+                        if (s->inf->priv.process.total_mem == 0) {
+                                DEBUG("'%s' process total memory usage check skipped (initializing)\n", s->name);
+                                return State_Init;
+                        } else if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.total_mem, r->limit)) {
                                 rv = State_Failed;
                                 snprintf(report, STRLEN, "total mem amount of %s matches resource limit [total mem amount%s%s]", Str_bytesToSize(s->inf->priv.process.total_mem, buf1), operatorshortnames[r->operator], Str_bytesToSize(r->limit, buf2));
                         } else {
@@ -416,7 +431,10 @@ static State_Type _checkProcessResources(Service_T s, Resource_T r) {
                         break;
 
                 case Resource_MemoryPercentTotal:
-                        if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.total_mem_percent, r->limit)) {
+                        if (s->inf->priv.process.total_mem_percent < 0.) {
+                                DEBUG("'%s' total memory usage check skipped (initializing)\n", s->name);
+                                return State_Init;
+                        } else if (Util_evalDoubleQExpression(r->operator, s->inf->priv.process.total_mem_percent, r->limit)) {
                                 rv = State_Failed;
                                 snprintf(report, STRLEN, "total mem amount of %.1f%% matches resource limit [total mem amount%s%.1f%%]", (float)s->inf->priv.process.total_mem_percent, operatorshortnames[r->operator], (float)r->limit);
                         } else {
@@ -672,6 +690,8 @@ static State_Type _checkSize(Service_T s, off_t size) {
 static State_Type _checkUptime(Service_T s) {
         ASSERT(s);
         State_Type rv = State_Succeeded;
+        if (s->inf->priv.process.uptime < 0)
+                return State_Init;
         for (Uptime_T ul = s->uptimelist; ul; ul = ul->next) {
                 if (Util_evalQExpression(ul->operator, s->inf->priv.process.uptime, ul->uptime)) {
                         rv = State_Failed;
@@ -1120,7 +1140,7 @@ State_Type check_process(Service_T s) {
                                 rv = State_Failed;
                 } else {
                         pp->is_available = Connection_Init;
-                        DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - s->inf->priv.process.uptime));
+                        DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - (s->inf->priv.process.uptime < 0 ? 0 : s->inf->priv.process.uptime)));
                 }
         }
         for (Port_T pp = s->socketlist; pp; pp = pp->next) {
@@ -1130,7 +1150,7 @@ State_Type check_process(Service_T s) {
                                 rv = State_Failed;
                 } else {
                         pp->is_available = Connection_Init;
-                        DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - s->inf->priv.process.uptime));
+                        DEBUG("'%s' connection test paused for %lld seconds while the process is starting\n", s->name, (long long)(s->start->timeout - (s->inf->priv.process.uptime < 0 ? 0 : s->inf->priv.process.uptime)));
                 }
         }
         return rv;

@@ -1776,15 +1776,15 @@ void Util_resetInfo(Service_T s) {
                         s->inf->priv.process.euid = -1;
                         s->inf->priv.process.gid = -1;
                         s->inf->priv.process.zombie = false;
-                        s->inf->priv.process.threads = 0;
-                        s->inf->priv.process.children = 0;
+                        s->inf->priv.process.threads = -1;
+                        s->inf->priv.process.children = -1;
                         s->inf->priv.process.mem = 0ULL;
                         s->inf->priv.process.total_mem = 0ULL;
-                        s->inf->priv.process.mem_percent = 0.;
-                        s->inf->priv.process.total_mem_percent = 0.;
-                        s->inf->priv.process.cpu_percent = 0.;
-                        s->inf->priv.process.total_cpu_percent = 0.;
-                        s->inf->priv.process.uptime = 0;
+                        s->inf->priv.process.mem_percent = -1.;
+                        s->inf->priv.process.total_mem_percent = -1.;
+                        s->inf->priv.process.cpu_percent = -1.;
+                        s->inf->priv.process.total_cpu_percent = -1.;
+                        s->inf->priv.process.uptime = -1;
                         break;
                 case Service_Net:
                         if (s->inf->priv.net.stats)
