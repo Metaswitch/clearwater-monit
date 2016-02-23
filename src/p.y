@@ -161,6 +161,8 @@ extern char *currentfile;
 extern char *argcurrentfile;
 extern int buffer_stack_ptr;
 
+List_T included = NULL;
+
 /* Local variables */
 static int cfg_errflag = 0;
 static Service_T tail = NULL;
@@ -2706,7 +2708,13 @@ boolean_t parse(char *controlfile) {
         LOCK(Run.mutex)
         {
                 preparse();
+                included = List_new();
+                List_append(included, controlfile);
                 yyparse();
+                char *include = NULL;
+                while ((include = List_pop(included)))
+                        FREE(include);
+                List_free(&included);
                 fclose(yyin);
                 postparse();
         }
@@ -2736,8 +2744,6 @@ boolean_t parse(char *controlfile) {
  * Initialize objects used by the parser.
  */
 static void preparse() {
-        int i;
-
         /* Set instance incarnation ID */
         time(&Run.incarnation);
         /* Reset lexer */
@@ -2770,7 +2776,7 @@ static void preparse() {
         Run.MailFormat.message       = NULL;
         depend_list                  = NULL;
         Run.flags |= Run_HandlerInit | Run_MmonitCredentials;
-        for (i = 0; i <= Handler_Max; i++)
+        for (int i = 0; i <= Handler_Max; i++)
                 Run.handler_queue[i] = 0;
 
         /*

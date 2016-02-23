@@ -17,6 +17,9 @@ authentication is used, SMTPS should be always used to not disclose credentials.
         password "MYPASSWORD"
     then alert
 
+Fixed: Issue #270: The include statement now skips recursive inclusion of files, which were
+included already.
+
 Fixed: Issue #316: The "if changed checksum" and "if changed timestamp" tests value
 is persistent across monit restart/reload now, so if the checksum changed while monit
 was stopped or reloading, it will catch the change. Thanks to Duke Bartholomew for fix.

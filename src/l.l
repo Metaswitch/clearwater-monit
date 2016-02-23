@@ -69,6 +69,7 @@ struct buffer_stack_s {
         YY_BUFFER_STATE buffer;
 } buffer_stack[MAX_STACK_DEPTH];
 
+extern List_T included;
 
 int lineno = 1;
 int arglineno = 1;
@@ -911,6 +912,19 @@ static char *handle_quoted_string(char *string) {
 }
 
 
+static void _include(const char *path) {
+        for (list_t l = included->head; l; l = l->next)
+                if (! Str_cmp((char *)(l->e), path))
+                        return;
+        List_append(included, Str_dup(path));
+        FILE *yyin = fopen(path, "r");
+        if (! yyin)
+                yyerror("Cannot include file '%s' -- %s", path, STRERROR);
+        else
+                push_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE), (char *)path);
+}
+
+
 static void include_file(char *pattern) {
         glob_t globbuf;
         if (glob(pattern, GLOB_MARK, NULL, &globbuf) == 0) {
@@ -918,11 +932,7 @@ static void include_file(char *pattern) {
                         size_t filename_length = strlen(globbuf.gl_pathv[i]);
                         if ((filename_length == 0) || (globbuf.gl_pathv[i][filename_length - 1] == '~' ) || (globbuf.gl_pathv[i][filename_length - 1] == '/'))
                                 continue; // skip subdirectories and file backup copies
-                        FILE *yyin = fopen(globbuf.gl_pathv[i], "r");
-                        if (! yyin)
-                                yyerror("Cannot include file '%s' -- %s", globbuf.gl_pathv[i], STRERROR);
-                        else
-                                push_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE), globbuf.gl_pathv[i]);
+                        _include(globbuf.gl_pathv[i]);
                 }
                 globfree(&globbuf);
         } else {
