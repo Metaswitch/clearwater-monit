@@ -2709,7 +2709,7 @@ boolean_t parse(char *controlfile) {
         {
                 preparse();
                 included = List_new();
-                List_append(included, controlfile);
+                List_append(included, Str_dup(controlfile));
                 yyparse();
                 char *include = NULL;
                 while ((include = List_pop(included)))
