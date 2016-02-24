@@ -1593,7 +1593,7 @@ Monit.
 
 Syntax:
 
- SET LIMIT {
+ SET LIMITS {
    PROGRAMOUTPUT:     <number> <unit>,
    SENDEXPECTBUFFER:  <number> <unit>,
    FILECONTENTBUFFER: <number> <unit>,
