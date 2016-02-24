@@ -136,7 +136,7 @@ static boolean_t _checkState(Event_T E, State_Type S) {
                 /* Check the state of the particular cycle given by the bit position */
                 long long flag = (E->state_map >> i) & 0x1;
 
-                /* Count occurences of the posted state */
+                /* Count occurrences of the posted state */
                 if (flag == state)
                         count++;
         }

@@ -2949,7 +2949,6 @@ static char *get_monitoring_status(Service_T s, char *buf, int buflen) {
 
 
 static char *get_service_status(Service_T s, char *buf, int buflen) {
-        EventTable_T *et = Event_Table;
         ASSERT(s);
         ASSERT(buf);
         if (s->monitor == Monitor_Not || s->monitor & Monitor_Init) {
@@ -2958,6 +2957,7 @@ static char *get_service_status(Service_T s, char *buf, int buflen) {
                 snprintf(buf, buflen, "%s", statusnames[s->type]);
         } else {
                 // In the case that the service has actualy some failure, error will be non zero. We will check the bitmap and print the description of the first error found
+                EventTable_T *et = Event_Table;
                 while ((*et).id) {
                         if (s->error & (*et).id) {
                                 snprintf(buf, buflen, "%s", (s->error_hint & (*et).id) ? (*et).description_changed : (*et).description_failed);
