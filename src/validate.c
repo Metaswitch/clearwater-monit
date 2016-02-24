@@ -956,23 +956,22 @@ static State_Type _checkFilesystemResources(Service_T s, Filesystem_T td) {
 
 
 static void _checkTimeout(Service_T s) {
-        ASSERT(s);
-        if (! s->actionratelist)
-                return;
-        /* Start counting cycles */
-        if (s->nstart > 0)
-                s->ncycle++;
-        int max = 0;
-        for (ActionRate_T ar = s->actionratelist; ar; ar = ar->next) {
-                if (max < ar->cycle)
-                        max = ar->cycle;
-                if (s->nstart >= ar->count && s->ncycle <= ar->cycle)
-                        Event_post(s, Event_Timeout, State_Failed, ar->action, "service restarted %d times within %d cycles(s) - %s", s->nstart, s->ncycle, actionnames[ar->action->failed->id]);
-        }
-        /* Stop counting and reset if the cycle interval is succeeded */
-        if (s->ncycle > max) {
-                s->ncycle = 0;
-                s->nstart = 0;
+        if (s->actionratelist) {
+                /* Start counting cycles */
+                if (s->nstart > 0)
+                        s->ncycle++;
+                int max = 0;
+                for (ActionRate_T ar = s->actionratelist; ar; ar = ar->next) {
+                        if (max < ar->cycle)
+                                max = ar->cycle;
+                        if (s->nstart >= ar->count && s->ncycle <= ar->cycle)
+                                Event_post(s, Event_Timeout, State_Failed, ar->action, "service restarted %d times within %d cycles(s) - %s", s->nstart, s->ncycle, actionnames[ar->action->failed->id]);
+                }
+                /* Stop counting and reset if the cycle interval is succeeded */
+                if (s->ncycle > max) {
+                        s->ncycle = 0;
+                        s->nstart = 0;
+                }
         }
 }
 
