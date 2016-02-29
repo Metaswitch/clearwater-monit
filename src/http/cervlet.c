@@ -538,17 +538,15 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
         if (Run.MailFormat.from)
-                StringBuffer_append(res->outputbuffer,
-                                    "<tr><td>Default mail from</td><td>%s</td></tr>",
-                                    Run.MailFormat.from);
+                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail from</td><td>%s</td></tr>", Run.MailFormat.from);
+        if (Run.MailFormat.sender)
+                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail sender</td><td>%s</td></tr>", Run.MailFormat.sender);
+        if (Run.MailFormat.replyto)
+                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail reply to</td><td>%s</td></tr>", Run.MailFormat.replyto);
         if (Run.MailFormat.subject)
-                StringBuffer_append(res->outputbuffer,
-                                    "<tr><td>Default mail subject</td><td>%s</td></tr>",
-                                    Run.MailFormat.subject);
+                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail subject</td><td>%s</td></tr>", Run.MailFormat.subject);
         if (Run.MailFormat.message)
-                StringBuffer_append(res->outputbuffer,
-                                    "<tr><td>Default mail message</td><td>%s</td></tr>",
-                                    Run.MailFormat.message);
+                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail message</td><td>%s</td></tr>", Run.MailFormat.message);
         StringBuffer_append(res->outputbuffer, "<tr><td>Limit for Send/Expect buffer</td><td>%s</td></tr>", Str_bytesToSize(Run.limits.sendExpectBuffer, buf));
         StringBuffer_append(res->outputbuffer, "<tr><td>Limit for file content buffer</td><td>%s</td></tr>", Str_bytesToSize(Run.limits.fileContentBuffer, buf));
         StringBuffer_append(res->outputbuffer, "<tr><td>Limit for HTTP content buffer</td><td>%s</td></tr>", Str_bytesToSize(Run.limits.httpContentBuffer, buf));

@@ -113,6 +113,7 @@ void gc() {
                 FREE(Run.httpd.socket.unix.path);
         }
         FREE(Run.MailFormat.from);
+        FREE(Run.MailFormat.sender);
         FREE(Run.MailFormat.subject);
         FREE(Run.MailFormat.message);
         FREE(Run.mail_hostname);

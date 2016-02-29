@@ -1084,6 +1084,7 @@ Example:
 
  set mail-format {
       from: monit@foo.bar
+    sender: Jane Doe
   reply-to: support@domain.com
    subject: $SERVICE $EVENT at $DATE
    message: Monit $ACTION $SERVICE at $DATE on $HOST: $DESCRIPTION.
@@ -1094,6 +1095,8 @@ Example:
 The I<from:> option is the sender's email address. That is, the email
 address Monit will pretend it is sending alerts from. It does not have
 to be a real email-address only a proper formatted address.
+
+The I<sender:> option can be used to specify sender's name.
 
 The I<reply-to:> option can be used to set the reply-to mail header.
 

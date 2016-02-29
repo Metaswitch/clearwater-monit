@@ -112,10 +112,12 @@ static void _escape(Mail_T m) {
 
 
 static void _copyMail(Mail_T n, Mail_T o) {
-        ASSERT(n && o);
+        ASSERT(n);
+        ASSERT(o);
 
         n->to = Str_dup(o->to);
         n->from = o->from ? Str_dup(o->from) : Run.MailFormat.from ? Str_dup(Run.MailFormat.from) : Str_dup(ALERT_FROM);
+        n->sender = o->sender ? Str_dup(o->sender) : Run.MailFormat.sender ? Str_dup(Run.MailFormat.sender) : NULL;
         n->replyto = o->replyto ? Str_dup(o->replyto) : Run.MailFormat.replyto ? Str_dup(Run.MailFormat.replyto) : NULL;
         n->subject = o->subject ? Str_dup(o->subject) : Run.MailFormat.subject ? Str_dup(Run.MailFormat.subject) : Str_dup(ALERT_SUBJECT);
         n->message = o->message ? Str_dup(o->message) : Run.MailFormat.message ? Str_dup(Run.MailFormat.message) : Str_dup(ALERT_MESSAGE);
@@ -164,25 +166,29 @@ static boolean_t _sendMail(Mail_T mail) {
                         SMTP_from(smtp, m->from);
                         SMTP_to(smtp, m->to);
                         SMTP_dataBegin(smtp);
-                        if ((m->replyto && Socket_print(mta->socket, "Reply-To: %s\r\n", m->replyto) <= 0) || Socket_print(mta->socket,
-                                "From: %s\r\n"
-                                "To: %s\r\n"
-                                "Subject: %s\r\n"
-                                "Date: %s\r\n"
-                                "X-Mailer: Monit %s\r\n"
-                                "MIME-Version: 1.0\r\n"
-                                "Content-Type: text/plain; charset=\"iso-8859-1\"\r\n"
-                                "Content-Transfer-Encoding: 8bit\r\n"
-                                "Message-Id: <%lld.%lu@%s>\r\n"
-                                "\r\n"
-                                "%s",
-                                m->from,
-                                m->to,
-                                m->subject,
-                                now,
-                                VERSION,
-                                (long long)Time_now(), random(), Run.mail_hostname ? Run.mail_hostname : Run.system->name,
-                                m->message) <= 0)
+                        if (
+                                (m->replyto && Socket_print(mta->socket, "Reply-To: %s\r\n", m->replyto) <= 0)
+                                ||
+                                ((m->sender && Socket_print(mta->socket, "From: \"%s\" <%s>\r\n", m->sender, m->from) <= 0) || Socket_print(mta->socket, "From: %s\r\n", m->from) <= 0)
+                                ||
+                                Socket_print(mta->socket,
+                                        "To: %s\r\n"
+                                        "Subject: %s\r\n"
+                                        "Date: %s\r\n"
+                                        "X-Mailer: Monit %s\r\n"
+                                        "MIME-Version: 1.0\r\n"
+                                        "Content-Type: text/plain; charset=\"iso-8859-1\"\r\n"
+                                        "Content-Transfer-Encoding: 8bit\r\n"
+                                        "Message-Id: <%lld.%lu@%s>\r\n"
+                                        "\r\n"
+                                        "%s",
+                                        m->to,
+                                        m->subject,
+                                        now,
+                                        VERSION,
+                                        (long long)Time_now(), random(), Run.mail_hostname ? Run.mail_hostname : Run.system->name,
+                                        m->message) <= 0
+                           )
                         {
                                 THROW(IOException, "Error sending data to mail server %s -- %s", mta->host, STRERROR);
                         }

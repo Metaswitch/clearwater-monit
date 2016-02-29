@@ -321,7 +321,7 @@ static int verifyMaxForward(int);
 %token TIMEOUT RETRY RESTART CHECKSUM EVERY NOTEVERY
 %token DEFAULT HTTP HTTPS APACHESTATUS FTP SMTP SMTPS POP POPS IMAP IMAPS CLAMAV NNTP NTP3 MYSQL DNS WEBSOCKET
 %token SSH DWP LDAP2 LDAP3 RDATE RSYNC TNS PGSQL POSTFIXPOLICY SIP LMTP GPS RADIUS MEMCACHE REDIS MONGODB SIEVE
-%token <string> STRING PATH MAILADDR MAILFROM MAILREPLYTO MAILSUBJECT
+%token <string> STRING PATH MAILADDR MAILFROM MAILSENDER MAILREPLYTO MAILSUBJECT
 %token <string> MAILBODY SERVICENAME STRINGNAME
 %token <number> NUMBER PERCENT LOGLIMIT CLOSELIMIT DNSLIMIT KEEPALIVELIMIT
 %token <number> REPLYLIMIT REQUESTLIMIT STARTLIMIT WAITLIMIT GRACEFULLIMIT
@@ -890,6 +890,7 @@ setmailservers  : SET MAILSERVER mailserverlist nettimeout hostname {
 
 setmailformat   : SET MAILFORMAT '{' formatoptionlist '}' {
                    Run.MailFormat.from    = mailset.from    ?  mailset.from    : Str_dup(ALERT_FROM);
+                   Run.MailFormat.sender  = mailset.sender  ?  mailset.sender  : NULL;
                    Run.MailFormat.replyto = mailset.replyto ?  mailset.replyto : NULL;
                    Run.MailFormat.subject = mailset.subject ?  mailset.subject : Str_dup(ALERT_SUBJECT);
                    Run.MailFormat.message = mailset.message ?  mailset.message : Str_dup(ALERT_MESSAGE);
@@ -1897,6 +1898,7 @@ formatoptionlist: formatoption
                 ;
 
 formatoption    : MAILFROM { mailset.from = $1; }
+                | MAILSENDER { mailset.sender = $1; }
                 | MAILREPLYTO { mailset.replyto = $1; }
                 | MAILSUBJECT { mailset.subject = $1; }
                 | MAILBODY { mailset.message = $1; }
@@ -2770,6 +2772,7 @@ static void preparse() {
         Run.maillist                 = NULL;
         Run.mailservers              = NULL;
         Run.MailFormat.from          = NULL;
+        Run.MailFormat.sender        = NULL;
         Run.MailFormat.replyto       = NULL;
         Run.MailFormat.subject       = NULL;
         Run.MailFormat.message       = NULL;

@@ -582,6 +582,13 @@ group[ \t]+       {
                       return MAILFROM;
                   }
 
+"sender:"[^@}\n]* {
+                      char *p = yytext+strlen("sender:");
+                      yylval.string = Str_unquote(Str_dup(p));
+                      save_arg();
+                      return MAILSENDER;
+                  }
+
 "reply-to:"[ \t]*{str}[@]{str} {
                       char *p = yytext+strlen("reply-to:");
                       yylval.string = Str_trim(Str_dup(p));

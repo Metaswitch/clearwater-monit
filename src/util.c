@@ -862,11 +862,16 @@ void Util_printRunList() {
                 printf("\n");
         }
 
-        printf(" %-18s = %s\n", "Mail from", is_str_defined(Run.MailFormat.from));
-        printf(" %-18s = %s\n", "Mail subject", is_str_defined(Run.MailFormat.subject));
-        printf(" %-18s = %-.20s%s\n", "Mail message",
-               Run.MailFormat.message ? Run.MailFormat.message : "(not defined)",
-               Run.MailFormat.message ? "..(truncated)" : "");
+        if (Run.MailFormat.from)
+                printf(" %-18s = %s\n", "Mail from", Run.MailFormat.from);
+        if (Run.MailFormat.sender)
+                printf(" %-18s = %s\n", "Mail sender", Run.MailFormat.sender);
+        if (Run.MailFormat.replyto)
+                printf(" %-18s = %s\n", "Mail reply to", Run.MailFormat.replyto);
+        if (Run.MailFormat.subject)
+                printf(" %-18s = %s\n", "Mail subject", Run.MailFormat.subject);
+        if (Run.MailFormat.message)
+                printf(" %-18s = %-.20s..(truncated)\n", "Mail message", Run.MailFormat.message);
 
         printf(" %-18s = %s\n", "Start monit httpd", (Run.httpd.flags & Httpd_Net || Run.httpd.flags & Httpd_Unix) ? "True" : "False");
 
