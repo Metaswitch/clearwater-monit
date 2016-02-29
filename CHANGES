@@ -17,6 +17,9 @@ authentication is used, SMTPS should be always used to not disclose credentials.
         password "MYPASSWORD"
     then alert
 
+New: Issue #330: Added environment variable MONIT_PROGRAM_STATUS to allow exec actions read
+the last program status.
+
 Fixed: Issue #270: The include statement now skips recursive inclusion of files, which were
 included already.
 

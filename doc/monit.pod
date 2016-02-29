@@ -3493,6 +3493,17 @@ Process cpu%. This may be 0 if the process was (re)started,
 
 =back
 
+The following environment variables are only available for
+program service entries:
+
+=over 4
+
+=item MONIT_PROGRAM_STATUS
+
+The program status (exit value).
+
+=back
+
 
 =head1 SIGNALS
 

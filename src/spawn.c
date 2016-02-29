@@ -112,11 +112,18 @@ static void set_monit_environment(Service_T S, command_t C, Event_T E, const cha
         setenv("MONIT_HOST", Run.system->name, 1);
         setenv("MONIT_EVENT", E ? Event_get_description(E) : C == S->start ? "Started" : C == S->stop ? "Stopped" : "No Event", 1);
         setenv("MONIT_DESCRIPTION", E ? E->message : C == S->start ? "Started" : C == S->stop ? "Stopped" : "No Event", 1);
-        if (S->type == Service_Process) {
-                putenv(Str_cat("MONIT_PROCESS_PID=%d", S->inf->priv.process.pid));
-                putenv(Str_cat("MONIT_PROCESS_MEMORY=%llu", (unsigned long long)((double)S->inf->priv.process.mem / 1024.)));
-                putenv(Str_cat("MONIT_PROCESS_CHILDREN=%d", S->inf->priv.process.children));
-                putenv(Str_cat("MONIT_PROCESS_CPU_PERCENT=%.1f", S->inf->priv.process.cpu_percent));
+        switch (S->type) {
+                case Service_Process:
+                        putenv(Str_cat("MONIT_PROCESS_PID=%d", S->inf->priv.process.pid));
+                        putenv(Str_cat("MONIT_PROCESS_MEMORY=%llu", (unsigned long long)((double)S->inf->priv.process.mem / 1024.)));
+                        putenv(Str_cat("MONIT_PROCESS_CHILDREN=%d", S->inf->priv.process.children));
+                        putenv(Str_cat("MONIT_PROCESS_CPU_PERCENT=%.1f", S->inf->priv.process.cpu_percent));
+                        break;
+                case Service_Program:
+                        putenv(Str_cat("MONIT_PROGRAM_STATUS=%d", S->program->exitStatus));
+                        break;
+                default:
+                        break;
         }
 }
 
