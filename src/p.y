@@ -2763,7 +2763,6 @@ static void preparse() {
         Run.httpd.credentials        = NULL;
         memset(&(Run.httpd.socket), 0, sizeof(Run.httpd.socket));
         Run.mailserver_timeout       = SMTP_TIMEOUT;
-        Run.eventlist                = NULL;
         Run.eventlist_dir            = NULL;
         Run.eventlist_slots          = -1;
         Run.system                   = NULL;

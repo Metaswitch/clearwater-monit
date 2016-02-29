@@ -103,8 +103,6 @@ void gc() {
                 _gc_mail_server(&Run.mailservers);
         if (Run.mmonits)
                 _gc_mmonit(&Run.mmonits);
-        if (Run.eventlist)
-                gc_event(&Run.eventlist);
         FREE(Run.eventlist_dir);
         FREE(Run.mygroup);
         if (Run.httpd.flags & Httpd_Net) {
@@ -135,7 +133,7 @@ void gc_mail_list(Mail_T *m) {
 
 
 void gccmd(command_t *c) {
-        ASSERT(c&&*c);
+        ASSERT(c && *c);
         for (int i = 0; (*c)->arg[i]; i++)
                 FREE((*c)->arg[i]);
         FREE(*c);
@@ -143,7 +141,7 @@ void gccmd(command_t *c) {
 
 
 void gc_event(Event_T *e) {
-        ASSERT(e&&*e);
+        ASSERT(e && *e);
         if ((*e)->next)
                 gc_event(&(*e)->next);
         (*e)->action = NULL;
