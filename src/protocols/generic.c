@@ -39,7 +39,7 @@
 
 /* Escape zero i.e. '\0' in expect buffer with "\0" so zero can be tested in expect strings as "\0". If there are no '\0' in the buffer it is returned as it is */
 static char *_escapeZeroInExpectBuffer(char *s, int n) {
-        assert(n < Run.limits.sendExpectBuffer);
+        assert(n <= Run.limits.sendExpectBuffer);
         int i, j;
         char t[n]; // VLA
         for (i = 0, j = 0; j < n; i++, j++) {
