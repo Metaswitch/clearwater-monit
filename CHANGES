@@ -35,6 +35,9 @@ Fixed: Issue #318: The favicon.ico didn't display when monit was behind a revers
 Fixed: Issue #327: The monit CLI action or M/Monit action for group of services larger then ~50
 may fail.
 
+Fixed: Issue #329: The send/expect protocol test returned error if the target server sent more
+data then buffer limit.
+
 Fixed: A 32-bit platform with more then 4GB of RAM reported wrong system memory and
 swap value (regression in Monit 5.16).
 
