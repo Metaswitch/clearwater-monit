@@ -111,8 +111,8 @@ wws         [ \r\t;,()]+
 number      [0-9]+
 real        [0-9]+([.][0-9]+)?
 str         [^\000-\041@:{}"';(),%]+
-address     [^\000-\041<>{}]+
-addrname    [^\000-\037@<>{}]+
+address     [^\000-\041<>{}\[\]]+
+addrname    [^\000-\037@<>{}\[\]]+
 hostname    {str}(\.{str})*
 greater     ("more"|"greater"|"gt"|">")
 less        ("less"|"lt"|"<")
@@ -759,36 +759,34 @@ group[ \t]+       {
 
 <ADDRESS_COND>{
 
-   [}] {
-                yyless(0);
-                BEGIN(INITIAL);
-                if (! yylval.address->address)
-                        yyerror("missing address");
-                save_arg();
-                return ADDRESSOBJECT;
-        }
+   [}\n]        {
+                        if (yytext[0] == '}')
+                                yyless(0);
+                        BEGIN(INITIAL);
+                        if (! yylval.address->address)
+                                yyerror("missing address");
+                        save_arg();
+                        return ADDRESSOBJECT;
+                }
 
-   [\n] {
-                BEGIN(INITIAL);
-                if (! yylval.address->address)
-                        yyerror("missing address");
-                save_arg();
-                return ADDRESSOBJECT;
-        }
+  {address}     {
+                        yylval.address->address = Str_dup(yytext);
+                }
 
-  {address} {
-                yylval.address->address = Str_dup(yytext);
-        }
+  {addrname}    {
+                        char *name = Str_unquote(Str_dup(yytext));
+                        if (name && *name)
+                                yylval.address->name = Str_unquote(Str_dup(yytext));
+                }
 
-  {addrname} {
-                char *name = Str_unquote(Str_dup(yytext));
-                if (name && *name)
-                        yylval.address->name = Str_unquote(Str_dup(yytext));
-        }
+  [<>:\[\]]     {
+                        // Ignore
+                }
 
-  [<>]  {
-                // Ignore
-        }
+  .             {
+                        BEGIN(INITIAL);
+                        yyerror("invalid mail format");
+                }
 }
 
 <STRING_COND>{
