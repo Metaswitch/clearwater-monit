@@ -72,6 +72,10 @@
 #include <pwd.h>
 #endif
 
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
+
 #include "event.h"
 #include "alert.h"
 #include "monit.h"
