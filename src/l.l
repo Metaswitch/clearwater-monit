@@ -111,6 +111,8 @@ wws         [ \r\t;,()]+
 number      [0-9]+
 real        [0-9]+([.][0-9]+)?
 str         [^\000-\041@:{}"';(),%]+
+address     [^\000-\041<>]+
+addrname    [^\000-\037@<>]+
 hostname    {str}(\.{str})*
 greater     ("more"|"greater"|"gt"|">")
 less        ("less"|"lt"|"<")
@@ -139,7 +141,7 @@ hour        ("hour"|"hours"|"h")
 day         ("day"|"days")
 month       ("month"|"months")
 
-%x ARGUMENT_COND DEPEND_COND SERVICE_COND URL_COND STRING_COND EVERY_COND HTTP_HEADER_COND INCLUDE
+%x ARGUMENT_COND DEPEND_COND SERVICE_COND URL_COND ADDRESS_COND STRING_COND EVERY_COND HTTP_HEADER_COND INCLUDE
 
 %%
 
@@ -575,24 +577,15 @@ group[ \t]+       {
                     return PATH;
                   }
 
-"from:"[ \t]*{str}[@]{str} {
-                      char *p = yytext+strlen("from:");
-                      yylval.string = Str_trim(Str_dup(p));
-                      save_arg();
+"from:"[ \t]* {
+                      yylval.address = Address_new();
+                      BEGIN(ADDRESS_COND);
                       return MAILFROM;
                   }
 
-"sender:"[^@}\n]* {
-                      char *p = yytext+strlen("sender:");
-                      yylval.string = Str_unquote(Str_dup(p));
-                      save_arg();
-                      return MAILSENDER;
-                  }
-
-"reply-to:"[ \t]*{str}[@]{str} {
-                      char *p = yytext+strlen("reply-to:");
-                      yylval.string = Str_trim(Str_dup(p));
-                      save_arg();
+"reply-to:"[ \t]* {
+                      yylval.address = Address_new();
+                      BEGIN(ADDRESS_COND);
                       return MAILREPLYTO;
                   }
 
@@ -764,6 +757,29 @@ group[ \t]+       {
 
 }
 
+<ADDRESS_COND>{
+
+   [\n] {
+                BEGIN(INITIAL);
+                if (! yylval.address->address)
+                        yyerror("missing address");
+                save_arg();
+                return ADDRESSOBJECT;
+        }
+
+  {address} {
+                yylval.address->address = Str_dup(yytext);
+        }
+
+  {addrname} {
+                yylval.address->name = Str_unquote(Str_dup(yytext));
+        }
+
+  [<>]  {
+                // Ignore
+        }
+}
+
 <STRING_COND>{
 
   {str}           {
@@ -852,7 +868,7 @@ group[ \t]+       {
 }
 
 
-<INITIAL,ARGUMENT_COND,SERVICE_COND,DEPEND_COND,URL_COND,STRING_COND,EVERY_COND,HTTP_HEADER_COND>. {
+<INITIAL,ARGUMENT_COND,SERVICE_COND,DEPEND_COND,URL_COND,ADDRESS_COND,STRING_COND,EVERY_COND,HTTP_HEADER_COND>. {
                       check_state = None_State;
                       return yytext[0];
                   }

@@ -74,7 +74,7 @@ static void _substitute(Mail_T m, Event_T e) {
         ASSERT(m);
         ASSERT(e);
 
-        Util_replaceString(&m->from,    "$HOST", Run.system->name);
+        Util_replaceString(&m->from->address, "$HOST", Run.system->name);
         Util_replaceString(&m->subject, "$HOST", Run.system->name);
         Util_replaceString(&m->message, "$HOST", Run.system->name);
 
@@ -116,9 +116,8 @@ static void _copyMail(Mail_T n, Mail_T o) {
         ASSERT(o);
 
         n->to = Str_dup(o->to);
-        n->from = o->from ? Str_dup(o->from) : Run.MailFormat.from ? Str_dup(Run.MailFormat.from) : Str_dup(ALERT_FROM);
-        n->sender = o->sender ? Str_dup(o->sender) : Run.MailFormat.sender ? Str_dup(Run.MailFormat.sender) : NULL;
-        n->replyto = o->replyto ? Str_dup(o->replyto) : Run.MailFormat.replyto ? Str_dup(Run.MailFormat.replyto) : NULL;
+        n->from = o->from ? Address_copy(o->from) : Run.MailFormat.from ? Address_copy(Run.MailFormat.from) : NULL;
+        n->replyto = o->replyto ? Address_copy(o->replyto) : Run.MailFormat.replyto ? Address_copy(Run.MailFormat.replyto) : NULL;
         n->subject = o->subject ? Str_dup(o->subject) : Run.MailFormat.subject ? Str_dup(Run.MailFormat.subject) : Str_dup(ALERT_SUBJECT);
         n->message = o->message ? Str_dup(o->message) : Run.MailFormat.message ? Str_dup(Run.MailFormat.message) : Str_dup(ALERT_MESSAGE);
 }
@@ -163,13 +162,13 @@ static boolean_t _sendMail(Mail_T mail) {
                 char now[STRLEN];
                 Time_gmtstring(Time_now(), now);
                 for (Mail_T m = mail; m; m = m->next) {
-                        SMTP_from(smtp, m->from);
+                        SMTP_from(smtp, m->from->address);
                         SMTP_to(smtp, m->to);
                         SMTP_dataBegin(smtp);
                         if (
-                                (m->replyto && Socket_print(mta->socket, "Reply-To: %s\r\n", m->replyto) <= 0)
+                                (m->replyto && ((m->replyto->name ? Socket_print(mta->socket, "Reply-To: \"%s\" <%s>\r\n", m->replyto->name, m->replyto->address) : Socket_print(mta->socket, "Reply-To: %s\r\n", m->replyto->address)) <= 0))
                                 ||
-                                ((m->sender && Socket_print(mta->socket, "From: \"%s\" <%s>\r\n", m->sender, m->from) <= 0) || Socket_print(mta->socket, "From: %s\r\n", m->from) <= 0)
+                                ((m->from->name ? Socket_print(mta->socket, "From: \"%s\" <%s>\r\n", m->from->name, m->from->address) : Socket_print(mta->socket, "From: %s\r\n", m->from->address)) <= 0)
                                 ||
                                 Socket_print(mta->socket,
                                         "To: %s\r\n"

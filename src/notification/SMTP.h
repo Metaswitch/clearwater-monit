@@ -193,5 +193,6 @@ void SMTP_dataCommit(T S);
 void SMTP_quit(T S);
 
 
+#undef T
 #endif
 

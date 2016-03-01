@@ -862,12 +862,18 @@ void Util_printRunList() {
                 printf("\n");
         }
 
-        if (Run.MailFormat.from)
-                printf(" %-18s = %s\n", "Mail from", Run.MailFormat.from);
-        if (Run.MailFormat.sender)
-                printf(" %-18s = %s\n", "Mail sender", Run.MailFormat.sender);
-        if (Run.MailFormat.replyto)
-                printf(" %-18s = %s\n", "Mail reply to", Run.MailFormat.replyto);
+        if (Run.MailFormat.from) {
+                if (Run.MailFormat.from->name)
+                        printf(" %-18s = %s <%s>\n", "Mail from", Run.MailFormat.from->name, Run.MailFormat.from->address);
+                else
+                        printf(" %-18s = %s\n", "Mail from", Run.MailFormat.from->address);
+        }
+        if (Run.MailFormat.replyto) {
+                if (Run.MailFormat.replyto->name)
+                        printf(" %-18s = %s <%s>\n", "Mail reply to", Run.MailFormat.replyto->name, Run.MailFormat.replyto->address);
+                else
+                        printf(" %-18s = %s\n", "Mail reply to", Run.MailFormat.replyto->address);
+        }
         if (Run.MailFormat.subject)
                 printf(" %-18s = %s\n", "Mail subject", Run.MailFormat.subject);
         if (Run.MailFormat.message)

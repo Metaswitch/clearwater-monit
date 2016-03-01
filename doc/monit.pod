@@ -1083,22 +1083,20 @@ mail-format> statement:
 Example:
 
  set mail-format {
-      from: monit@foo.bar
-    sender: Jane Doe
-  reply-to: support@domain.com
+      from: Monit <monit@foo.bar>
+  reply-to: Support <support@domain.com>
    subject: $SERVICE $EVENT at $DATE
    message: Monit $ACTION $SERVICE at $DATE on $HOST: $DESCRIPTION.
             Yours sincerely,
             monit
  }
 
-The I<from:> option is the sender's email address. That is, the email
-address Monit will pretend it is sending alerts from. It does not have
-to be a real email-address only a proper formatted address.
+The I<from:> option is the sender's email address for Monit alerts.
+A sender name is optional and plain address with or without angle
+brackets can be used.
 
-The I<sender:> option can be used to specify sender's name.
-
-The I<reply-to:> option can be used to set the reply-to mail header.
+The I<reply-to:> option can be used to set the reply-to mail header,
+optionally with a name.
 
 The I<subject:> option sets the message subject and must be on only
 I<one> line.
@@ -1108,7 +1106,7 @@ be the last in a mail-format statement. The mail body can be as long
 as needed, but must I<not> contain the block-closing '}' character.
 
 You need not use all options, only the option which you want to
-override. For example to globally change the senders address only:
+override. For example to globally change the sender address only:
 
  set mail-format { from: bofh@foo.bar }
 

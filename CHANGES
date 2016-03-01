@@ -17,8 +17,11 @@ authentication is used, SMTPS should be always used to not disclose credentials.
         password "MYPASSWORD"
     then alert
 
-New: Issue #271: Added support for specifying the sender name in monit mail format, example:
-    set mail-format {sender: "Jane Doe"}
+New: Issue #271: Added support for specifying name in mail format's from and reply-to options.
+For example:
+    set mail-format {
+        from: System monitoring <monit@$HOST>
+    }
 
 New: Issue #330: Added environment variable MONIT_PROGRAM_STATUS to allow exec actions read
 the last program status.

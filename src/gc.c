@@ -112,8 +112,10 @@ void gc() {
         } else if (Run.httpd.flags & Httpd_Unix) {
                 FREE(Run.httpd.socket.unix.path);
         }
-        FREE(Run.MailFormat.from);
-        FREE(Run.MailFormat.sender);
+        if (Run.MailFormat.from)
+                Address_free(&(Run.MailFormat.from));
+        if (Run.MailFormat.replyto)
+                Address_free(&(Run.MailFormat.replyto));
         FREE(Run.MailFormat.subject);
         FREE(Run.MailFormat.message);
         FREE(Run.mail_hostname);
@@ -124,9 +126,11 @@ void gc_mail_list(Mail_T *m) {
         ASSERT(m);
         if ((*m)->next)
                 gc_mail_list(&(*m)->next);
+        if ((*m)->from)
+                Address_free(&((*m)->from));
+        if ((*m)->replyto)
+                Address_free(&((*m)->replyto));
         FREE((*m)->to);
-        FREE((*m)->from);
-        FREE((*m)->replyto);
         FREE((*m)->subject);
         FREE((*m)->message);
         FREE(*m);

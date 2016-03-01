@@ -106,7 +106,7 @@ set logfile syslog
 ## statement is missing::
 ## --8<--
 ## set mail-format {
-##   from:    monit@$HOST
+##   from:    Monit <monit@$HOST>
 ##   subject: monit alert --  $EVENT $SERVICE
 ##   message: $EVENT Service $SERVICE
 ##                 Date:        $DATE

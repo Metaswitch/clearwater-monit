@@ -303,6 +303,7 @@ static int verifyMaxForward(int);
 
 %union {
         URL_T url;
+        Address_T address;
         float real;
         int   number;
         char *string;
@@ -341,6 +342,7 @@ static int verifyMaxForward(int);
 %token URL CONTENT PID PPID FSFLAG
 %token REGISTER CREDENTIALS
 %token <url> URLOBJECT
+%token <address> ADDRESSOBJECT
 %token <string> TARGET TIMESPEC HTTPHEADER
 %token <number> MAXFORWARD
 %token FIPS
@@ -889,9 +891,14 @@ setmailservers  : SET MAILSERVER mailserverlist nettimeout hostname {
                 ;
 
 setmailformat   : SET MAILFORMAT '{' formatoptionlist '}' {
-                   Run.MailFormat.from    = mailset.from    ?  mailset.from    : Str_dup(ALERT_FROM);
-                   Run.MailFormat.sender  = mailset.sender  ?  mailset.sender  : NULL;
-                   Run.MailFormat.replyto = mailset.replyto ?  mailset.replyto : NULL;
+                   if (mailset.from) {
+                        Run.MailFormat.from = mailset.from;
+                   } else {
+                        Run.MailFormat.from = Address_new();
+                        Run.MailFormat.from->address = Str_dup(ALERT_FROM);
+                   }
+                   if (mailset.replyto)
+                        Run.MailFormat.replyto = mailset.replyto;
                    Run.MailFormat.subject = mailset.subject ?  mailset.subject : Str_dup(ALERT_SUBJECT);
                    Run.MailFormat.message = mailset.message ?  mailset.message : Str_dup(ALERT_MESSAGE);
                    reset_mailset();
@@ -1897,9 +1904,8 @@ formatoptionlist: formatoption
                 | formatoptionlist formatoption
                 ;
 
-formatoption    : MAILFROM { mailset.from = $1; }
-                | MAILSENDER { mailset.sender = $1; }
-                | MAILREPLYTO { mailset.replyto = $1; }
+formatoption    : MAILFROM ADDRESSOBJECT { mailset.from = $<address>1; }
+                | MAILREPLYTO ADDRESSOBJECT { mailset.replyto = $<address>1; }
                 | MAILSUBJECT { mailset.subject = $1; }
                 | MAILBODY { mailset.message = $1; }
                 ;
@@ -2772,7 +2778,6 @@ static void preparse() {
         Run.maillist                 = NULL;
         Run.mailservers              = NULL;
         Run.MailFormat.from          = NULL;
-        Run.MailFormat.sender        = NULL;
         Run.MailFormat.replyto       = NULL;
         Run.MailFormat.subject       = NULL;
         Run.MailFormat.message       = NULL;
@@ -3071,6 +3076,7 @@ static void addmail(char *mailto, Mail_T f, Mail_T *l) {
         NEW(m);
         m->to       = mailto;
         m->from     = f->from;
+        m->replyto  = f->replyto;
         m->subject  = f->subject;
         m->message  = f->message;
         m->events   = f->events;

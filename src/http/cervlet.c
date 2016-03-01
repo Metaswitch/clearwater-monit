@@ -537,12 +537,22 @@ static void do_runtime(HttpRequest req, HttpResponse res) {
                 }
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
-        if (Run.MailFormat.from)
-                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail from</td><td>%s</td></tr>", Run.MailFormat.from);
-        if (Run.MailFormat.sender)
-                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail sender</td><td>%s</td></tr>", Run.MailFormat.sender);
-        if (Run.MailFormat.replyto)
-                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail reply to</td><td>%s</td></tr>", Run.MailFormat.replyto);
+        if (Run.MailFormat.from) {
+                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail from</td><td>");
+                if (Run.MailFormat.from->name)
+                        StringBuffer_append(res->outputbuffer, "%s &lt;%s&gt;", Run.MailFormat.from->name, Run.MailFormat.from->address);
+                else
+                        StringBuffer_append(res->outputbuffer, "%s", Run.MailFormat.from->address);
+                StringBuffer_append(res->outputbuffer, "</td></tr>");
+        }
+        if (Run.MailFormat.replyto) {
+                StringBuffer_append(res->outputbuffer, "<tr><td>Default mail reply to</td><td>");
+                if (Run.MailFormat.replyto->name)
+                        StringBuffer_append(res->outputbuffer, "%s &lt;%s&gt;", Run.MailFormat.replyto->name, Run.MailFormat.replyto->address);
+                else
+                        StringBuffer_append(res->outputbuffer, "%s", Run.MailFormat.replyto->address);
+                StringBuffer_append(res->outputbuffer, "</td></tr>");
+        }
         if (Run.MailFormat.subject)
                 StringBuffer_append(res->outputbuffer, "<tr><td>Default mail subject</td><td>%s</td></tr>", Run.MailFormat.subject);
         if (Run.MailFormat.message)

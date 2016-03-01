@@ -51,6 +51,7 @@ monit_SOURCES	= src/y.tab.c \
 		  src/http/cervlet.c \
 		  src/http/engine.c \
 		  src/http/processor.c \
+		  src/notification/Address.c \
 		  src/notification/SMTP.c \
 		  src/process/sysdep_@ARCH@.c \
 		  src/protocols/apache_status.c \

@@ -78,6 +78,7 @@
 		9357B19B19F2F5A400329B3F /* mongodb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19919F2F5A400329B3F /* mongodb.c */; };
 		9357B19C19F2F5A400329B3F /* redis.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19A19F2F5A400329B3F /* redis.c */; };
 		9378737B1A13907100CF8C5E /* sieve.c in Sources */ = {isa = PBXBuildFile; fileRef = 9378737A1A13907100CF8C5E /* sieve.c */; };
+		93A23ED41C85E6890076FBFE /* Address.c in Sources */ = {isa = PBXBuildFile; fileRef = 93A23ED21C85E6890076FBFE /* Address.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -289,6 +290,8 @@
 		9357B19919F2F5A400329B3F /* mongodb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mongodb.c; sourceTree = "<group>"; };
 		9357B19A19F2F5A400329B3F /* redis.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = redis.c; sourceTree = "<group>"; };
 		9378737A1A13907100CF8C5E /* sieve.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sieve.c; sourceTree = "<group>"; };
+		93A23ED21C85E6890076FBFE /* Address.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Address.c; sourceTree = "<group>"; };
+		93A23ED31C85E6890076FBFE /* Address.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Address.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -608,6 +611,8 @@
 		9345745E1C771C9C00FF170F /* notification */ = {
 			isa = PBXGroup;
 			children = (
+				93A23ED21C85E6890076FBFE /* Address.c */,
+				93A23ED31C85E6890076FBFE /* Address.h */,
 				934574611C771C9C00FF170F /* SMTP.c */,
 				934574621C771C9C00FF170F /* SMTP.h */,
 			);
@@ -749,6 +754,7 @@
 				52F6E83913A74F220023F87A /* ldap3.c in Sources */,
 				52F6E83A13A74F220023F87A /* lmtp.c in Sources */,
 				52F6E83B13A74F220023F87A /* memcache.c in Sources */,
+				93A23ED41C85E6890076FBFE /* Address.c in Sources */,
 				9357B19C19F2F5A400329B3F /* redis.c in Sources */,
 				52F6E83C13A74F220023F87A /* mysql.c in Sources */,
 				52F6E83D13A74F220023F87A /* nntp.c in Sources */,
