@@ -256,7 +256,7 @@ void SMTP_auth(T S, const char *username, const char *password) {
         } else if (S->flags & MTA_AuthLogin) {
                 _send(S, "AUTH LOGIN\r\n");
                 _receive(S, 334, NULL);
-                strncpy(buffer, username, sizeof(buffer));
+                strncpy(buffer, username, sizeof(buffer) - 1);
                 char *b64 = encode_base64(strlen(buffer), (unsigned char *)buffer);
                 TRY
                 {
