@@ -268,7 +268,7 @@ void SMTP_auth(T S, const char *username, const char *password) {
                         FREE(b64);
                 }
                 END_TRY;
-                stpncpy(buffer, password, sizeof(buffer));
+                strncpy(buffer, password, sizeof(buffer) - 1);
                 b64 = encode_base64(strlen(buffer), (unsigned char *)buffer);
                 TRY
                 {
