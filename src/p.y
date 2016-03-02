@@ -224,7 +224,7 @@ static void  addservicegroup(char *);
 static void  addport(Port_T *, Port_T);
 static void  addhttpheader(Port_T, const char *);
 static void  addresource(Resource_T);
-static void  addtimestamp(Timestamp_T, boolean_t);
+static void  addtimestamp(Timestamp_T);
 static void  addactionrate(ActionRate_T);
 static void  addsize(Size_T);
 static void  adduptime(Uptime_T);
@@ -2095,12 +2095,12 @@ timestamp       : IF TIMESTAMP operator NUMBER time rate1 THEN action1 recovery 
                     timestampset.operator = $<number>3;
                     timestampset.time = ($4 * $<number>5);
                     addeventaction(&(timestampset).action, $<number>8, $<number>9);
-                    addtimestamp(&timestampset, false);
+                    addtimestamp(&timestampset);
                   }
                 | IF CHANGED TIMESTAMP rate1 THEN action1 {
                     timestampset.test_changes = true;
                     addeventaction(&(timestampset).action, $<number>6, Action_Ignored);
-                    addtimestamp(&timestampset, true);
+                    addtimestamp(&timestampset);
                   }
                 ;
 
@@ -3192,22 +3192,23 @@ static void addresource(Resource_T rr) {
 /*
  * Add a new file object to the current service timestamp list
  */
-static void addtimestamp(Timestamp_T ts, boolean_t notime) {
-        Timestamp_T t;
-
+static void addtimestamp(Timestamp_T ts) {
         ASSERT(ts);
 
+        Timestamp_T t;
         NEW(t);
         t->operator     = ts->operator;
         t->time         = ts->time;
         t->action       = ts->action;
         t->test_changes = ts->test_changes;
 
-        if (t->test_changes || notime) {
+        if (t->test_changes) {
                 if (! File_exist(current->path))
                         DEBUG("The path '%s' used in the TIMESTAMP statement refer to a non-existing object\n", current->path);
                 else if (! (t->timestamp = file_getTimestamp(current->path, S_IFDIR|S_IFREG)))
                         yyerror2("Cannot get the timestamp for '%s'", current->path);
+                else
+                        t->initialized = true;
         }
 
         t->next = current->timestamplist;
@@ -4341,6 +4342,7 @@ static void reset_timestampset() {
         timestampset.operator = Operator_Equal;
         timestampset.time = 0;
         timestampset.test_changes = false;
+        timestampset.initialized = false;
         timestampset.action = NULL;
 }
 

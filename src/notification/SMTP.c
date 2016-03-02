@@ -238,7 +238,7 @@ void SMTP_auth(T S, const char *username, const char *password) {
         ASSERT(S);
         ASSERT(username);
         ASSERT(password);
-        char buffer[STRLEN];
+        char buffer[STRLEN] = {};
         // PLAIN has precedence
         if (S->flags & MTA_AuthPlain) {
                 int len = snprintf(buffer, STRLEN, "%c%s%c%s", '\0', username, '\0', password);

@@ -203,9 +203,12 @@ static void _updateFilePosition(Service_T S, unsigned long long inode, unsigned 
 
 
 static void _updateTimestamp(Service_T S, unsigned long long timestamp) {
-        for (Timestamp_T t = S->timestamplist; t; t = t->next)
-                if (t->test_changes)
+        for (Timestamp_T t = S->timestamplist; t; t = t->next) {
+                if (t->test_changes) {
                         t->timestamp = (time_t)timestamp;
+                        t->initialized = true;
+                }
+        }
 }
 
 
@@ -216,9 +219,12 @@ static void _updatePermission(Service_T S, int mode) {
 
 
 static void _updateSize(Service_T S, unsigned long long size) {
-        for (Size_T s = S->sizelist; s; s = s->next)
-                if (s->test_changes)
+        for (Size_T s = S->sizelist; s; s = s->next) {
+                if (s->test_changes) {
                         s->size = size;
+                        s->initialized = true;
+                }
+        }
 }
 
 

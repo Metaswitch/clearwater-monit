@@ -613,13 +613,17 @@ static State_Type _checkTimestamp(Service_T s, time_t timestamp) {
                         time_t now = Time_now();
                         for (Timestamp_T t = s->timestamplist; t; t = t->next) {
                                 if (t->test_changes) {
-                                        /* if we are testing for changes only, the value is variable */
-                                        if (t->timestamp != timestamp) {
-                                                rv = State_Changed;
-                                                Event_post(s, Event_Timestamp, State_Changed, t->action, "timestamp for %s changed from %s to %s", s->path, t->timestamp ? Time_string(t->timestamp, (char[26]){}) : "N/A", Time_string(timestamp, (char[26]){}));
-                                                t->timestamp = timestamp; // reset expected value for next cycle
+                                        if (! t->initialized) {
+                                                t->initialized = true;
+                                                t->timestamp = timestamp;
                                         } else {
-                                                Event_post(s, Event_Timestamp, State_ChangedNot, t->action, "timestamp was not changed for %s", s->path);
+                                                if (t->timestamp != timestamp) {
+                                                        rv = State_Changed;
+                                                        Event_post(s, Event_Timestamp, State_Changed, t->action, "timestamp for %s changed from %s to %s", s->path, t->timestamp ? Time_string(t->timestamp, (char[26]){}) : "N/A", Time_string(timestamp, (char[26]){}));
+                                                        t->timestamp = timestamp; // reset expected value for next cycle
+                                                } else {
+                                                        Event_post(s, Event_Timestamp, State_ChangedNot, t->action, "timestamp was not changed for %s", s->path);
+                                                }
                                         }
                                 } else {
                                         /* we are testing constant value for failed or succeeded state */
@@ -659,7 +663,7 @@ static State_Type _checkSize(Service_T s, off_t size) {
                                         } else {
                                                 if (sl->size != size) {
                                                         rv = State_Changed;
-                                                        Event_post(s, Event_Size, State_Changed, sl->action, "size was changed for %s", s->path);
+                                                        Event_post(s, Event_Size, State_Changed, sl->action, "size for %s changed to %s", s->path, Str_bytesToSize(size, buf));
                                                         /* reset expected value for next cycle */
                                                         sl->size = size;
                                                 } else {

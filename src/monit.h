@@ -732,6 +732,7 @@ typedef struct myresource {
 
 /** Defines timestamp object */
 typedef struct mytimestamp {
+        boolean_t initialized;              /**< true if timestamp was initialized */
         boolean_t test_changes;       /**< true if we only should test for changes */
         Operator_Type operator;                           /**< Comparison operator */
         int  time;                                        /**< Timestamp watermark */
