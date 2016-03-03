@@ -1083,17 +1083,17 @@ mail-format> statement:
 Example:
 
  set mail-format {
-      from: Monit <monit@foo.bar>
-  reply-to: Support <support@domain.com>
+      from: Monit Support <monit@foo.bar>
+  reply-to: support@domain.com
    subject: $SERVICE $EVENT at $DATE
    message: Monit $ACTION $SERVICE at $DATE on $HOST: $DESCRIPTION.
             Yours sincerely,
             monit
  }
 
-The I<from:> option is the sender's email address for Monit alerts.
-A sender name is optional and plain address with or without angle
-brackets can be used.
+The I<from:> option is the sender's email address for Monit alerts. A
+sender's name is optional, but if used, requires that the subsequent
+email-address is enclosed in angle brackets as in the example above.
 
 The I<reply-to:> option can be used to set the reply-to mail header,
 optionally with a name.
@@ -2868,12 +2868,12 @@ Example:
     checksum 8f7f419955cefa0b33a2ba316cba3659
  then alert
 
-I<HTTP HEADERS> can be used to send a list of any HTTP headers
-with a HTTP protocol test. For instance, the host header. If the
-host header is not set, Monit will use the hostname or IP-address
-of the host as specified in the check host statement. Specifying
-a host header is useful if you want to connect to and test a
-name-based virtual host. The syntax for setting HTTP headers is
+I<HTTP HEADERS> can be used to send a list of HTTP headers when using
+the HTTP protocol test. For instance, the host header. If the host
+header is not set, Monit will use the hostname or IP-address of the
+host as specified in the check host statement. Specifying a host header
+is useful if you want to connect to and test a name-based virtual host.
+The syntax for setting HTTP headers is
 
   http headers [name:value, name:value,..]
 
@@ -2897,12 +2897,13 @@ Setting HTTP headers is associated with the HTTP protocol test
 and must come before I<request> as in the example above.
 
 
-I<CONTENT> option sets the pattern which is expected in the data
-returned by the server. If the pattern doesn't match, event is
-triggered.
+The I<CONTENT> option sets the pattern which is expected in the data
+returned by the server. If the pattern doesn't match, the test fails. In
+the example above, if the server does not return a page with the name
+Monit followed by a version number the test will fail.
 
-By default at maximum 1MB is inspected. You can increase the limit
-using the L<set limits|"LIMITS"> statement.
+By default, at maximum 1MB of content is inspected. You can
+increase this limit using the L<set limits|"LIMITS"> statement.
 
 For example:
 
@@ -2969,18 +2970,20 @@ I<USERNAME> MySQL username (maximum 16 characters).
 I<PASSWORD> MySQL password (special characters can be used, but for non-alphanumerics
 the password has to be quoted).
 
-The credentials are B<optional>. If no credentials are set, Monit will perform
-the test using anonymous login. That may cause authentication error to be logged
-in your MySQL log for higher MySQL log levels.
+Username and password (credentials) are B<optional> and if not set,
+Monit will perform the test using anonymous login. This can cause an
+authentication error to be logged in your MySQL log, depending on your
+MySQL configuration.
 
-If credentials are set, Monit will login and perform MySQL ping. Monit doesn't
-require any database privileges, it needs just database user, we recommend to
-create standalone user for Monit testing, for example:
+If credentials are set, Monit will login and perform a MySQL ping test.
+Monit does not require any database privileges, it just needs the
+database user. You might want to create standalone user for Monit to
+use when testing, for example:
 
  CREATE USER 'monit'@'host_from_which_monit_performs_testing' IDENTIFIED BY 'mysecretpassword';
  FLUSH PRIVILEGES;
 
-For example:
+Example:
 
  check process mysql with pidfile /var/run/mysqld/mysqld.pid
      start program = "/sbin/start mysql"
@@ -3055,14 +3058,16 @@ Syntax:
 
 I<USERNAME> SMTP username.
 
-I<PASSWORD> SMTP password (special characters can be used, but for non-alphanumerics
-the password has to be quoted).
+I<PASSWORD> SMTP password (special characters can be used, but for
+non-alphanumerics the password has to be quoted).
+ 
+Credentials are I<optional> and when used will perform authentication
+during testing so you can test that authentication also works. We
+recommend using I<smtps> if authentication is to be used to encrypt the
+communication. If no credentials are set, Monit will just perform a
+basic protocol test.
 
-The credentials are B<optional> and when used, it is strongly recommended to use the SMTPS
-protocol to protect the credentials. If no credentials are set, Monit will perform just basic
-test.
-
-Basic example:
+Example:
 
  check process postfix with pidfile /var/spool/postfix/pid/master.pid
      start program = "/etc/init.d/postfix start"
@@ -3072,7 +3077,7 @@ Basic example:
         protocol smtp
      then alert
 
-Advanced test with STARTTLS and authentication:
+Example using authentication and STARTTLS/SMTPS:
 
  check process postfix with pidfile /var/spool/postfix/pid/master.pid
      start program = "/etc/init.d/postfix start"
@@ -3472,7 +3477,7 @@ The host the event occurred on
 =back
 
 The following environment variables are only available for
-process service entries:
+I<check process> service entries:
 
 =over 4
 
@@ -3495,7 +3500,7 @@ Process cpu%. This may be 0 if the process was (re)started,
 =back
 
 The following environment variables are only available for
-program service entries:
+I<check program> service entries:
 
 =over 4
 
