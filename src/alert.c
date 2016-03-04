@@ -116,7 +116,14 @@ static void _copyMail(Mail_T n, Mail_T o) {
         ASSERT(o);
 
         n->to = Str_dup(o->to);
-        n->from = o->from ? Address_copy(o->from) : Run.MailFormat.from ? Address_copy(Run.MailFormat.from) : NULL;
+        if (o->from) {
+                n->from = Address_copy(o->from);
+        } else if (Run.MailFormat.from) {
+                n->from = Address_copy(Run.MailFormat.from);
+        } else {
+                n->from = Address_new();
+                n->from->address = Str_dup(ALERT_FROM);
+        }
         n->replyto = o->replyto ? Address_copy(o->replyto) : Run.MailFormat.replyto ? Address_copy(Run.MailFormat.replyto) : NULL;
         n->subject = o->subject ? Str_dup(o->subject) : Run.MailFormat.subject ? Str_dup(Run.MailFormat.subject) : Str_dup(ALERT_SUBJECT);
         n->message = o->message ? Str_dup(o->message) : Run.MailFormat.message ? Str_dup(Run.MailFormat.message) : Str_dup(ALERT_MESSAGE);
