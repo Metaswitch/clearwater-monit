@@ -4,7 +4,8 @@
 
 Version 5.17.1
 
-Fixed: Issue #331: Monit crashed if no mail-format from is defined (regression in Monit 5.17).
+Fixed: Issue #331: Monit crashed if alert by mail is configured, but no mail-format "from"
+is defined (regression in Monit 5.17).
 
 
 Version 5.17
