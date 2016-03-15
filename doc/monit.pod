@@ -1287,7 +1287,7 @@ There are three variants:
 
 =back
 
-The cron-style string, consist of 5 fields separated with white-space.
+A cron-style string consist of 5 fields separated with white-space.
 All fields are required:
 
  Name:        | Allowed values:            | Special characters:
