@@ -1261,10 +1261,10 @@ Example:
 
 =head1 SERVICE POLL TIME
 
-Services are checked in regular intervals by the C<set daemon n>
-statement. Checks are performed in the same order as they are written
-in the C<.monitrc> file, except if dependencies are setup between
-services, where pre-requisite services are tested first.
+Services are checked regularly in an interval defined by the C<set
+daemon n> statement. Checks are performed in the same order as they are
+written in the C<.monitrc> file, except if dependencies are setup
+between services, where pre-requisite services are tested first.
 
 It is possible to modify a service check schedule by using the C<every>
 statement.
@@ -1273,22 +1273,22 @@ There are three variants:
 
 =over 4
 
-=item 1. custom interval based on a poll cycle multiple
+=item 1. A poll cycle multiple
 
  EVERY [number] CYCLES
 
-=item 2. check is schedule based on a cron-style string
+=item 2. Cron-style
 
  EVERY [cron]
 
-=item 3. do-not-check schedule based on a cron-style string
+=item 3. Negative Cron-style (do-not-check)   
 
  NOT EVERY [cron]
 
 =back
 
-A cron-style string, consist of 5 fields separated with
-white-space. All fields are required:
+The cron-style string, consist of 5 fields separated with white-space.
+All fields are required:
 
  Name:        | Allowed values:            | Special characters:
  ---------------------------------------------------------------
@@ -1324,27 +1324,28 @@ Example 1: Check once per two cycles
  check process nginx with pidfile /var/run/nginx.pid
        every 2 cycles
 
-Example 2: Check every workday 8AM-7PM
+Example 2: Check every workday between 8AM to 7PM
 
  check program checkOracleDatabase
         with path /var/monit/programs/checkoracle.pl
        every "* 8-19 * * 1-5"
 
-Example 3: Do not run the check in the backup window on
-Sunday 0AM-3AM
+Example 3: Do not run the check in the backup window on Sunday between
+0AM to 3AM, otherwise run the check with the regular poll cycle
+frequency.
 
  check process mysqld with pidfile /var/run/mysqld.pid
        not every "* 0-3 * * 0"
 
 Limitations:
 
-The current scheduler is poll cycle based. When a service check is
-constraint with the I<every cron> statement, Monit will check whether
-the current time match the cron-string pattern. If it does, the check
-is performed, otherwise it is skipped. The cron specification thus does
-not guarantee when exactly the test will run, this depends on the
-default poll time and the length of the check cycle. In other words, we
-cannot guarantee that Monit will run on a specific time. Therefor we
+The current scheduler is poll cycle based. If a service check is
+scheduled with the I<every cron> statement, Monit will check if the
+current time match the cron-string pattern. If it does, then the check
+is performed otherwise it is skipped. The cron specification does not
+guarantee when exactly the test will run, this depends on the default
+poll time and the length of the check cycle. In other words, we cannot
+guarantee that Monit will run on a specific time. Therefor we
 B<strongly> recommend to use an asterix in the minute field or at
 minimum a range, e..g. 0-15. B<Never> use a specific minute as Monit
 may not run on that minute.
