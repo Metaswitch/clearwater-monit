@@ -4,6 +4,9 @@
 
 Version 6.0
 
+Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
+but a zombie was left. Thanks to Guillem Jover for patch.
+
 
 Version 5.17.1
 
