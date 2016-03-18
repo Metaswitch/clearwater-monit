@@ -24,6 +24,8 @@ script
     [ "$START" = "yes" ] || { stop; exit 0; }
 
     exec /usr/bin/monit -I -c /etc/monit/monitrc $MONIT_OPTS    
+
+    exec /usr/share/clearwater/bin/issue_alarm.py "upstart" "4500.6"
 end script
 
 pre-stop exec /usr/bin/monit -c /etc/monit/monitrc quit
