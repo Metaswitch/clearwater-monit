@@ -1207,7 +1207,7 @@ checkprogram    : CHECKPROGRAM SERVICENAME PATHTOK argumentlist programtimeout {
                         command_t c = command; // Current command
                         check_exec(c->arg[0]);
                         createservice(Service_Program, $<string>2, Str_dup(c->arg[0]), check_program);
-                        current->program->timeout = $<number>5;
+                        current->program->timeout = $<number>6;
                         current->program->output = StringBuffer_create(64);
                  }
                 ;

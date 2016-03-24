@@ -7,6 +7,8 @@ Version 6.0
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
 but a zombie was left. Thanks to Guillem Jover for patch.
 
+Fixed: Issue #336: CHECK PROGRAM timeout parsing issue when run as another user
+
 
 Version 5.17.1
 
