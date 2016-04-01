@@ -368,7 +368,8 @@ void process_testmatch(char *pattern) {
         initprocesstree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
         if (Run.flags & Run_ProcessEngineEnabled) {
                 int count = 0;
-                printf("List of processes matching pattern \"%s\":\n", pattern);
+                printf("List of processes matching pattern \"%s\":\n\n", pattern);
+                printf("  PID  PPID COMMAND\n");
                 printf("------------------------------------------\n");
                 for (int i = 0; i < ptreesize; i++) {
                         boolean_t match = false;
@@ -379,7 +380,7 @@ void process_testmatch(char *pattern) {
                                 match = strstr(ptree[i].cmdline, pattern) ? true : false;
 #endif
                                 if (match) {
-                                        printf("\t%s\n", ptree[i].cmdline);
+                                        printf("%*d %*d %s\n", 5, ptree[i].pid, 5, ptree[i].ppid, ptree[i].cmdline);
                                         count++;
                                 }
                         }
@@ -387,7 +388,7 @@ void process_testmatch(char *pattern) {
                 printf("------------------------------------------\n");
                 printf("Total matches: %d\n", count);
                 if (count > 1)
-                        printf("WARNING: multiple processes matched the pattern. The check is FIRST-MATCH based, please refine the pattern\n");
+                        printf("WARNING: multiple processes matched the pattern, please refine the pattern if possible. The check is FIRST-MATCH and TOP-MOST-PARENT based.\n");
         }
 }
 

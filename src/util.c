@@ -294,6 +294,18 @@ static void printevents(unsigned int events) {
 }
 
 
+static boolean_t _processMatch(Match_T match, const char *command) {
+        if (command) {
+#ifdef HAVE_REGEX_H
+                return regexec(match->regex_comp, command, 0, NULL, 0) ? false : true;
+#else
+                return strstr(command, match->match_string) ? true : false;
+#endif
+        }
+        return false;
+}
+
+
 #ifdef HAVE_LIBPAM
 /**
  * PAM conversation
@@ -1481,18 +1493,9 @@ int Util_isProcessRunning(Service_T s) {
                  * which it traverses is changed during glob (process stopped). Note that the glob failure is rare and temporary - it will be OK on next cycle.
                  * We skip the process matching that cycle however because we don't have process informations - will retry next cycle */
                 if (Run.flags & Run_ProcessEngineEnabled) {
-                        for (int i = 0; i < ptreesize; i++) {
-                                boolean_t found = false;
-                                if (ptree[i].cmdline) {
-#ifdef HAVE_REGEX_H
-                                        found = regexec(s->matchlist->regex_comp, ptree[i].cmdline, 0, NULL, 0) ? false : true;
-#else
-                                        found = strstr(ptree[i].cmdline, s->matchlist->match_string) ? true : false;
-#endif
-                                }
-                                if (found && (getpgid(ptree[i].pid) > -1 || errno == EPERM))
+                        for (int i = 0; i < ptreesize; i++)
+                                if (_processMatch(s->matchlist, ptree[i].cmdline) && (i == ptree[i].parent || ! _processMatch(s->matchlist, ptree[ptree[i].parent].cmdline)) && (getpgid(ptree[i].pid) > -1 || errno == EPERM))
                                         return ptree[i].pid;
-                        }
                 } else {
                         DEBUG("Process information not available -- skipping service %s process existence check for this cycle\n", s->name);
                         /* Return value is NOOP - it is based on existing errors bitmap so we don't generate false recovery/failures */

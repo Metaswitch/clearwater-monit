@@ -12,6 +12,10 @@ message.
 
 Fixed: Issue #336: CHECK PROGRAM timeout parsing issue when run as another user
 
+Fixed: When the pattern based process check finds a matching process, it will select the top-most
+parent process if it matches the pattern too. Originally the pattern based process check was
+first-match based only.
+
 Fixed: RPM package template.
 
 
