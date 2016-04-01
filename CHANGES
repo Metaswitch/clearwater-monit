@@ -1,8 +1,8 @@
-                     CHANGES version 6.0
+                     CHANGES version 5.18
 
            This file summarizes changes made since 5.0
 
-Version 6.0
+Version 5.18
 
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
 but a zombie was left. Thanks to Guillem Jover for patch.
