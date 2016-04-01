@@ -112,18 +112,20 @@ void check_generic(Socket_T socket) {
                         if (regex_return != 0) {
                                 char e[STRLEN];
                                 regerror(regex_return, g->expect, e, STRLEN);
+                                char error[STRLEN];
+                                snprintf(error, sizeof(error), "GENERIC: received unexpected data [%s] -- %s", Str_trunc(Str_trim(buf), sizeof(error) - 128), e);
                                 FREE(buf);
-                                THROW(IOException, "GENERIC: received unexpected data -- %s", e);
+                                THROW(IOException, "%s", error);
                         } else {
                                 DEBUG("GENERIC: successfully received: '%s'\n", Str_trunc(buf, STRLEN - 4));
                         }
 
 #else
-                        /* w/o regex support */
-
                         if (strncmp(buf, g->expect, strlen(g->expect)) != 0) {
+                                char error[STRLEN];
+                                snprintf(error, sizeof(error), "GENERIC: received unexpected data [%s] -- %s", Str_trunc(Str_trim(buf), sizeof(error) - 128), e);
                                 FREE(buf);
-                                THROW(IOException, "GENERIC: received unexpected data");
+                                THROW(IOException, "%s", error);
                         } else {
                                 DEBUG("GENERIC: successfully received: '%s'\n", Str_trunc(buf, STRLEN - 4));
                         }
