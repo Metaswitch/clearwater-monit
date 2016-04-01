@@ -12,6 +12,8 @@ message.
 
 Fixed: Issue #336: CHECK PROGRAM timeout parsing issue when run as another user
 
+Fixed: RPM package template.
+
 
 Version 5.17.1
 
