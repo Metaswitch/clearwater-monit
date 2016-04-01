@@ -323,18 +323,20 @@ separate files.
 
 =item 3. One or more service entry statements.
 
+=back
+
+=head2 Service checks
+
 Each service entry consists of the keywords C<check>, followed by the
 service type. Each entry requires a B<unique> descriptive name, which
 may be freely chosen. This name is used by Monit to refer to the
 service internally and in all interactions with the user.
 
-=back
-
 Currently, nine types of check statements are supported:
 
-=over 4
+=head3 Process
 
-=item 1. CHECK PROCESS <unique name> <PIDFILE <path> | MATCHING <regex>>
+    CHECK PROCESS <unique name> <PIDFILE <path> | MATCHING <regex>>
 
 <path> is the absolute path to the program's pid-file. A pid-file is a
 file, containing a Process's unique ID. If the pid-file does not exist
@@ -351,7 +353,9 @@ pattern temporarily). You can test if a process match a pattern from
 the command-line using C<monit procmatch "regex-pattern">. This will
 lists all processes matching or not, the regex-pattern.
 
-=item 2. CHECK FILE <unique name> PATH <path>
+=head3 File
+
+    CHECK FILE <unique name> PATH <path>
 
 <path> is the absolute path to the file. If the file does not exist,
 Monit will call the entry's start method if defined, if <path> does not
@@ -359,7 +363,9 @@ point to a regular file type (for instance a directory), Monit will
 disable monitoring of this entry. If Monit runs in passive mode or the
 start method is not defined, Monit will just send an alert on error.
 
-=item 3. CHECK FIFO <unique name> PATH <path>
+=head3 Fifo
+
+    CHECK FIFO <unique name> PATH <path>
 
 <path> is the absolute path to the fifo. If the fifo does not exist,
 Monit will call the entry's start method if defined, if <path> does not
@@ -367,7 +373,9 @@ point to a fifo type (for instance a directory), Monit will disable
 monitoring of this entry. If Monit runs in passive mode or the start
 method is not defined, Monit will just send an alert on error.
 
-=item 4. CHECK FILESYSTEM <unique name> PATH <path>
+=head3 Filesystem
+
+    CHECK FILESYSTEM <unique name> PATH <path>
 
 <path> is the path to the device/disk, mount point, file or a directory
 which is part of a filesystem. It is recommended to use a block special
@@ -382,7 +390,9 @@ Monit will disable monitoring of this entry. If Monit runs in passive
 mode or the start method is not defined, Monit will just send an alert
 on error.
 
-=item 5. CHECK DIRECTORY <unique name> PATH <path>
+=head3 Directory
+
+    CHECK DIRECTORY <unique name> PATH <path>
 
 <path> is the absolute path to the directory. If the directory does not
 exist, Monit will call the entry's start method if defined. If <path>
@@ -390,13 +400,17 @@ does not point to a directory, monit will disable monitoring of this
 entry. If Monit runs in passive mode or the start methods is not
 defined, Monit will just send an alert on error.
 
-=item 6. CHECK HOST <unique name> ADDRESS <host address>
+=head3 Remote host
+
+    CHECK HOST <unique name> ADDRESS <host address>
 
 The host address can be specified as a hostname string or as an
 IP-address string on a dotted decimal format. Such as,
 tildeslash.com or "64.87.72.95".
 
-=item 7. CHECK SYSTEM <unique name>
+=head3 System
+
+    CHECK SYSTEM <unique name>
 
 The I<unique name> is usually the local host name, but any descriptive
 name can be used. If you use the variable $HOST as the name, it will
@@ -405,7 +419,9 @@ resources such as CPU usage, total memory usage or load average. The
 I<unique name> is used as the system hostname in mail alerts and as
 the initial name of the host entry in M/Monit.
 
-=item 8. CHECK PROGRAM <unique name> PATH <executable file> [TIMEOUT <number> SECONDS]
+=head3 Custom
+
+    CHECK PROGRAM <unique name> PATH <executable file> [TIMEOUT <number> SECONDS]
 
 <path> is the absolute path to the executable program or script. The
 L<status|/"PROGRAM STATUS TESTING"> test allows one to check the
@@ -416,12 +432,12 @@ made available in the User Interface and in alerts (by default up to
 512B, you can customize the limit using the L<set limits|"LIMITS">
 statement).
 
-=item 9. CHECK NETWORK <unique name> <ADDRESS <ipaddress> | INTERFACE <name>>
+=head3 Network
+
+    CHECK NETWORK <unique name> <ADDRESS <ipaddress> | INTERFACE <name>>
 
 <ipaddress> is the IPv4 or IPv6 address of the monitored network interface. It
 is also possible to use interface name, such as "eth0" on Linux.
-
-=back
 
 
 
