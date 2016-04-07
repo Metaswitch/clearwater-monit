@@ -3537,9 +3537,7 @@ static void addmatch(Match_T ms, int actionnumber, int linenumber) {
         ASSERT(ms);
 
         NEW(m);
-#ifdef HAVE_REGEX_H
         NEW(m->regex_comp);
-#endif
 
         m->match_string = ms->match_string;
         m->match_path   = ms->match_path ? Str_dup(ms->match_path) : NULL;
@@ -3550,7 +3548,6 @@ static void addmatch(Match_T ms, int actionnumber, int linenumber) {
 
         addeventaction(&(m->action), actionnumber, Action_Ignored);
 
-#ifdef HAVE_REGEX_H
         int reg_return = regcomp(m->regex_comp, ms->match_string, REG_NOSUB|REG_EXTENDED);
 
         if (reg_return != 0) {
@@ -3561,7 +3558,6 @@ static void addmatch(Match_T ms, int actionnumber, int linenumber) {
                 else
                         yyerror2("Regex parsing error: %s", errbuf);
         }
-#endif
         appendmatch(m->ignore ? &current->matchignorelist : &current->matchlist, m);
 }
 
@@ -3774,7 +3770,6 @@ static void addgeneric(Port_T port, char *send, char *expect) {
                 g->send = send;
                 g->expect = NULL;
         } else if (expect) {
-#ifdef HAVE_REGEX_H
                 int reg_return;
                 NEW(g->expect);
                 reg_return = regcomp(g->expect, expect, REG_NOSUB|REG_EXTENDED);
@@ -3784,9 +3779,6 @@ static void addgeneric(Port_T port, char *send, char *expect) {
                         regerror(reg_return, g->expect, errbuf, STRLEN);
                         yyerror2("Regex parsing error: %s", errbuf);
                 }
-#else
-                g->expect = expect;
-#endif
                 g->send = NULL;
         }
 }
@@ -3867,21 +3859,14 @@ static void  seturlrequest(int operator, char *regex) {
         if (! urlrequest)
                 NEW(urlrequest);
         urlrequest->operator = operator;
-        #ifdef HAVE_REGEX_H
-        {
-                int reg_return;
-                NEW(urlrequest->regex);
-                reg_return = regcomp(urlrequest->regex, regex, REG_NOSUB|REG_EXTENDED);
-                if (reg_return != 0) {
-                        char errbuf[STRLEN];
-                        regerror(reg_return, urlrequest->regex, errbuf, STRLEN);
-                        yyerror2("Regex parsing error: %s", errbuf);
-                }
+        int reg_return;
+        NEW(urlrequest->regex);
+        reg_return = regcomp(urlrequest->regex, regex, REG_NOSUB|REG_EXTENDED);
+        if (reg_return != 0) {
+                char errbuf[STRLEN];
+                regerror(reg_return, urlrequest->regex, errbuf, STRLEN);
+                yyerror2("Regex parsing error: %s", errbuf);
         }
-        #else
-        urlrequest->regex = Str_dup(regex);
-        #endif
-
 }
 
 

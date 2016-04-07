@@ -290,10 +290,8 @@ static void _gc_request(Request_T *r) {
         ASSERT(r);
         if ((*r)->url)
                 _gc_url(&(*r)->url);
-#ifdef HAVE_REGEX_H
         if ((*r)->regex)
                 regfree((*r)->regex);
-#endif
         FREE((*r)->regex);
         FREE(*r);
 }
@@ -497,12 +495,10 @@ static void _gcmatch(Match_T *s) {
                 _gc_eventaction(&(*s)->action);
         FREE((*s)->match_path);
         FREE((*s)->match_string);
-#ifdef HAVE_REGEX_H
         if ((*s)->regex_comp) {
                 regfree((*s)->regex_comp);
                 FREE((*s)->regex_comp);
         }
-#endif
         FREE(*s);
 }
 
@@ -603,10 +599,8 @@ static void _gcgeneric(Generic_T *g) {
         if ((*g)->next)
                 _gcgeneric(&(*g)->next);
         FREE((*g)->send);
-#ifdef HAVE_REGEX_H
         if ((*g)->expect != NULL)
                 regfree((*g)->expect);
-#endif
         FREE((*g)->expect);
         FREE(*g);
 

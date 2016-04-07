@@ -709,14 +709,7 @@ static State_Type _checkUptime(Service_T s) {
 
 
 static int _checkPattern(Match_T pattern, const char *line) {
-#ifdef HAVE_REGEX_H
         return regexec(pattern->regex_comp, line, 0, NULL, 0);
-#else
-        if (strstr(line, pattern->match_string) == NULL)
-                return -1;
-        else
-                return 0;
-#endif
 }
 
 

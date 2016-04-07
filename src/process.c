@@ -351,7 +351,6 @@ void delprocesstree(ProcessTree_T **reference, int *size) {
 
 
 void process_testmatch(char *pattern) {
-#ifdef HAVE_REGEX_H
         regex_t *regex_comp;
         int reg_return;
 
@@ -364,7 +363,6 @@ void process_testmatch(char *pattern) {
                 printf("Regex %s parsing error: %s\n", pattern, errbuf);
                 exit(1);
         }
-#endif
         initprocesstree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
         if (Run.flags & Run_ProcessEngineEnabled) {
                 int count = 0;
@@ -372,14 +370,8 @@ void process_testmatch(char *pattern) {
                 printf("  PID  PPID COMMAND\n");
                 printf("------------------------------------------\n");
                 for (int i = 0; i < ptreesize; i++) {
-                        boolean_t match = false;
                         if (ptree[i].cmdline && ! strstr(ptree[i].cmdline, "procmatch")) {
-#ifdef HAVE_REGEX_H
-                                match = regexec(regex_comp, ptree[i].cmdline, 0, NULL, 0) ? false : true;
-#else
-                                match = strstr(ptree[i].cmdline, pattern) ? true : false;
-#endif
-                                if (match) {
+                                if (! regexec(regex_comp, ptree[i].cmdline, 0, NULL, 0)) {
                                         printf("%*d %*d %s\n", 5, ptree[i].pid, 5, ptree[i].ppid, ptree[i].cmdline);
                                         count++;
                                 }

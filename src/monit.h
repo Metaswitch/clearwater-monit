@@ -473,11 +473,7 @@ typedef struct myurl {
 typedef struct myrequest {
         URL_T url;                                               /**< URL request */
         Operator_Type operator;         /**< Response content comparison operator */
-#ifdef HAVE_REGEX_H
         regex_t *regex;                   /* regex used to test the response body */
-#else
-        char *regex;                 /* string to search for in the response body */
-#endif
 } *Request_T;
 
 
@@ -595,11 +591,7 @@ typedef struct Protocol_T {
 /** Defines a send/expect object used for generic protocol tests */
 typedef struct mygenericproto {
         char *send;                           /* string to send, or NULL if expect */
-#ifdef HAVE_REGEX_H
         regex_t *expect;                  /* regex code to expect, or NULL if send */
-#else
-        char *expect;                         /* string to expect, or NULL if send */
-#endif
         /** For internal use */
         struct mygenericproto *next;
 } *Generic_T;
@@ -886,9 +878,7 @@ typedef struct mymatch {
         boolean_t not;                                           /**< Invert match */
         char    *match_string;                                   /**< Match string */ //FIXME: union?
         char    *match_path;                         /**< File with matching rules */ //FIXME: union?
-#ifdef HAVE_REGEX_H
         regex_t *regex_comp;                                    /**< Match compile */
-#endif
         StringBuffer_T log;    /**< The temporary buffer used to record the matches */
         EventAction_T action;  /**< Description of the action upon event occurence */
 

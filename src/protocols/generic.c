@@ -107,7 +107,6 @@ void check_generic(Socket_T socket) {
                         if (n > 0)
                                 _escapeZeroInExpectBuffer(buf, n);
                         Socket_setTimeout(socket, timeout); // Reset back original timeout for next send/expect
-#ifdef HAVE_REGEX_H
                         int regex_return = regexec(g->expect, buf, 0, NULL, 0);
                         if (regex_return != 0) {
                                 char e[STRLEN];
@@ -119,19 +118,6 @@ void check_generic(Socket_T socket) {
                         } else {
                                 DEBUG("GENERIC: successfully received: '%s'\n", Str_trunc(buf, STRLEN - 4));
                         }
-
-#else
-                        if (strncmp(buf, g->expect, strlen(g->expect)) != 0) {
-                                char error[STRLEN];
-                                snprintf(error, sizeof(error), "GENERIC: received unexpected data [%s] -- %s", Str_trunc(Str_trim(buf), sizeof(error) - 128), e);
-                                FREE(buf);
-                                THROW(IOException, "%s", error);
-                        } else {
-                                DEBUG("GENERIC: successfully received: '%s'\n", Str_trunc(buf, STRLEN - 4));
-                        }
-
-#endif
-
                 } else {
                         /* This should not happen */
                         FREE(buf);

@@ -295,13 +295,8 @@ static void printevents(unsigned int events) {
 
 
 static boolean_t _processMatch(Match_T match, const char *command) {
-        if (command) {
-#ifdef HAVE_REGEX_H
+        if (command)
                 return regexec(match->regex_comp, command, 0, NULL, 0) ? false : true;
-#else
-                return strstr(command, match->match_string) ? true : false;
-#endif
-        }
         return false;
 }
 
