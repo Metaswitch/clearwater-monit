@@ -95,7 +95,8 @@ boolean_t status(const char *level, const char *group, const char *service) {
                 LogError("Status not available - monit http interface is not enabled, please add the 'set httpd' statement\n");
         }
         if (S) {
-                Socket_print(S, "GET /_status?format=text&level=%s", level);
+                char *term = getenv("TERM"); //FIXME: better way to detect color support
+                Socket_print(S, "GET /_status?format=text&level=%s&color=%s", level, term && Str_sub(term, "color") ? "yes" : "no");
                 if (group) {
                         char *_group = Util_urlEncode((char *)group);
                         Socket_print(S, "&group=%s", _group);

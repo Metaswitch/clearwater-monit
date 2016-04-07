@@ -335,6 +335,12 @@ typedef enum {
 
 
 typedef enum {
+        Color_Disabled = 0,
+        Color_Enabled
+} __attribute__((__packed__)) Color_Type;
+
+
+typedef enum {
         Handler_Succeeded = 0x0,
         Handler_Alert     = 0x1,
         Handler_Mmonit    = 0x2,
