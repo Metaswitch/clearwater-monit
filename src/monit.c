@@ -76,6 +76,7 @@
 #include "state.h"
 #include "event.h"
 #include "engine.h"
+#include "client.h"
 
 // libmonit
 #include "Bootstrap.h"
@@ -398,7 +399,6 @@ static void do_reinit() {
  */
 static void do_action(char **args) {
         char *action = args[optind];
-        char *service = args[++optind];
 
         Run.flags |= Run_Once;
 
@@ -409,6 +409,7 @@ static void do_action(char **args) {
                    IS(action, "monitor")   ||
                    IS(action, "unmonitor") ||
                    IS(action, "restart")) {
+                char *service = args[++optind];
                 if (Run.mygroup || service) {
                         int errors = 0;
                         List_T services = List_new();
@@ -445,24 +446,33 @@ static void do_action(char **args) {
                 LogInfo("Reinitializing %s daemon\n", prog);
                 kill_daemon(SIGHUP);
         } else if (IS(action, "status")) {
-                if (! status(LEVEL_NAME_FULL, Run.mygroup, service))
+                char *service = args[++optind];
+                if (! HttpClient_status(Run.mygroup, service))
                         exit(1);
         } else if (IS(action, "summary")) {
-                if (! status(LEVEL_NAME_SUMMARY, Run.mygroup, service))
+                char *service = args[++optind];
+                if (! HttpClient_summary(Run.mygroup, service))
+                        exit(1);
+        } else if (IS(action, "report")) {
+                char *type = args[++optind];
+                if (! HttpClient_report(type))
                         exit(1);
         } else if (IS(action, "procmatch")) {
-                if (! service) {
+                char *pattern = args[++optind];
+                if (! pattern) {
                         printf("Invalid syntax - usage: procmatch \"<pattern>\"\n");
                         exit(1);
                 }
-                process_testmatch(service);
+                process_testmatch(pattern);
         } else if (IS(action, "quit")) {
                 kill_daemon(SIGTERM);
         } else if (IS(action, "validate")) {
-                if (do_wakeupcall())
-                        status(LEVEL_NAME_FULL, Run.mygroup, service);
-                else
+                if (do_wakeupcall()) {
+                        char *service = args[++optind];
+                        HttpClient_status(Run.mygroup, service);
+                } else {
                         _validateOnce();
+                }
                 exit(1);
         } else {
                 LogError("Invalid argument -- %s  (-h will show valid arguments)\n", action);
@@ -596,7 +606,7 @@ static void handle_options(int argc, char **argv) {
         int deferred_opt = 0;
         opterr = 0;
         Run.mygroup = NULL;
-        const char *shortopts = "c:d:g:l:p:s:HIirtvVh";
+        const char *shortopts = "c:d:g:l:p:s:HIirtvVhn";
 #ifdef HAVE_GETOPT_LONG
         struct option longopts[] = {
                 {"conf",        required_argument,      NULL,   'c'},
@@ -613,6 +623,7 @@ static void handle_options(int argc, char **argv) {
                 {"verbose",     no_argument,            NULL,   'v'},
                 {"version",     no_argument,            NULL,   'V'},
                 {"help",        no_argument,            NULL,   'h'},
+                {"no-color",    no_argument,            NULL,   'n'},
                 {0}
         };
         while ((opt = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1)
@@ -715,6 +726,11 @@ static void handle_options(int argc, char **argv) {
                                         exit(0);
                                         break;
                                 }
+                                case 'n':
+                                {
+                                        Run.flags |= Run_NoColor;
+                                        break;
+                                }
                                 case '?':
                                 {
                                         switch (optopt) {
@@ -746,7 +762,7 @@ static void handle_options(int argc, char **argv) {
                 case 't':
                 {
                         do_init(); // Parses control file and initialize program, exit on error
-                        printf("Control file syntax OK\n");
+                        printf("Control file syntax OK\n"); //FIXME: green 
                         exit(0);
                         break;
                 }
@@ -790,6 +806,7 @@ static void help() {
         printf(" -I            Do not run in background (needed for run from init)\n");
         printf(" --id          Print Monit's unique ID\n");
         printf(" --resetid     Reset Monit's unique ID. Use with caution\n");
+        printf(" --no-color    No colors in command-line output\n");
         printf(" -t            Run syntax check for the control file\n");
         printf(" -v            Verbose mode, work noisy (diagnostic output)\n");
         printf(" -vv           Very verbose mode, same as -v plus log stacktrace on error\n");
@@ -798,22 +815,23 @@ static void help() {
         printf(" -V            Print version number and patchlevel\n");
         printf(" -h            Print this text\n");
         printf("Optional commands are as follows:\n");
-        printf(" start all           - Start all services\n");
-        printf(" start <name>        - Only start the named service\n");
-        printf(" stop all            - Stop all services\n");
-        printf(" stop <name>         - Only stop the named service\n");
-        printf(" restart all         - Stop and start all services\n");
-        printf(" restart <name>      - Only restart the named service\n");
-        printf(" monitor all         - Enable monitoring of all services\n");
-        printf(" monitor <name>      - Only enable monitoring of the named service\n");
-        printf(" unmonitor all       - Disable monitoring of all services\n");
-        printf(" unmonitor <name>    - Only disable monitoring of the named service\n");
-        printf(" reload              - Reinitialize monit\n");
-        printf(" status [name]       - Print full status information for service(s)\n");
-        printf(" summary [name]      - Print short status information for service(s)\n");
-        printf(" quit                - Kill monit daemon process\n");
-        printf(" validate            - Check all services and start if not running\n");
-        printf(" procmatch <pattern> - Test process matching pattern\n");
+        printf(" start all                                               - Start all services\n");
+        printf(" start <name>                                            - Only start the named service\n");
+        printf(" stop all                                                - Stop all services\n");
+        printf(" stop <name>                                             - Only stop the named service\n");
+        printf(" restart all                                             - Stop and start all services\n");
+        printf(" restart <name>                                          - Only restart the named service\n");
+        printf(" monitor all                                             - Enable monitoring of all services\n");
+        printf(" monitor <name>                                          - Only enable monitoring of the named service\n");
+        printf(" unmonitor all                                           - Disable monitoring of all services\n");
+        printf(" unmonitor <name>                                        - Only disable monitoring of the named service\n");
+        printf(" reload                                                  - Reinitialize monit\n");
+        printf(" status [name]                                           - Print full status information for service(s)\n");
+        printf(" summary [name]                                          - Print short status information for service(s)\n");
+        printf(" report [up | down | initialising | unmonitored | total] - Report services state\n");
+        printf(" quit                                                    - Kill monit daemon process\n");
+        printf(" validate                                                - Check all services and start if not running\n");
+        printf(" procmatch <pattern>                                     - Test process matching pattern\n");
         printf("\n");
         printf("(Action arguments operate on services defined in the control file)\n");
 }

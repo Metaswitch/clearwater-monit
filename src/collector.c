@@ -133,7 +133,7 @@ Handler_Type handle_mmonit(Event_T E) {
                         goto error;
                 }
                 char buf[STRLEN];
-                status_xml(sb, E, E ? Level_Summary : Level_Full, 2, Socket_getLocalHost(socket, buf, sizeof(buf)));
+                status_xml(sb, E, 2, Socket_getLocalHost(socket, buf, sizeof(buf)));
                 if (! data_send(socket, C, StringBuffer_toString(sb))) {
                         LogError("M/Monit: cannot send %s message to %s\n", E ? "event" : "status", C->url->url);
                         goto error;

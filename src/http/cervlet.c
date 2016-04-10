@@ -89,6 +89,8 @@
 #define GETID       "/_getid"
 #define STATUS      "/_status"
 #define STATUS2     "/_status2"
+#define SUMMARY     "/_summary"
+#define REPORT      "/_report"
 #define RUN         "/_runtime"
 #define VIEWLOG     "/_viewlog"
 #define DOACTION    "/_doaction"
@@ -194,7 +196,9 @@ static void print_service_status_link(HttpResponse, Service_T);
 static void print_service_status_download(HttpResponse, Service_T);
 static void print_service_status_upload(HttpResponse, Service_T);
 static void print_status(HttpRequest, HttpResponse, int);
-static void status_service_txt(Service_T, HttpResponse, Level_Type, Color_Type);
+static void print_summary(HttpRequest, HttpResponse);
+static void _printReport(HttpRequest req, HttpResponse res);
+static void status_service_txt(Service_T, HttpResponse, Color_Type);
 static char *get_monitoring_status(Service_T s, char *, int, Color_Type);
 static char *get_service_status(Service_T, char *, int, Color_Type);
 
@@ -278,6 +282,10 @@ static void doGet(HttpRequest req, HttpResponse res) {
                 print_status(req, res, 1);
         } else if (ACTION(STATUS2)) {
                 print_status(req, res, 2);
+        } else if (ACTION(SUMMARY)) {
+                print_summary(req, res);
+        } else if (ACTION(REPORT)) {
+                _printReport(req, res);
         } else if (ACTION(DOACTION)) {
                 handle_do_action(req, res);
         } else {
@@ -2560,16 +2568,11 @@ static boolean_t is_readonly(HttpRequest req) {
 
 /* Print status in the given format. Text status is default. */
 static void print_status(HttpRequest req, HttpResponse res, int version) {
-        Level_Type level = Level_Full;
-        const char *stringLevel = get_parameter(req, "level");
-        if (stringLevel && Str_startsWith(stringLevel, LEVEL_NAME_SUMMARY))
-                level = Level_Summary;
-
         const char *stringFormat = get_parameter(req, "format");
         if (stringFormat && Str_startsWith(stringFormat, "xml")) {
                 char buf[STRLEN];
                 StringBuffer_T sb = StringBuffer_create(256);
-                status_xml(sb, NULL, level, version, Socket_getLocalHost(req->S, buf, sizeof(buf)));
+                status_xml(sb, NULL, version, Socket_getLocalHost(req->S, buf, sizeof(buf)));
                 StringBuffer_append(res->outputbuffer, "%s", StringBuffer_toString(sb));
                 StringBuffer_free(&sb);
                 set_content_type(res, "text/xml");
@@ -2580,6 +2583,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
                 StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, uptime);
                 FREE(uptime);
 
+                //FIXME: hasColor + new color API
                 Color_Type color = Color_Disabled;
                 const char *stringColor = get_parameter(req, "color");
                 if (stringColor && Str_startsWith(stringColor, "yes"))
@@ -2592,7 +2596,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
                         for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                                 if (IS(stringGroup, sg->name)) {
                                         for (list_t m = sg->members->head; m; m = m->next) {
-                                                status_service_txt(m->e, res, level, color);
+                                                status_service_txt(m->e, res, color);
                                                 found++;
                                         }
                                         break;
@@ -2601,7 +2605,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
                 } else {
                         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                                 if (! stringService || IS(stringService, s->name)) {
-                                        status_service_txt(s, res, level, color);
+                                        status_service_txt(s, res, color);
                                         found++;
                                 }
                         }
@@ -2618,337 +2622,471 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
 }
 
 
-static void status_service_txt(Service_T s, HttpResponse res, Level_Type level, Color_Type color) {
+static void _printServiceSummary(HttpResponse res, Service_T s, Color_Type color) {
         char buf[STRLEN];
-        if (level == Level_Summary) {
-                char prefix[STRLEN];
-                snprintf(prefix, STRLEN, "%s '%s'", servicetypes[s->type], s->name);
-                StringBuffer_append(res->outputbuffer, "%-35s %s\n", prefix, get_service_status(s, buf, sizeof(buf), color));
-        } else {
-                StringBuffer_append(res->outputbuffer,
-                                    "%s '%s'\n"
-                                    "  %-33s %s\n",
-                                    servicetypes[s->type], s->name,
-                                    "status", get_service_status(s, buf, sizeof(buf), color));
-                StringBuffer_append(res->outputbuffer,
-                                    "  %-33s %s\n",
-                                    "monitoring status", get_monitoring_status(s, buf, sizeof(buf), color));
+        StringBuffer_append(res->outputbuffer, "%-11s %-20s %s\n", servicetypes[s->type], s->name, get_service_status(s, buf, sizeof(buf), color));
+}
 
-                if (Util_hasServiceStatus(s)) {
-                        switch (s->type) {
-                                case Service_File:
-                                        if (s->inf->priv.file.mode >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.file.mode & 07777);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
-                                        if (s->inf->priv.file.uid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.file.uid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
-                                        if (s->inf->priv.file.gid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.file.gid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
-                                        if (s->inf->priv.file.gid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "size", Str_bytesToSize(s->inf->priv.file.size, buf));
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "size");
-                                        if (s->inf->priv.file.timestamp > 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.file.timestamp, buf));
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
-                                        if (s->checksum) {
-                                                if (*s->inf->priv.file.cs_sum)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %s (%s)\n", "checksum", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "checksum");
-                                        }
-                                        break;
 
-                                case Service_Directory:
-                                        if (s->inf->priv.directory.mode >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.directory.mode & 07777);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
-                                        if (s->inf->priv.directory.uid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.directory.uid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
-                                        if (s->inf->priv.directory.gid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.directory.gid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
-                                        if (s->inf->priv.directory.timestamp > 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.directory.timestamp, buf));
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
-                                        break;
+static int _printServiceSummaryByType(HttpResponse res, Service_Type type, Color_Type color) {
+        int found = 0;
+        for (Service_T s = servicelist_conf; s; s = s->next_conf) {
+                if (s->type == type) {
+                        _printServiceSummary(res, s, color);
+                        found++;
+                }
+        }
+        return found;
+}
 
-                                case Service_Fifo:
-                                        if (s->inf->priv.fifo.mode >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.fifo.mode & 07777);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
-                                        if (s->inf->priv.fifo.uid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.fifo.uid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
-                                        if (s->inf->priv.fifo.gid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.fifo.gid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
-                                        if (s->inf->priv.fifo.timestamp > 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.fifo.timestamp, buf));
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
-                                        break;
 
-                                case Service_Net:
-                                        if (Link_getState(s->inf->priv.net.stats) == 1) {
-                                                long long speed = Link_getSpeed(s->inf->priv.net.stats);
-                                                if (speed > 0)
-                                                        StringBuffer_append(res->outputbuffer,
-                                                                            "  %-33s %.0lf Mb/s %s-duplex\n",
-                                                                            "link capacity", (double)speed / 1000000., Link_getDuplex(s->inf->priv.net.stats) == 1 ? "full" : "half");
-                                                else
-                                                        StringBuffer_append(res->outputbuffer,
-                                                                            "  %-33s N/A for this link type\n",
-                                                                            "link capacity");
+static void print_summary(HttpRequest req, HttpResponse res) {
+        set_content_type(res, "text/plain");
 
-                                                long long ibytes = Link_getBytesInPerSecond(s->inf->priv.net.stats);
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %s/s [%lld packets/s] [%lld errors]",
-                                                                    "download",
-                                                                    Str_bytesToSize(ibytes, buf),
-                                                                    Link_getPacketsInPerSecond(s->inf->priv.net.stats),
-                                                                    Link_getErrorsInPerSecond(s->inf->priv.net.stats));
-                                                if (speed > 0 && ibytes > 0)
-                                                        StringBuffer_append(res->outputbuffer, " (%.1f%% link saturation)", 100. * ibytes * 8 / (double)speed);
-                                                StringBuffer_append(res->outputbuffer, "\n");
+        char *uptime = Util_getUptime(getProcessUptime(getpid(), ptree, ptreesize), " ");
+        StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, uptime);
+        FREE(uptime);
 
-                                                long long obytes = Link_getBytesOutPerSecond(s->inf->priv.net.stats);
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %s/s [%lld packets/s] [%lld errors]",
-                                                                    "upload",
-                                                                    Str_bytesToSize(obytes, buf),
-                                                                    Link_getPacketsOutPerSecond(s->inf->priv.net.stats),
-                                                                    Link_getErrorsOutPerSecond(s->inf->priv.net.stats));
-                                                if (speed > 0 && obytes > 0)
-                                                        StringBuffer_append(res->outputbuffer, " (%.1f%% link saturation)", 100. * obytes * 8 / (double)speed);
-                                                StringBuffer_append(res->outputbuffer, "\n");
-                                        }
-                                        break;
+        StringBuffer_append(res->outputbuffer,
+                "%-11s %-20s %s\n"
+                "--------------------------------------------------\n",
+                "TYPE", "NAME", "STATUS");
 
-                                case Service_Filesystem:
-                                        if (s->inf->priv.filesystem.mode >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.filesystem.mode & 07777);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
-                                        if (s->inf->priv.filesystem.uid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.filesystem.uid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
-                                        if (s->inf->priv.filesystem.gid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.filesystem.gid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s 0x%x\n"
-                                                            "  %-33s %s\n",
-                                                            "filesystem flags",
-                                                            s->inf->priv.filesystem.flags,
-                                                            "block size",
-                                                            Str_bytesToSize(s->inf->priv.filesystem.f_bsize, buf));
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %s (of which %.1f%% is reserved for root user)\n",
-                                                            "space total",
-                                                            s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize((long long)(s->inf->priv.filesystem.f_blocks * s->inf->priv.filesystem.f_bsize), buf) : "0 MB",
-                                                            s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)(s->inf->priv.filesystem.f_blocksfreetotal - s->inf->priv.filesystem.f_blocksfree) / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %s [%.1f%%]\n",
-                                                            "space free for non superuser",
-                                                            s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfree * s->inf->priv.filesystem.f_bsize, buf) : "0 MB",
-                                                            s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfree / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %s [%.1f%%]\n",
-                                                            "space free total",
-                                                            s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfreetotal * s->inf->priv.filesystem.f_bsize, buf) : "0 MB",
-                                                            s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfreetotal / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                                        if (s->inf->priv.filesystem.f_files > 0) {
-                                                StringBuffer_append(res->outputbuffer,
-                                                                    "  %-33s %lld\n"
-                                                                    "  %-33s %lld [%.1f%%]\n",
-                                                                    "inodes total",
-                                                                    s->inf->priv.filesystem.f_files,
-                                                                    "inodes free",
-                                                                    s->inf->priv.filesystem.f_filesfree,
-                                                                    ((float)100*(float)s->inf->priv.filesystem.f_filesfree/ (float)s->inf->priv.filesystem.f_files));
-                                        }
-                                        break;
+        //FIXME: hasColor + new color API
+        Color_Type color = Color_Disabled;
+        const char *stringColor = get_parameter(req, "color");
+        if (stringColor && Str_startsWith(stringColor, "yes"))
+                color = Color_Enabled;
 
-                                case Service_Process:
-                                        if (s->inf->priv.process.pid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "pid", s->inf->priv.process.pid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "pid");
-                                        if (s->inf->priv.process.ppid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "parent pid", s->inf->priv.process.ppid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "parent pid");
-                                        if (s->inf->priv.process.uid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", s->inf->priv.process.uid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
-                                        if (s->inf->priv.process.euid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "effective uid", s->inf->priv.process.euid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "effective uid");
-                                        if (s->inf->priv.process.gid >= 0)
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", s->inf->priv.process.gid);
-                                        else
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
-                                        if (s->inf->priv.process.uptime >= 0) {
-                                                char *uptime = Util_getUptime(s->inf->priv.process.uptime, " ");
-                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "uptime", uptime);
-                                                FREE(uptime);
-                                        } else {
-                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uptime");
-                                        }
-                                        if (Run.flags & Run_ProcessEngineEnabled) {
-                                                if (s->inf->priv.process.threads >= 0)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "threads", s->inf->priv.process.threads);
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "threads");
-                                                if (s->inf->priv.process.children >= 0)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "children", s->inf->priv.process.children);
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "children");
-                                                if (s->inf->priv.process.mem > 0)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "memory", Str_bytesToSize(s->inf->priv.process.mem, buf));
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory");
-                                                if (s->inf->priv.process.total_mem > 0)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "memory total", Str_bytesToSize(s->inf->priv.process.total_mem, buf));
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory total");
-                                                if (s->inf->priv.process.mem_percent >= 0.)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "memory percent", s->inf->priv.process.mem_percent);
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory percent");
-                                                if (s->inf->priv.process.total_mem_percent >= 0.)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "memory percent total", s->inf->priv.process.total_mem_percent);
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory percent total");
-                                                if (s->inf->priv.process.cpu_percent >= 0.)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "cpu percent", s->inf->priv.process.cpu_percent);
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "cpu percent");
-                                                if (s->inf->priv.process.total_cpu_percent >= 0.)
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "cpu percent total", s->inf->priv.process.total_cpu_percent);
-                                                else
-                                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "cpu percent total");
-                                        }
-                                        break;
-
-                                default:
-                                        break;
-                        }
-                        for (Icmp_T i = s->icmplist; i; i = i->next) {
-                                if (i->is_available == Connection_Failed)
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s connection failed\n",
-                                                            "ping response time");
-                                else if (i->is_available == Connection_Init)
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s -\n",
-                                                            "ping response time");
-                                else
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %s\n",
-                                                            "ping response time", Str_milliToTime(i->response, (char[23]){}));
-                        }
-                        for (Port_T p = s->portlist; p; p = p->next) {
-                                if (p->is_available == Connection_Failed)
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s FAILED to [%s]:%d%s type %s/%s %sprotocol %s\n",
-                                                    "port response time", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
-                                else if (p->is_available == Connection_Init)
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s -\n",
-                                                            "port response time");
-                                else
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %s to [%s]:%d%s type %s/%s %sprotocol %s\n",
-                                                    "port response time", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
-                        }
-                        for (Port_T p = s->socketlist; p; p = p->next) {
-                                if (p->is_available == Connection_Failed)
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s FAILED to %s type %s protocol %s\n",
-                                                    "unix socket response time", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
-                                else if (p->is_available == Connection_Init)
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s -\n",
-                                                            "unix socket response time");
-                                else
-                                        StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %s to %s type %s protocol %s\n",
-                                                    "unix socket response time", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
-                        }
-                        if (s->type == Service_System && (Run.flags & Run_ProcessEngineEnabled)) {
-                                StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s [%.2f] [%.2f] [%.2f]\n"
-                                                    "  %-33s %.1f%%us %.1f%%sy"
-#ifdef HAVE_CPU_WAIT
-                                                    " %.1f%%wa"
-#endif
-                                                    "\n",
-                                                    "load average", systeminfo.loadavg[0], systeminfo.loadavg[1], systeminfo.loadavg[2],
-                                                    "cpu", systeminfo.total_cpu_user_percent > 0. ? systeminfo.total_cpu_user_percent : 0., systeminfo.total_cpu_syst_percent > 0. ? systeminfo.total_cpu_syst_percent : 0.
-#ifdef HAVE_CPU_WAIT
-                                                    , systeminfo.total_cpu_wait_percent > 0. ? systeminfo.total_cpu_wait_percent : 0.
-#endif
-                                                    );
-                                StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %s [%.1f%%]\n",
-                                                    "memory usage", Str_bytesToSize(systeminfo.total_mem, buf), systeminfo.total_mem_percent);
-                                StringBuffer_append(res->outputbuffer,
-                                                    "  %-33s %s [%.1f%%]\n",
-                                                    "swap usage", Str_bytesToSize(systeminfo.total_swap, buf), systeminfo.total_swap_percent);
-                        }
-                        if (s->type == Service_Program) {
-                                if (s->program->started) {
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s %s\n"
-                                                            "  %-33s %d\n",
-                                                            "last started", Time_string(s->program->started, (char[32]){}),
-                                                            "last exit value", s->program->exitStatus);
-                                        if (StringBuffer_length(s->program->output)) {
-                                                const char *output = StringBuffer_toString(s->program->output);
-                                                StringBuffer_append(res->outputbuffer,
-                                                        "  %-33s ", "last output");
-                                                for (int i = 0; output[i]; i++) {
-                                                        if (output[i] == '\r') {
-                                                                // Discard CR
-                                                                continue;
-                                                        } else if (output[i] == '\n') {
-                                                                // Indent 2nd+ line
-                                                                if (output[i + 1])
-                                                                        StringBuffer_append(res->outputbuffer, "\n                                    ");
-                                                                continue;
-                                                        } else {
-                                                                StringBuffer_append(res->outputbuffer, "%c", output[i]);
-                                                        }
-                                                }
-                                                StringBuffer_append(res->outputbuffer,
-                                                        "\n");
-                                        }
-                                } else
-                                        StringBuffer_append(res->outputbuffer,
-                                                            "  %-33s\n",
-                                                            "not yet started");
+        int found = 0;
+        const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
+        const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
+        if (stringGroup) {
+                for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
+                        if (IS(stringGroup, sg->name)) {
+                                for (list_t m = sg->members->head; m; m = m->next) {
+                                        _printServiceSummary(res, m->e, color);
+                                        found++;
+                                }
+                                break;
                         }
                 }
-                StringBuffer_append(res->outputbuffer, "  %-33s %s\n\n", "data collected", Time_string(s->collected.tv_sec, buf));
+        } else if (stringService) {
+                for (Service_T s = servicelist_conf; s; s = s->next_conf) {
+                        if (IS(stringService, s->name)) {
+                                _printServiceSummary(res, s, color);
+                                found++;
+                        }
+                }
+        } else {
+                found += _printServiceSummaryByType(res, Service_System, color);
+                found += _printServiceSummaryByType(res, Service_Process, color);
+                found += _printServiceSummaryByType(res, Service_File, color);
+                found += _printServiceSummaryByType(res, Service_Fifo, color);
+                found += _printServiceSummaryByType(res, Service_Directory, color);
+                found += _printServiceSummaryByType(res, Service_Filesystem, color);
+                found += _printServiceSummaryByType(res, Service_Host, color);
+                found += _printServiceSummaryByType(res, Service_Net, color);
+                found += _printServiceSummaryByType(res, Service_Program, color);
         }
+        if (found == 0) {
+                if (stringGroup)
+                        send_error(req, res, SC_BAD_REQUEST, "Service group '%s' not found", stringGroup);
+                else if (stringService)
+                        send_error(req, res, SC_BAD_REQUEST, "Service '%s' not found", stringService);
+                else
+                        send_error(req, res, SC_BAD_REQUEST, "No service found");
+        }
+}
+
+
+static void _printReport(HttpRequest req, HttpResponse res) {
+        set_content_type(res, "text/plain");
+        const char *type = get_parameter(req, "type");
+        int count = 0;
+        if (! type) {
+                float up = 0, down = 0, init = 0, unmonitored = 0, total = 0;
+                for (Service_T s = servicelist; s; s = s->next) {
+                        if (s->monitor == Monitor_Not)
+                                unmonitored++;
+                        else if (s->monitor & Monitor_Init)
+                                init++;
+                        else if (s->error)
+                                down++;
+                        else
+                                up++;
+                        total++;
+                }
+                StringBuffer_append(res->outputbuffer,
+                        "up:           %*.0f (%.1f%%)\n"
+                        "down:         %*.0f (%.1f%%)\n"
+                        "initialising: %*.0f (%.1f%%)\n"
+                        "unmonitored:  %*.0f (%.1f%%)\n"
+                        "----------------------------\n"
+                        "Total %.0f services\n",
+                        3, up, 100. * up / total,
+                        3, down, 100. * down / total,
+                        3, init, 100. * init / total,
+                        3, unmonitored, 100. * unmonitored / total,
+                        total);
+        } else if (Str_isEqual(type, "up")) {
+                for (Service_T s = servicelist; s; s = s->next)
+                        if (s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && ! s->error)
+                                count++;
+                StringBuffer_append(res->outputbuffer, "%d\n", count);
+        } else if (Str_isEqual(type, "down")) {
+                for (Service_T s = servicelist; s; s = s->next)
+                        if (s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && s->error)
+                                count++;
+                StringBuffer_append(res->outputbuffer, "%d\n", count);
+        } else if (Str_startsWith(type, "initiali")) { // allow 'initiali(s|z)ing'
+                for (Service_T s = servicelist; s; s = s->next)
+                        if (s->monitor & Monitor_Init)
+                                count++;
+                StringBuffer_append(res->outputbuffer, "%d\n", count);
+        } else if (Str_isEqual(type, "unmonitored")) {
+                for (Service_T s = servicelist; s; s = s->next)
+                        if (s->monitor == Monitor_Not)
+                                count++;
+                StringBuffer_append(res->outputbuffer, "%d\n", count);
+        } else if (Str_isEqual(type, "total")) {
+                for (Service_T s = servicelist; s; s = s->next)
+                        count++;
+                StringBuffer_append(res->outputbuffer, "%d\n", count);
+        } else {
+                send_error(req, res, SC_BAD_REQUEST, "Invalid report type: '%s'", type);
+        }
+}
+
+
+static void status_service_txt(Service_T s, HttpResponse res, Color_Type color) {
+        char buf[STRLEN];
+        StringBuffer_append(res->outputbuffer,
+                            "%s '%s'\n"
+                            "  %-33s %s\n",
+                            servicetypes[s->type], s->name,
+                            "status", get_service_status(s, buf, sizeof(buf), color));
+        StringBuffer_append(res->outputbuffer,
+                            "  %-33s %s\n",
+                            "monitoring status", get_monitoring_status(s, buf, sizeof(buf), color));
+
+        if (Util_hasServiceStatus(s)) {
+                switch (s->type) {
+                        case Service_File:
+                                if (s->inf->priv.file.mode >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.file.mode & 07777);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
+                                if (s->inf->priv.file.uid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.file.uid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
+                                if (s->inf->priv.file.gid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.file.gid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
+                                if (s->inf->priv.file.gid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "size", Str_bytesToSize(s->inf->priv.file.size, buf));
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "size");
+                                if (s->inf->priv.file.timestamp > 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.file.timestamp, buf));
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
+                                if (s->checksum) {
+                                        if (*s->inf->priv.file.cs_sum)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s (%s)\n", "checksum", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "checksum");
+                                }
+                                break;
+
+                        case Service_Directory:
+                                if (s->inf->priv.directory.mode >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.directory.mode & 07777);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
+                                if (s->inf->priv.directory.uid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.directory.uid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
+                                if (s->inf->priv.directory.gid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.directory.gid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
+                                if (s->inf->priv.directory.timestamp > 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.directory.timestamp, buf));
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
+                                break;
+
+                        case Service_Fifo:
+                                if (s->inf->priv.fifo.mode >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.fifo.mode & 07777);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
+                                if (s->inf->priv.fifo.uid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.fifo.uid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
+                                if (s->inf->priv.fifo.gid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.fifo.gid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
+                                if (s->inf->priv.fifo.timestamp > 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "timestamp", Time_string(s->inf->priv.fifo.timestamp, buf));
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "timestamp");
+                                break;
+
+                        case Service_Net:
+                                if (Link_getState(s->inf->priv.net.stats) == 1) {
+                                        long long speed = Link_getSpeed(s->inf->priv.net.stats);
+                                        if (speed > 0)
+                                                StringBuffer_append(res->outputbuffer,
+                                                                    "  %-33s %.0lf Mb/s %s-duplex\n",
+                                                                    "link capacity", (double)speed / 1000000., Link_getDuplex(s->inf->priv.net.stats) == 1 ? "full" : "half");
+                                        else
+                                                StringBuffer_append(res->outputbuffer,
+                                                                    "  %-33s N/A for this link type\n",
+                                                                    "link capacity");
+
+                                        long long ibytes = Link_getBytesInPerSecond(s->inf->priv.net.stats);
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s/s [%lld packets/s] [%lld errors]",
+                                                            "download",
+                                                            Str_bytesToSize(ibytes, buf),
+                                                            Link_getPacketsInPerSecond(s->inf->priv.net.stats),
+                                                            Link_getErrorsInPerSecond(s->inf->priv.net.stats));
+                                        if (speed > 0 && ibytes > 0)
+                                                StringBuffer_append(res->outputbuffer, " (%.1f%% link saturation)", 100. * ibytes * 8 / (double)speed);
+                                        StringBuffer_append(res->outputbuffer, "\n");
+
+                                        long long obytes = Link_getBytesOutPerSecond(s->inf->priv.net.stats);
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s/s [%lld packets/s] [%lld errors]",
+                                                            "upload",
+                                                            Str_bytesToSize(obytes, buf),
+                                                            Link_getPacketsOutPerSecond(s->inf->priv.net.stats),
+                                                            Link_getErrorsOutPerSecond(s->inf->priv.net.stats));
+                                        if (speed > 0 && obytes > 0)
+                                                StringBuffer_append(res->outputbuffer, " (%.1f%% link saturation)", 100. * obytes * 8 / (double)speed);
+                                        StringBuffer_append(res->outputbuffer, "\n");
+                                }
+                                break;
+
+                        case Service_Filesystem:
+                                if (s->inf->priv.filesystem.mode >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %o\n", "permission", s->inf->priv.filesystem.mode & 07777);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "permission");
+                                if (s->inf->priv.filesystem.uid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", (int)s->inf->priv.filesystem.uid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
+                                if (s->inf->priv.filesystem.gid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", (int)s->inf->priv.filesystem.gid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s 0x%x\n"
+                                                    "  %-33s %s\n",
+                                                    "filesystem flags",
+                                                    s->inf->priv.filesystem.flags,
+                                                    "block size",
+                                                    Str_bytesToSize(s->inf->priv.filesystem.f_bsize, buf));
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s %s (of which %.1f%% is reserved for root user)\n",
+                                                    "space total",
+                                                    s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize((long long)(s->inf->priv.filesystem.f_blocks * s->inf->priv.filesystem.f_bsize), buf) : "0 MB",
+                                                    s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)(s->inf->priv.filesystem.f_blocksfreetotal - s->inf->priv.filesystem.f_blocksfree) / (float)s->inf->priv.filesystem.f_blocks) : 0);
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s %s [%.1f%%]\n",
+                                                    "space free for non superuser",
+                                                    s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfree * s->inf->priv.filesystem.f_bsize, buf) : "0 MB",
+                                                    s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfree / (float)s->inf->priv.filesystem.f_blocks) : 0);
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s %s [%.1f%%]\n",
+                                                    "space free total",
+                                                    s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfreetotal * s->inf->priv.filesystem.f_bsize, buf) : "0 MB",
+                                                    s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfreetotal / (float)s->inf->priv.filesystem.f_blocks) : 0);
+                                if (s->inf->priv.filesystem.f_files > 0) {
+                                        StringBuffer_append(res->outputbuffer,
+                                                            "  %-33s %lld\n"
+                                                            "  %-33s %lld [%.1f%%]\n",
+                                                            "inodes total",
+                                                            s->inf->priv.filesystem.f_files,
+                                                            "inodes free",
+                                                            s->inf->priv.filesystem.f_filesfree,
+                                                            ((float)100*(float)s->inf->priv.filesystem.f_filesfree/ (float)s->inf->priv.filesystem.f_files));
+                                }
+                                break;
+
+                        case Service_Process:
+                                if (s->inf->priv.process.pid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "pid", s->inf->priv.process.pid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "pid");
+                                if (s->inf->priv.process.ppid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "parent pid", s->inf->priv.process.ppid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "parent pid");
+                                if (s->inf->priv.process.uid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "uid", s->inf->priv.process.uid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uid");
+                                if (s->inf->priv.process.euid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "effective uid", s->inf->priv.process.euid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "effective uid");
+                                if (s->inf->priv.process.gid >= 0)
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "gid", s->inf->priv.process.gid);
+                                else
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "gid");
+                                if (s->inf->priv.process.uptime >= 0) {
+                                        char *uptime = Util_getUptime(s->inf->priv.process.uptime, " ");
+                                        StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "uptime", uptime);
+                                        FREE(uptime);
+                                } else {
+                                        StringBuffer_append(res->outputbuffer, "  %-33s -\n", "uptime");
+                                }
+                                if (Run.flags & Run_ProcessEngineEnabled) {
+                                        if (s->inf->priv.process.threads >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "threads", s->inf->priv.process.threads);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "threads");
+                                        if (s->inf->priv.process.children >= 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %d\n", "children", s->inf->priv.process.children);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "children");
+                                        if (s->inf->priv.process.mem > 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "memory", Str_bytesToSize(s->inf->priv.process.mem, buf));
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory");
+                                        if (s->inf->priv.process.total_mem > 0)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %s\n", "memory total", Str_bytesToSize(s->inf->priv.process.total_mem, buf));
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory total");
+                                        if (s->inf->priv.process.mem_percent >= 0.)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "memory percent", s->inf->priv.process.mem_percent);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory percent");
+                                        if (s->inf->priv.process.total_mem_percent >= 0.)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "memory percent total", s->inf->priv.process.total_mem_percent);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "memory percent total");
+                                        if (s->inf->priv.process.cpu_percent >= 0.)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "cpu percent", s->inf->priv.process.cpu_percent);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "cpu percent");
+                                        if (s->inf->priv.process.total_cpu_percent >= 0.)
+                                                StringBuffer_append(res->outputbuffer, "  %-33s %.1f%%\n", "cpu percent total", s->inf->priv.process.total_cpu_percent);
+                                        else
+                                                StringBuffer_append(res->outputbuffer, "  %-33s -\n", "cpu percent total");
+                                }
+                                break;
+
+                        default:
+                                break;
+                }
+                for (Icmp_T i = s->icmplist; i; i = i->next) {
+                        if (i->is_available == Connection_Failed)
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s connection failed\n",
+                                                    "ping response time");
+                        else if (i->is_available == Connection_Init)
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s -\n",
+                                                    "ping response time");
+                        else
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s %s\n",
+                                                    "ping response time", Str_milliToTime(i->response, (char[23]){}));
+                }
+                for (Port_T p = s->portlist; p; p = p->next) {
+                        if (p->is_available == Connection_Failed)
+                                StringBuffer_append(res->outputbuffer,
+                                            "  %-33s FAILED to [%s]:%d%s type %s/%s %sprotocol %s\n",
+                                            "port response time", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                        else if (p->is_available == Connection_Init)
+                                StringBuffer_append(res->outputbuffer,
+                                            "  %-33s -\n",
+                                            "port response time");
+                        else
+                                StringBuffer_append(res->outputbuffer,
+                                            "  %-33s %s to [%s]:%d%s type %s/%s %sprotocol %s\n",
+                                            "port response time", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                }
+                for (Port_T p = s->socketlist; p; p = p->next) {
+                        if (p->is_available == Connection_Failed)
+                                StringBuffer_append(res->outputbuffer,
+                                            "  %-33s FAILED to %s type %s protocol %s\n",
+                                            "unix socket response time", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                        else if (p->is_available == Connection_Init)
+                                StringBuffer_append(res->outputbuffer,
+                                            "  %-33s -\n",
+                                            "unix socket response time");
+                        else
+                                StringBuffer_append(res->outputbuffer,
+                                            "  %-33s %s to %s type %s protocol %s\n",
+                                            "unix socket response time", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                }
+                        if (s->type == Service_System && (Run.flags & Run_ProcessEngineEnabled)) {
+                        StringBuffer_append(res->outputbuffer,
+                                            "  %-33s [%.2f] [%.2f] [%.2f]\n"
+                                            "  %-33s %.1f%%us %.1f%%sy"
+#ifdef HAVE_CPU_WAIT
+                                            " %.1f%%wa"
+#endif
+                                            "\n",
+                                            "load average", systeminfo.loadavg[0], systeminfo.loadavg[1], systeminfo.loadavg[2],
+                                            "cpu", systeminfo.total_cpu_user_percent > 0. ? systeminfo.total_cpu_user_percent : 0., systeminfo.total_cpu_syst_percent > 0. ? systeminfo.total_cpu_syst_percent : 0.
+#ifdef HAVE_CPU_WAIT
+                                            , systeminfo.total_cpu_wait_percent > 0. ? systeminfo.total_cpu_wait_percent : 0.
+#endif
+                                            );
+                        StringBuffer_append(res->outputbuffer,
+                                            "  %-33s %s [%.1f%%]\n",
+                                            "memory usage", Str_bytesToSize(systeminfo.total_mem, buf), systeminfo.total_mem_percent);
+                        StringBuffer_append(res->outputbuffer,
+                                            "  %-33s %s [%.1f%%]\n",
+                                            "swap usage", Str_bytesToSize(systeminfo.total_swap, buf), systeminfo.total_swap_percent);
+                }
+                if (s->type == Service_Program) {
+                        if (s->program->started) {
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s %s\n"
+                                                    "  %-33s %d\n",
+                                                    "last started", Time_string(s->program->started, (char[32]){}),
+                                                    "last exit value", s->program->exitStatus);
+                                if (StringBuffer_length(s->program->output)) {
+                                        const char *output = StringBuffer_toString(s->program->output);
+                                        StringBuffer_append(res->outputbuffer,
+                                                "  %-33s ", "last output");
+                                        int column = 0;
+                                        for (int i = 0; output[i]; i++) {
+                                                if (output[i] == '\r') {
+                                                        // Discard CR
+                                                        continue;
+                                                } else if (output[i] == '\n') {
+                                                        // Indent 2nd+ line
+                                                        if (output[i + 1])
+                                                                StringBuffer_append(res->outputbuffer, "\n                                    ");
+                                                        column = 0;
+                                                        continue;
+                                                } else if (column <= 200) {
+                                                        StringBuffer_append(res->outputbuffer, "%c", output[i]);
+                                                        column++;
+                                                }
+                                        }
+                                        StringBuffer_append(res->outputbuffer,
+                                                "\n");
+                                }
+                        } else
+                                StringBuffer_append(res->outputbuffer,
+                                                    "  %-33s\n",
+                                                    "not yet started");
+                }
+        }
+        StringBuffer_append(res->outputbuffer, "  %-33s %s\n\n", "data collected", Time_string(s->collected.tv_sec, buf));
 }
 
 

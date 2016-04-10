@@ -462,6 +462,19 @@ for example:
 
 
 
+=head1 COMMAND-LINE COLORS
+
+Monit uses ANSI escape sequences to colorise important parts
+of the command-line output, if the terminal supports colors.
+
+If you want to process the monit CLI output in a script, you
+can use either --no-color option or the following statement
+in the monit configuration file to disable the colors completely:
+
+ SET COLOR <ENABLE | DISABLE>
+
+
+
 =head1 DAEMON MODE
 
 Use

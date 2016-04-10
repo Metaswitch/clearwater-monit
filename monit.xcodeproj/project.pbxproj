@@ -66,7 +66,6 @@
 		52F6E84D13A74F220023F87A /* socket.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7A413A74F220023F87A /* socket.c */; };
 		52F6E84E13A74F220023F87A /* spawn.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7A613A74F220023F87A /* spawn.c */; };
 		52F6E85013A74F220023F87A /* state.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7AA13A74F220023F87A /* state.c */; };
-		52F6E85113A74F220023F87A /* status.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7AC13A74F220023F87A /* status.c */; };
 		52F6E85213A74F220023F87A /* util.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7AD13A74F220023F87A /* util.c */; };
 		52F6E85313A74F220023F87A /* validate.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7AF13A74F220023F87A /* validate.c */; };
 		52F6E85513A74F220023F87A /* xml.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E7B113A74F220023F87A /* xml.c */; };
@@ -79,6 +78,7 @@
 		9357B19C19F2F5A400329B3F /* redis.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19A19F2F5A400329B3F /* redis.c */; };
 		9378737B1A13907100CF8C5E /* sieve.c in Sources */ = {isa = PBXBuildFile; fileRef = 9378737A1A13907100CF8C5E /* sieve.c */; };
 		93A23ED41C85E6890076FBFE /* Address.c in Sources */ = {isa = PBXBuildFile; fileRef = 93A23ED21C85E6890076FBFE /* Address.c */; };
+		93DE91B01CBAED0400BC8E0C /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 93DE91AE1CBAED0400BC8E0C /* client.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -273,7 +273,6 @@
 		52F6E7A613A74F220023F87A /* spawn.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = spawn.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7AA13A74F220023F87A /* state.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = state.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7AB13A74F220023F87A /* state.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = state.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
-		52F6E7AC13A74F220023F87A /* status.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = status.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7AD13A74F220023F87A /* util.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = util.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E7AE13A74F220023F87A /* util.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = util.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		52F6E7AF13A74F220023F87A /* validate.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = validate.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -292,6 +291,8 @@
 		9378737A1A13907100CF8C5E /* sieve.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sieve.c; sourceTree = "<group>"; };
 		93A23ED21C85E6890076FBFE /* Address.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Address.c; sourceTree = "<group>"; };
 		93A23ED31C85E6890076FBFE /* Address.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Address.h; sourceTree = "<group>"; };
+		93DE91AE1CBAED0400BC8E0C /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
+		93DE91AF1CBAED0400BC8E0C /* client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = client.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -497,7 +498,6 @@
 				52F6E7A613A74F220023F87A /* spawn.c */,
 				52F6E7AA13A74F220023F87A /* state.c */,
 				52F6E7AB13A74F220023F87A /* state.h */,
-				52F6E7AC13A74F220023F87A /* status.c */,
 				52F6E7AD13A74F220023F87A /* util.c */,
 				52F6E7AE13A74F220023F87A /* util.h */,
 				52F6E7AF13A74F220023F87A /* validate.c */,
@@ -528,6 +528,8 @@
 		52F6E75E13A74F220023F87A /* http */ = {
 			isa = PBXGroup;
 			children = (
+				93DE91AE1CBAED0400BC8E0C /* client.c */,
+				93DE91AF1CBAED0400BC8E0C /* client.h */,
 				52F6E75F13A74F220023F87A /* base64.c */,
 				52F6E76013A74F220023F87A /* base64.h */,
 				52F6E76113A74F220023F87A /* cervlet.c */,
@@ -766,6 +768,7 @@
 				52F6E84213A74F220023F87A /* protocol.c in Sources */,
 				52F6E84313A74F220023F87A /* radius.c in Sources */,
 				52F6E84413A74F220023F87A /* rdate.c in Sources */,
+				93DE91B01CBAED0400BC8E0C /* client.c in Sources */,
 				52F6E84513A74F220023F87A /* rsync.c in Sources */,
 				52F6E84613A74F220023F87A /* sip.c in Sources */,
 				52F6E84713A74F220023F87A /* smtp.c in Sources */,
@@ -778,7 +781,6 @@
 				52F6E84D13A74F220023F87A /* socket.c in Sources */,
 				52F6E84E13A74F220023F87A /* spawn.c in Sources */,
 				52F6E85013A74F220023F87A /* state.c in Sources */,
-				52F6E85113A74F220023F87A /* status.c in Sources */,
 				52F6E85213A74F220023F87A /* util.c in Sources */,
 				52F6E85313A74F220023F87A /* validate.c in Sources */,
 				52F6E85513A74F220023F87A /* xml.c in Sources */,

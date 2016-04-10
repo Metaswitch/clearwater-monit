@@ -62,19 +62,38 @@
 #include "exceptions/AssertException.h"
 
 /**
- *  Obtain status from the monit daemon
+ *  The monit HTTP GUI client
  *
  *  @file
  */
 
 
-/* ------------------------------------------------------------------ Public */
+/* ----------------------------------------------------------------- Private */
 
 
-/**
- * Show all services in the service list.
- */
-boolean_t status(const char *level, const char *group, const char *service) {
+void _argument(StringBuffer_T request, const char *name, const char *value) {
+        char *_value = Util_urlEncode((char *)value);
+        StringBuffer_append(request, "%s%s=%s", StringBuffer_indexOf(request, "?") != -1 ? "&" : "?", name, _value);
+        FREE(_value);
+}
+
+
+//FIXME: move to a new Color class
+boolean_t _hasColor() {
+        if (! (Run.flags & Run_NoColor)) {
+                if (getenv("COLORTERM")) {
+                        return true;
+                } else {
+                        char *term = getenv("TERM");
+                        if (term && (Str_startsWith(term, "screen") || Str_startsWith(term, "xterm") || Str_startsWith(term, "vt100") || Str_startsWith(term, "ansi") || Str_startsWith(term, "linux") || Str_sub(term, "color")))
+                                return true;
+                }
+        }
+        return false;
+}
+
+
+boolean_t _client(const char *request) {
         boolean_t status = false;
         if (! exist_daemon()) {
                 LogError("Status not available -- the monit daemon is not running\n");
@@ -95,18 +114,7 @@ boolean_t status(const char *level, const char *group, const char *service) {
                 LogError("Status not available - monit http interface is not enabled, please add the 'set httpd' statement\n");
         }
         if (S) {
-                char *term = getenv("TERM"); //FIXME: better way to detect color support
-                Socket_print(S, "GET /_status?format=text&level=%s&color=%s", level, term && Str_sub(term, "color") ? "yes" : "no");
-                if (group) {
-                        char *_group = Util_urlEncode((char *)group);
-                        Socket_print(S, "&group=%s", _group);
-                        FREE(_group);
-                }
-                if (service) {
-                        char *_service = Util_urlEncode((char *)service);
-                        Socket_print(S, "&service=%s", _service);
-                        FREE(_service);
-                }
+                Socket_print(S, "GET %s%sformat=text&color=%s", request, Str_sub(request, "?") ? "&" : "?", _hasColor() ? "yes" : "no");
                 char *_auth = Util_getBasicAuthHeaderMonit();
                 Socket_print(S, " HTTP/1.0\r\n%s\r\n", _auth ? _auth : "");
                 FREE(_auth);
@@ -126,5 +134,42 @@ boolean_t status(const char *level, const char *group, const char *service) {
                 Socket_free(&S);
         }
         return status;
+}
+
+
+/* ------------------------------------------------------------------ Public */
+
+
+boolean_t HttpClient_status(const char *group, const char *service) {
+        StringBuffer_T request = StringBuffer_new("/_status");
+        if (service)
+                _argument(request, "service", service);
+        if (group)
+                _argument(request, "group", group);
+        boolean_t rv = _client(StringBuffer_toString(request));
+        StringBuffer_free(&request);
+        return rv;
+}
+
+
+boolean_t HttpClient_summary(const char *group, const char *service) {
+        StringBuffer_T request = StringBuffer_new("/_summary");
+        if (service)
+                _argument(request, "service", service);
+        if (group)
+                _argument(request, "group", group);
+        boolean_t rv = _client(StringBuffer_toString(request));
+        StringBuffer_free(&request);
+        return rv;
+}
+
+
+boolean_t HttpClient_report(const char *type) {
+        StringBuffer_T request = StringBuffer_new("/_report");
+        if (type)
+                _argument(request, "type", type);
+        boolean_t rv = _client(StringBuffer_toString(request));
+        StringBuffer_free(&request);
+        return rv;
 }
 

@@ -171,7 +171,8 @@ typedef enum {
         Run_MmonitCredentials    = 0x200,      /**< Should set M/Monit credentials */
         Run_Stopped              = 0x400,                          /**< Stop Monit */
         Run_DoReload             = 0x800,                        /**< Reload Monit */
-        Run_DoWakeup             = 0x1000                        /**< Wakeup Monit */
+        Run_DoWakeup             = 0x1000,                       /**< Wakeup Monit */
+        Run_NoColor              = 0x2000                       /**< No CLI colors */
 } __attribute__((__packed__)) Run_Flags;
 
 
@@ -275,7 +276,8 @@ typedef enum {
         Service_System,
         Service_Fifo,
         Service_Program,
-        Service_Net
+        Service_Net,
+        Service_Last = Service_Net
 } __attribute__((__packed__)) Service_Type;
 
 
@@ -329,12 +331,6 @@ typedef enum {
 
 
 typedef enum {
-        Level_Full = 0,
-        Level_Summary
-} __attribute__((__packed__)) Level_Type;
-
-
-typedef enum {
         Color_Disabled = 0,
         Color_Enabled
 } __attribute__((__packed__)) Color_Type;
@@ -355,10 +351,6 @@ typedef enum {
 #define ICMP_SIZE 64
 #define ICMP_MAXSIZE 1500
 #define ICMP_ATTEMPT_COUNT 3
-
-
-#define LEVEL_NAME_FULL    "full"
-#define LEVEL_NAME_SUMMARY "summary"
 
 
 /* Default limits */
@@ -1233,7 +1225,6 @@ boolean_t control_service(const char *, Action_Type);
 boolean_t control_service_string(List_T, const char *);
 boolean_t control_service_daemon(List_T, const char *);
 void  spawn(Service_T, command_t, Event_T);
-boolean_t status(const char *, const char *, const char *);
 boolean_t log_init();
 void  LogEmergency(const char *, ...) __attribute__((format (printf, 1, 2)));
 void  LogAlert(const char *, ...) __attribute__((format (printf, 1, 2)));
@@ -1274,7 +1265,7 @@ State_Type check_fifo(Service_T);
 State_Type check_program(Service_T);
 State_Type check_net(Service_T);
 int  check_URL(Service_T s);
-void status_xml(StringBuffer_T, Event_T, Level_Type, int, const char *);
+void status_xml(StringBuffer_T, Event_T, int, const char *);
 Handler_Type handle_mmonit(Event_T);
 boolean_t  do_wakeupcall();
 
