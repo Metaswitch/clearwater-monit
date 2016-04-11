@@ -71,7 +71,7 @@
 /* ----------------------------------------------------------------- Private */
 
 
-void _argument(StringBuffer_T request, const char *name, const char *value) {
+static void _argument(StringBuffer_T request, const char *name, const char *value) {
         char *_value = Util_urlEncode((char *)value);
         StringBuffer_append(request, "%s%s=%s", StringBuffer_indexOf(request, "?") != -1 ? "&" : "?", name, _value);
         FREE(_value);
@@ -79,7 +79,7 @@ void _argument(StringBuffer_T request, const char *name, const char *value) {
 
 
 //FIXME: move to a new Color class
-boolean_t _hasColor() {
+static boolean_t _hasColor() {
         if (! (Run.flags & Run_NoColor)) {
                 if (getenv("COLORTERM")) {
                         return true;
@@ -93,7 +93,7 @@ boolean_t _hasColor() {
 }
 
 
-boolean_t _client(const char *request) {
+static boolean_t _client(const char *request) {
         boolean_t status = false;
         if (! exist_daemon()) {
                 LogError("Status not available -- the monit daemon is not running\n");
