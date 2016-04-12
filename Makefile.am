@@ -15,7 +15,7 @@ YACCFLAGS	= -dvt
 POD2MAN		= @POD2MAN@
 POD2MANFLAGS	= @POD2MANFLAGS@
 
-AM_CPPFLAGS	= $(CPPFLAGS) $(EXTCPPFLAGS) -D@ARCH@ -DSYSCONFDIR="\"@sysconfdir@\"" -I./src -I./src/device -I./src/http -I./src/notification -I./src/process -I./src/protocols -I./src/ssl -I./libmonit/src
+AM_CPPFLAGS	= $(CPPFLAGS) $(EXTCPPFLAGS) -D@ARCH@ -DSYSCONFDIR="\"@sysconfdir@\"" -I./src -I./src/device -I./src/http -I./src/notification -I./src/process -I./src/protocols -I./src/ssl -I./src/terminal -I./libmonit/src
 AM_LDFLAGS	= $(LDFLAGS) $(EXTLDFLAGS) -L./lib/
 
 bin_PROGRAMS	= monit
@@ -25,7 +25,6 @@ monit_SOURCES	= src/y.tab.c \
 		  src/alert.c \
 		  src/collector.c \
 		  src/control.c \
-		  src/Color.c \
 		  src/daemonize.c \
 		  src/env.c \
 		  src/event.c \
@@ -87,7 +86,8 @@ monit_SOURCES	= src/y.tab.c \
 		  src/protocols/ssh.c \
 		  src/protocols/tns.c \
 		  src/protocols/websocket.c \
-		  src/ssl/Ssl.c
+		  src/ssl/Ssl.c \
+		  src/terminal/Color.c
  
 monit_LDADD 	= libmonit/libmonit.la
 monit_LDFLAGS 	= -static $(EXTLDFLAGS)

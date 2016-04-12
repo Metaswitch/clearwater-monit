@@ -458,15 +458,6 @@ int main(void) {
         }
         printf("=> Test25: OK\n\n");
 
-        printf("=> Test26: Str_unescapeANSI\n");
-        {
-                char s[] = "\033[31mHello\033[0m";
-                printf("Before: %s\n", s);
-                printf("After:  %s\n", Str_unescapeANSI(s));
-                assert(Str_isEqual(s, "Hello"));
-        }
-        printf("=> Test26: OK\n\n");
-
         printf("============> Str Tests: OK\n\n");
         return 0;
 }

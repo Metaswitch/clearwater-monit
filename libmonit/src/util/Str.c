@@ -251,29 +251,6 @@ char *Str_unescape(const char *charset, char *s) {
 }
 
 
-char *Str_unescapeANSI(char *s) {
-        if (STR_DEF(s)) {
-                int x, y;
-                boolean_t ansi = false;
-                for (x = 0, y = 0; s[y]; y++) {
-                        if (s[y] == '\033' && s[y + 1] == '[') {
-                                // Escape sequence start
-                                ansi = true;
-                                y++; // ++ to skip 'ESC['
-                        } else if (ansi) {
-                                // Escape sequence stop
-                                if (s[y] >= 64 && s[y] <= 126)
-                                        ansi = false;
-                        } else {
-                                s[x++] = s[y];
-                        }
-                }
-                s[x] = 0;
-        }
-        return s;
-}
-
-
 int Str_isEqual(const char *a, const char *b) {
         if (a && b) {
                 while (*a && *b)

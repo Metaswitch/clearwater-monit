@@ -110,7 +110,7 @@ static boolean_t _client(const char *request) {
                         Util_parseMonitHttpResponse(S);
                         boolean_t hasColor = Color_support();
                         while (Socket_readLine(S, buf, sizeof(buf)))
-                                printf("%s", hasColor ? buf : Str_unescapeANSI(buf));
+                                printf("%s", hasColor ? buf : Color_strip(buf));
                         status = true;
                 }
                 ELSE

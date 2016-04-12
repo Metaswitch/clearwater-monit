@@ -58,3 +58,26 @@ boolean_t Color_support() {
         return false;
 }
 
+
+char *Color_strip(char *s) {
+        if (STR_DEF(s)) {
+                int x, y;
+                boolean_t ansi = false;
+                for (x = 0, y = 0; s[y]; y++) {
+                        if (s[y] == '\033' && s[y + 1] == '[') {
+                                // Escape sequence start
+                                ansi = true;
+                                y++; // ++ to skip 'ESC['
+                        } else if (ansi) {
+                                // Escape sequence stop
+                                if (s[y] >= 64 && s[y] <= 126)
+                                        ansi = false;
+                        } else {
+                                s[x++] = s[y];
+                        }
+                }
+                s[x] = 0;
+        }
+        return s;
+}
+

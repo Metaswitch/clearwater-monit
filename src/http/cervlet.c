@@ -228,7 +228,7 @@ static void _printServiceStatus(StringBuffer_T sb, Service_T s) {
         ASSERT(s);
         StringBuffer_append(sb, "<span class='%s-text'>", (s->monitor == Monitor_Not || s->monitor & Monitor_Init) ? "gray" : ((! s->error) ? "green" : "red"));
         char buf[STRLEN];
-        escapeHTML(sb, Str_unescapeANSI(get_service_status(s, buf, sizeof(buf))));
+        escapeHTML(sb, Color_strip(get_service_status(s, buf, sizeof(buf))));
         StringBuffer_append(sb, "</span>");
 }
 
@@ -810,7 +810,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer,
                             "<tr><td>Monitoring mode</td><td>%s</td></tr>", modenames[s->mode]);
         StringBuffer_append(res->outputbuffer,
-                            "<tr><td>Monitoring status</td><td>%s</td></tr>", Str_unescapeANSI(get_monitoring_status(s, buf, sizeof(buf))));
+                            "<tr><td>Monitoring status</td><td>%s</td></tr>", Color_strip(get_monitoring_status(s, buf, sizeof(buf))));
         for (Dependant_T d = s->dependantlist; d; d = d->next) {
                 if (d->dependant != NULL) {
                         StringBuffer_append(res->outputbuffer,
@@ -2612,7 +2612,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
 
 static void _printServiceSummary(HttpResponse res, Service_T s) {
         char buf[STRLEN];
-        StringBuffer_append(res->outputbuffer, "%-11s %-20s %s\n", servicetypes[s->type], s->name, get_service_status(s, buf, sizeof(buf)));
+        StringBuffer_append(res->outputbuffer, "%-13s %-22s %s\n", servicetypes[s->type], s->name, get_service_status(s, buf, sizeof(buf)));
 }
 
 
@@ -2634,12 +2634,6 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         char *uptime = Util_getUptime(getProcessUptime(getpid(), ptree, ptreesize), " ");
         StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, uptime);
         FREE(uptime);
-
-        StringBuffer_append(res->outputbuffer,
-                "%-11s %-20s %s\n"
-                "--------------------------------------------------\n",
-                "TYPE", "NAME", "STATUS");
-
 
         int found = 0;
         const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
@@ -2705,13 +2699,12 @@ static void _printReport(HttpRequest req, HttpResponse res) {
                         "down:         %*.0f (%.1f%%)\n"
                         "initialising: %*.0f (%.1f%%)\n"
                         "unmonitored:  %*.0f (%.1f%%)\n"
-                        "----------------------------\n"
-                        "Total %.0f services\n",
+                        "total:        %*.0f services\n",
                         3, up, 100. * up / total,
                         3, down, 100. * down / total,
                         3, init, 100. * init / total,
                         3, unmonitored, 100. * unmonitored / total,
-                        total);
+                        3, total);
         } else if (Str_isEqual(type, "up")) {
                 for (Service_T s = servicelist; s; s = s->next)
                         if (s->monitor != Monitor_Not && ! (s->monitor & Monitor_Init) && ! s->error)
@@ -3077,11 +3070,11 @@ static char *get_monitoring_status(Service_T s, char *buf, int buflen) {
         ASSERT(s);
         ASSERT(buf);
         if (s->monitor == Monitor_Not)
-                snprintf(buf, buflen, COLOR_YELLOW "Not monitored" COLOR_DEFAULT);
+                snprintf(buf, buflen, Color_yellow("Not monitored"));
         else if (s->monitor & Monitor_Waiting)
                 snprintf(buf, buflen, "Waiting");
         else if (s->monitor & Monitor_Init)
-                snprintf(buf, buflen, COLOR_BLUE "Initializing" COLOR_DEFAULT);
+                snprintf(buf, buflen, Color_blue("Initializing"));
         else if (s->monitor & Monitor_Yes)
                 snprintf(buf, buflen, "Monitored");
         return buf;
@@ -3094,16 +3087,16 @@ static char *get_service_status(Service_T s, char *buf, int buflen) {
         if (s->monitor == Monitor_Not || s->monitor & Monitor_Init) {
                 get_monitoring_status(s, buf, buflen);
         } else if (s->error == 0) {
-                snprintf(buf, buflen, COLOR_GREEN "%s", statusnames[s->type]);
+                snprintf(buf, buflen, Color_green("%s", statusnames[s->type]));
         } else {
                 // In the case that the service has actualy some failure, error will be non zero. We will check the bitmap and print the description of the first error found
                 EventTable_T *et = Event_Table;
                 while ((*et).id) {
                         if (s->error & (*et).id) {
                                 if (s->error_hint & (*et).id)
-                                        snprintf(buf, buflen, COLOR_YELLOW "%s", (*et).description_changed);
+                                        snprintf(buf, buflen, Color_yellow("%s", (*et).description_changed));
                                 else
-                                        snprintf(buf, buflen, COLOR_RED "%s", (*et).description_failed);
+                                        snprintf(buf, buflen, Color_red("%s", (*et).description_failed));
                                 break;
                         }
                         et++;
@@ -3111,7 +3104,6 @@ static char *get_service_status(Service_T s, char *buf, int buflen) {
         }
         if (s->doaction)
                 snprintf(buf + strlen(buf), buflen - strlen(buf) - 1, " - %s pending", actionnames[s->doaction]);
-        snprintf(buf + strlen(buf), buflen - strlen(buf) - 1, COLOR_DEFAULT);
         return buf;
 }
 

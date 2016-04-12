@@ -471,7 +471,7 @@ If you want to process the monit CLI output in a script, you
 can use either --no-color option or the following statement
 in the monit configuration file to disable the colors completely:
 
- SET COLOR <ENABLE | DISABLE>
+ SET TERMINAL < COLOR | NOCOLOR >
 
 
 

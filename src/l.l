@@ -206,7 +206,9 @@ cacertificatepath { return CACERTIFICATEPATH; }
 set               { return SET; }
 daemon            { return DAEMON; }
 delay             { return DELAY; }
+terminal          { return TERMINAL; }
 color             { return COLOR; }
+nocolor           { return NOCOLOR; }
 logfile           { return LOGFILE; }
 syslog            { return SYSLOG; }
 facility          { return FACILITY; }
