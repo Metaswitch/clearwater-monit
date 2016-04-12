@@ -239,6 +239,19 @@ char *Str_unescape(const char *charset, char *s);
 
 
 /**
+ * Unescape the ANSI sequences in the string.
+ * Example:
+ * <pre>
+ * char s[] = "\033[31mHello\033[0m";
+ * Str_unescapeANSI(s) -> Hello
+ * </pre>
+ * @param s The string to unescape
+ * @return A pointer to s
+ */
+char *Str_unescapeANSI(char *s);
+
+
+/**
  * Returns true if <i>a</i> equals <i>b</i>. The test is 
  * <i>case-insensitive</i> but depends on that all characters
  * in the two strings can be translated in the current locale.

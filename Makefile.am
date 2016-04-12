@@ -25,6 +25,7 @@ monit_SOURCES	= src/y.tab.c \
 		  src/alert.c \
 		  src/collector.c \
 		  src/control.c \
+		  src/Color.c \
 		  src/daemonize.c \
 		  src/env.c \
 		  src/event.c \

@@ -19,7 +19,7 @@
  * including the two.
  *
  * You must obey the GNU Affero General Public License in all respects
- * for all of the code used other than OpenSSL.  
+ * for all of the code used other than OpenSSL.
  */
 
 
@@ -102,10 +102,10 @@ char *Str_unquote(char *s) {
                         for (; *t; t++, u++)
                                 *u = *t;
                         t = u;
-                } else 
+                } else
                         while (*t) t++;
                 // Right unquote
-                do 
+                do
                         *(t--) = 0;
                 while (t > s && (*t == 34 || *t == 39 || isspace(*t)));
         }
@@ -170,8 +170,8 @@ double Str_parseDouble(const char *s) {
 
 char *Str_replaceChar(char *s, char o, char n) {
         if (s) {
-                for (char *t = s; *t; t++) 
-                        if (*t == o) 
+                for (char *t = s; *t; t++)
+                        if (*t == o)
                                 *t = n;
         }
         return s;
@@ -180,7 +180,7 @@ char *Str_replaceChar(char *s, char o, char n) {
 
 int Str_startsWith(const char *a, const char *b) {
 	if (a && b) {
-	        do 
+	        do
 	                if (toupper(*a++) != toupper(*b++)) return false;
                 while (*b);
                 return true;
@@ -224,7 +224,7 @@ int Str_has(const char *charset, const char *s) {
                 for (int x = 0; s[x]; x++) {
                         for (int y = 0; charset[y]; y++) {
                                 if (s[x] == charset[y])
-                                        return true; 
+                                        return true;
                         }
                 }
         }
@@ -244,6 +244,29 @@ char *Str_unescape(const char *charset, char *s) {
                                                 break;
                                         }
                                 }
+                }
+                s[x] = 0;
+        }
+        return s;
+}
+
+
+char *Str_unescapeANSI(char *s) {
+        if (STR_DEF(s)) {
+                int x, y;
+                boolean_t ansi = false;
+                for (x = 0, y = 0; s[y]; y++) {
+                        if (s[y] == '\033' && s[y + 1] == '[') {
+                                // Escape sequence start
+                                ansi = true;
+                                y++; // ++ to skip 'ESC['
+                        } else if (ansi) {
+                                // Escape sequence stop
+                                if (s[y] >= 64 && s[y] <= 126)
+                                        ansi = false;
+                        } else {
+                                s[x++] = s[y];
+                        }
                 }
                 s[x] = 0;
         }
@@ -272,7 +295,7 @@ int Str_isByteEqual(const char *a, const char *b) {
 
 
 char *Str_copy(char *dest, const char *src, int n) {
-	if (src && dest && (n > 0)) { 
+	if (src && dest && (n > 0)) {
         	char *t = dest;
 	        while (*src && n--)
         		*t++ = *src++;
@@ -284,7 +307,7 @@ char *Str_copy(char *dest, const char *src, int n) {
 
 
 // We don't use strdup so we can report MemoryException on OOM
-char *Str_dup(const char *s) { 
+char *Str_dup(const char *s) {
         char *t = NULL;
         if (s) {
                 size_t n = strlen(s) + 1;
@@ -425,7 +448,7 @@ int Str_compareConstantTime(const void *x, const void *y) {
         // Copy input to zero initialized buffers of fixed size, to prevent string length timing attack (handle NULL input as well). If some string exceeds hardcoded buffer size, error is returned.
         char _x[MAX_CONSTANT_TIME_STRING_LENGTH + 1] = {};
         char _y[MAX_CONSTANT_TIME_STRING_LENGTH + 1] = {};
-        if (snprintf(_x, sizeof(_x), "%s", x ? (const char *)x : "") > MAX_CONSTANT_TIME_STRING_LENGTH || snprintf(_y, sizeof(_y), "%s", y ? (const char *)y : "") > MAX_CONSTANT_TIME_STRING_LENGTH) 
+        if (snprintf(_x, sizeof(_x), "%s", x ? (const char *)x : "") > MAX_CONSTANT_TIME_STRING_LENGTH || snprintf(_y, sizeof(_y), "%s", y ? (const char *)y : "") > MAX_CONSTANT_TIME_STRING_LENGTH)
                 return 1;
         int rv = 0;
         for (size_t i = 0; i < sizeof(_x); i++)
