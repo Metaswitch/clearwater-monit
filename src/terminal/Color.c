@@ -23,7 +23,7 @@
  */
 
 
-#include "Config.h"
+#include "config.h"
 
 #include <stdlib.h>
 
