@@ -77,6 +77,8 @@
 		9357B19B19F2F5A400329B3F /* mongodb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19919F2F5A400329B3F /* mongodb.c */; };
 		9357B19C19F2F5A400329B3F /* redis.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19A19F2F5A400329B3F /* redis.c */; };
 		9378737B1A13907100CF8C5E /* sieve.c in Sources */ = {isa = PBXBuildFile; fileRef = 9378737A1A13907100CF8C5E /* sieve.c */; };
+		938153231CC11D3B008FA1DB /* TermColor.c in Sources */ = {isa = PBXBuildFile; fileRef = 9381531F1CC11D3B008FA1DB /* TermColor.c */; };
+		938153241CC11D3B008FA1DB /* TermTable.c in Sources */ = {isa = PBXBuildFile; fileRef = 938153211CC11D3B008FA1DB /* TermTable.c */; };
 		93A23ED41C85E6890076FBFE /* Address.c in Sources */ = {isa = PBXBuildFile; fileRef = 93A23ED21C85E6890076FBFE /* Address.c */; };
 		93DE91B01CBAED0400BC8E0C /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 93DE91AE1CBAED0400BC8E0C /* client.c */; };
 /* End PBXBuildFile section */
@@ -289,6 +291,10 @@
 		9357B19919F2F5A400329B3F /* mongodb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mongodb.c; sourceTree = "<group>"; };
 		9357B19A19F2F5A400329B3F /* redis.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = redis.c; sourceTree = "<group>"; };
 		9378737A1A13907100CF8C5E /* sieve.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sieve.c; sourceTree = "<group>"; };
+		9381531F1CC11D3B008FA1DB /* TermColor.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = TermColor.c; sourceTree = "<group>"; };
+		938153201CC11D3B008FA1DB /* TermColor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TermColor.h; sourceTree = "<group>"; };
+		938153211CC11D3B008FA1DB /* TermTable.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = TermTable.c; sourceTree = "<group>"; };
+		938153221CC11D3B008FA1DB /* TermTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TermTable.h; sourceTree = "<group>"; };
 		93A23ED21C85E6890076FBFE /* Address.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Address.c; sourceTree = "<group>"; };
 		93A23ED31C85E6890076FBFE /* Address.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Address.h; sourceTree = "<group>"; };
 		93DE91AE1CBAED0400BC8E0C /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
@@ -465,6 +471,7 @@
 				52F6E77313A74F220023F87A /* process */,
 				52F6E78113A74F220023F87A /* protocols */,
 				9305FD571A96873200B7F8A2 /* ssl */,
+				9381531B1CC11D3B008FA1DB /* terminal */,
 				52F6E74413A74F220023F87A /* alert.c */,
 				52F6E74513A74F220023F87A /* alert.h */,
 				52F6E74613A74F220023F87A /* collector.c */,
@@ -621,6 +628,17 @@
 			path = notification;
 			sourceTree = "<group>";
 		};
+		9381531B1CC11D3B008FA1DB /* terminal */ = {
+			isa = PBXGroup;
+			children = (
+				9381531F1CC11D3B008FA1DB /* TermColor.c */,
+				938153201CC11D3B008FA1DB /* TermColor.h */,
+				938153211CC11D3B008FA1DB /* TermTable.c */,
+				938153221CC11D3B008FA1DB /* TermTable.h */,
+			);
+			path = terminal;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -743,6 +761,8 @@
 				52F6E82E13A74F220023F87A /* apache_status.c in Sources */,
 				52F6E82F13A74F220023F87A /* clamav.c in Sources */,
 				52F6E83013A74F220023F87A /* default.c in Sources */,
+				938153231CC11D3B008FA1DB /* TermColor.c in Sources */,
+				938153241CC11D3B008FA1DB /* TermTable.c in Sources */,
 				934574641C771C9C00FF170F /* SMTP.c in Sources */,
 				52F6E83113A74F220023F87A /* dns.c in Sources */,
 				52F6E83213A74F220023F87A /* dwp.c in Sources */,

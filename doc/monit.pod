@@ -462,7 +462,7 @@ for example:
 
 
 
-=head1 COMMAND-LINE COLORS
+=head1 TERMINAL COLORS
 
 Monit uses ANSI escape sequences to colorise important parts
 of the command-line output, if the terminal supports colors.
@@ -472,6 +472,19 @@ can use either --no-color option or the following statement
 in the monit configuration file to disable the colors completely:
 
  SET TERMINAL < COLOR | NOCOLOR >
+
+
+
+=head1 TERMINAL TABLES
+
+Monit uses UTF-8 box drawing characters for output formating,
+if the terminal is set to UTF-8.
+
+If you want to process the monit CLI output in a script, you
+can use either --no-table option or the following statement
+in the monit configuration file to disable the tables completely:
+
+ SET TERMINAL < TABLE | NOTABLE >
 
 
 

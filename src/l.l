@@ -209,6 +209,8 @@ delay             { return DELAY; }
 terminal          { return TERMINAL; }
 color             { return COLOR; }
 nocolor           { return NOCOLOR; }
+table             { return TABLE; }
+notable           { return NOTABLE; }
 logfile           { return LOGFILE; }
 syslog            { return SYSLOG; }
 facility          { return FACILITY; }

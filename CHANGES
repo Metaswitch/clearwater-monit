@@ -4,7 +4,8 @@
 
 Version 5.18
 
-New: The service status in monit command-line interface is now colorized.
+New: The service status in monit command-line interface is now colorized and the summary uses
+a table format.
 
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
 but a zombie was left. Thanks to Guillem Jover for patch.

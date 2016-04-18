@@ -623,7 +623,8 @@ static void handle_options(int argc, char **argv) {
                 {"verbose",     no_argument,            NULL,   'v'},
                 {"version",     no_argument,            NULL,   'V'},
                 {"help",        no_argument,            NULL,   'h'},
-                {"no-color",    no_argument,            NULL,   'n'},
+                {"no-color",    no_argument,            NULL,   'N'},
+                {"no-table",    no_argument,            NULL,   'T'},
                 {0}
         };
         while ((opt = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1)
@@ -726,9 +727,14 @@ static void handle_options(int argc, char **argv) {
                                         exit(0);
                                         break;
                                 }
-                                case 'n':
+                                case 'N':
                                 {
                                         Run.flags |= Run_NoColor;
+                                        break;
+                                }
+                                case 'T':
+                                {
+                                        Run.flags |= Run_NoTable;
                                         break;
                                 }
                                 case '?':

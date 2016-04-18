@@ -78,7 +78,8 @@
 #include "process.h"
 #include "device.h"
 #include "protocol.h"
-#include "Color.h"
+#include "TermColor.h"
+#include "TermTable.h"
 
 #define ACTION(c) ! strncasecmp(req->url, c, sizeof(c))
 
@@ -228,7 +229,7 @@ static void _printServiceStatus(StringBuffer_T sb, Service_T s) {
         ASSERT(s);
         StringBuffer_append(sb, "<span class='%s-text'>", (s->monitor == Monitor_Not || s->monitor & Monitor_Init) ? "gray" : ((! s->error) ? "green" : "red"));
         char buf[STRLEN];
-        escapeHTML(sb, Color_strip(get_service_status(s, buf, sizeof(buf))));
+        escapeHTML(sb, TermColor_strip(get_service_status(s, buf, sizeof(buf))));
         StringBuffer_append(sb, "</span>");
 }
 
@@ -810,7 +811,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer,
                             "<tr><td>Monitoring mode</td><td>%s</td></tr>", modenames[s->mode]);
         StringBuffer_append(res->outputbuffer,
-                            "<tr><td>Monitoring status</td><td>%s</td></tr>", Color_strip(get_monitoring_status(s, buf, sizeof(buf))));
+                            "<tr><td>Monitoring status</td><td>%s</td></tr>", TermColor_strip(get_monitoring_status(s, buf, sizeof(buf))));
         for (Dependant_T d = s->dependantlist; d; d = d->next) {
                 if (d->dependant != NULL) {
                         StringBuffer_append(res->outputbuffer,
@@ -2610,17 +2611,18 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
 }
 
 
-static void _printServiceSummary(HttpResponse res, Service_T s) {
-        char buf[STRLEN];
-        StringBuffer_append(res->outputbuffer, "%-13s %-22s %s\n", servicetypes[s->type], s->name, get_service_status(s, buf, sizeof(buf)));
+static void _printServiceSummary(TermTable_T t, Service_T s) {
+        TermTable_printColumn(t, "%s", servicetypes[s->type]);
+        TermTable_printColumn(t, "%s", s->name);
+        TermTable_printColumn(t, "%s", get_service_status(s, (char[STRLEN]){}, STRLEN));
 }
 
 
-static int _printServiceSummaryByType(HttpResponse res, Service_Type type) {
+static int _printServiceSummaryByType(TermTable_T t, Service_Type type) {
         int found = 0;
         for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                 if (s->type == type) {
-                        _printServiceSummary(res, s);
+                        _printServiceSummary(t, s);
                         found++;
                 }
         }
@@ -2638,11 +2640,12 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         int found = 0;
         const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
         const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
+        TermTable_T t = TermTable_new(res->outputbuffer, 3, (TermTableColumn_T []){{"Type", 13}, {"Service Name", 31}, {"Status", 31}}, (TermTableOptions_T){.noHeader = true});
         if (stringGroup) {
                 for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                         if (IS(stringGroup, sg->name)) {
                                 for (list_t m = sg->members->head; m; m = m->next) {
-                                        _printServiceSummary(res, m->e);
+                                        _printServiceSummary(t, m->e);
                                         found++;
                                 }
                                 break;
@@ -2651,21 +2654,22 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         } else if (stringService) {
                 for (Service_T s = servicelist_conf; s; s = s->next_conf) {
                         if (IS(stringService, s->name)) {
-                                _printServiceSummary(res, s);
+                                _printServiceSummary(t, s);
                                 found++;
                         }
                 }
         } else {
-                found += _printServiceSummaryByType(res, Service_System);
-                found += _printServiceSummaryByType(res, Service_Process);
-                found += _printServiceSummaryByType(res, Service_File);
-                found += _printServiceSummaryByType(res, Service_Fifo);
-                found += _printServiceSummaryByType(res, Service_Directory);
-                found += _printServiceSummaryByType(res, Service_Filesystem);
-                found += _printServiceSummaryByType(res, Service_Host);
-                found += _printServiceSummaryByType(res, Service_Net);
-                found += _printServiceSummaryByType(res, Service_Program);
+                found += _printServiceSummaryByType(t, Service_System);
+                found += _printServiceSummaryByType(t, Service_Process);
+                found += _printServiceSummaryByType(t, Service_File);
+                found += _printServiceSummaryByType(t, Service_Fifo);
+                found += _printServiceSummaryByType(t, Service_Directory);
+                found += _printServiceSummaryByType(t, Service_Filesystem);
+                found += _printServiceSummaryByType(t, Service_Host);
+                found += _printServiceSummaryByType(t, Service_Net);
+                found += _printServiceSummaryByType(t, Service_Program);
         }
+        TermTable_free(&t);
         if (found == 0) {
                 if (stringGroup)
                         send_error(req, res, SC_BAD_REQUEST, "Service group '%s' not found", stringGroup);
@@ -3070,11 +3074,11 @@ static char *get_monitoring_status(Service_T s, char *buf, int buflen) {
         ASSERT(s);
         ASSERT(buf);
         if (s->monitor == Monitor_Not)
-                snprintf(buf, buflen, Color_yellow("Not monitored"));
+                snprintf(buf, buflen, TermColor_yellow("Not monitored"));
         else if (s->monitor & Monitor_Waiting)
                 snprintf(buf, buflen, "Waiting");
         else if (s->monitor & Monitor_Init)
-                snprintf(buf, buflen, Color_blue("Initializing"));
+                snprintf(buf, buflen, TermColor_blue("Initializing"));
         else if (s->monitor & Monitor_Yes)
                 snprintf(buf, buflen, "Monitored");
         return buf;
@@ -3087,16 +3091,16 @@ static char *get_service_status(Service_T s, char *buf, int buflen) {
         if (s->monitor == Monitor_Not || s->monitor & Monitor_Init) {
                 get_monitoring_status(s, buf, buflen);
         } else if (s->error == 0) {
-                snprintf(buf, buflen, Color_green("%s", statusnames[s->type]));
+                snprintf(buf, buflen, TermColor_green("%s", statusnames[s->type]));
         } else {
                 // In the case that the service has actualy some failure, error will be non zero. We will check the bitmap and print the description of the first error found
                 EventTable_T *et = Event_Table;
                 while ((*et).id) {
                         if (s->error & (*et).id) {
                                 if (s->error_hint & (*et).id)
-                                        snprintf(buf, buflen, Color_yellow("%s", (*et).description_changed));
+                                        snprintf(buf, buflen, TermColor_yellow("%s", (*et).description_changed));
                                 else
-                                        snprintf(buf, buflen, Color_red("%s", (*et).description_failed));
+                                        snprintf(buf, buflen, TermColor_red("%s", (*et).description_failed));
                                 break;
                         }
                         et++;
