@@ -145,22 +145,23 @@ boolean_t TermTable_support() {
 char *TermTable_strip(char *s) {
         if (STR_DEF(s)) {
                 int x, y;
+                unsigned char *_s = (unsigned char *)s;
                 boolean_t separator = false;
                 for (x = 0, y = 0; s[y]; y++) {
                         if (! separator) {
-                                if (s[y] == 0xE2 && s[y + 1] == 0x94) {
-                                        if (s[y + 2] == 0x8c || s[y + 2] == 0x94 || s[y + 2] == 0x9c)
+                                if (_s[y] == 0xE2 && _s[y + 1] == 0x94) {
+                                        if (_s[y + 2] == 0x8c || _s[y + 2] == 0x94 || _s[y + 2] == 0x9c)
                                                 separator = true; // Drop the whole separator line
-                                        else if (s[y + 2] >= 0x80 && s[y + 2] <= 0xBF)
+                                        else if (_s[y + 2] >= 0x80 && _s[y + 2] <= 0xBF)
                                                 y += 2; // to skip 3 characters of UTF-8 box drawing character
                                 } else {
-                                        s[x++] = s[y];
+                                        _s[x++] = _s[y];
                                 }
-                        } else if (s[y] == '\n') {
+                        } else if (_s[y] == '\n') {
                                 separator = false;
                         }
                 }
-                s[x] = 0;
+                _s[x] = 0;
         }
         return s;
 }
