@@ -813,6 +813,7 @@ static void help() {
         printf(" --id          Print Monit's unique ID\n");
         printf(" --resetid     Reset Monit's unique ID. Use with caution\n");
         printf(" --no-color    No colors in command-line output\n");
+        printf(" --no-table    No table borders in command-line output\n");
         printf(" -t            Run syntax check for the control file\n");
         printf(" -v            Verbose mode, work noisy (diagnostic output)\n");
         printf(" -vv           Very verbose mode, same as -v plus log stacktrace on error\n");
