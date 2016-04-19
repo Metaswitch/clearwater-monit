@@ -5,7 +5,18 @@
 Version 5.18
 
 New: The service status in monit command-line interface is now colorized and the summary uses
-a table format.
+a tabular format. To disable colors and display nontabular output, use a new -B command-line
+option or the "set terminal batch" statement in the monit configuration file.
+
+New: New CLI command for services state overview added:
+    monit report [up | down | initialising | unmonitored | total]
+Output example:
+    $ monit report
+    up:            11 (39.3%)
+    down:          16 (57.1%)
+    initialising:   0 (0.0%)
+    unmonitored:    1 (3.6%)
+    total:         28 services
 
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
 but a zombie was left. Thanks to Guillem Jover for patch.

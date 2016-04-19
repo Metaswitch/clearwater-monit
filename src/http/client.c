@@ -57,8 +57,8 @@
 #include "socket.h"
 #include "process.h"
 #include "device.h"
-#include "TermColor.h"
-#include "TermTable.h"
+#include "Color.h"
+#include "Box.h"
 
 // libmonit
 #include "exceptions/AssertException.h"
@@ -101,7 +101,7 @@ static boolean_t _client(const char *request) {
                 LogError("Status not available - monit http interface is not enabled, please add the 'set httpd' statement\n");
         }
         if (S) {
-                Socket_print(S, "GET %s%sformat=text&color=%s", request, Str_sub(request, "?") ? "&" : "?", TermColor_support() ? "yes" : "no");
+                Socket_print(S, "GET %s%sformat=text", request, Str_sub(request, "?") ? "&" : "?");
                 char *_auth = Util_getBasicAuthHeaderMonit();
                 Socket_print(S, " HTTP/1.0\r\n%s\r\n", _auth ? _auth : "");
                 FREE(_auth);
@@ -109,13 +109,10 @@ static boolean_t _client(const char *request) {
                 TRY
                 {
                         Util_parseMonitHttpResponse(S);
-                        boolean_t hasColor = TermColor_support();
-                        boolean_t hasTable = TermTable_support();
+                        boolean_t strip = (Run.flags & Run_Batch || ! Color_support()) ? true : false;
                         while (Socket_readLine(S, buf, sizeof(buf))) {
-                                if (! hasColor)
-                                        TermColor_strip(buf);
-                                if (! hasTable)
-                                        TermTable_strip(buf);
+                                if (strip)
+                                        Color_strip(Box_strip(buf));
                                 printf("%s", buf);
                         }
                         status = true;

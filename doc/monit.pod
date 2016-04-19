@@ -135,6 +135,9 @@ B<-s> I<statefile>
    Write state information to this file. Or use I<"set
    statefile"> in monitrc.
 
+B<-B>
+   Batch command line mode (nontabular output with no colors)
+
 B<-I>
    Do not run in background (needed for run from init)
 
@@ -182,7 +185,7 @@ monitoring for them. If the group option is set (I<-g>), only
 start and enable monitoring of services in the named group ("all"
 is not required in this case).
 
-=item start name
+=item start <name>
 
 Start the named service and enable monitoring for it. The name is
 a service entry name from the monitrc file.
@@ -194,7 +197,7 @@ monitoring. If the group option is set, only stop and disable
 monitoring of the services in the named group ("all" is not
 required in this case).
 
-=item stop name
+=item stop <name>
 
 Stop the named service and disable its monitoring. The name is a
 service entry name from the monitrc file.
@@ -205,7 +208,7 @@ Stop and start I<all> services. If the group option is set, only
 restart the services in the named group ("all" is not required in
 this case).
 
-=item restart name
+=item restart <name>
 
 Restart the named service. The name is a service entry name from
 the monitrc file.
@@ -216,7 +219,7 @@ Enable monitoring of all services listed in the control file. If
 the group option is set, only start monitoring of services in the
 named group ("all" is not required in this case).
 
-=item monitor name
+=item monitor <name>
 
 Enable monitoring of the named service. The name is a service
 entry name from the monitrc file. Monit will also enable
@@ -228,7 +231,7 @@ Disable monitoring of all services listed in the control file. If
 the group option is set, only disable monitoring of services in
 the named group ("all" is not required in this case).
 
-=item unmonitor name
+=item unmonitor <name>
 
 Disable monitoring of the named service. The name is a service
 entry name from the monitrc file. Monit will also disable
@@ -241,6 +244,10 @@ Print service status information.
 =item summary [name]
 
 Print a short status summary.
+
+=item report [up | down | initialising | unmonitored | total]
+
+Report services state
 
 =item reload
 
@@ -256,7 +263,7 @@ Kill the Monit daemon process
 Check all services listed in the control file. This action is
 also the default behaviour when Monit runs in daemon mode.
 
-=item procmatch regex
+=item procmatch <regex>
 
 Allows for easy testing of pattern for process match check. The
 command takes regular expression as an argument and displays all
@@ -462,29 +469,18 @@ for example:
 
 
 
-=head1 TERMINAL COLORS
+=head1 TERMINAL OUTPUT
 
 Monit uses ANSI escape sequences to colorise important parts
-of the command-line output, if the terminal supports colors.
+of the command-line output, if the terminal supports colors,
+and UTF-8 box characters for tabular output.
 
 If you want to process the monit CLI output in a script, you
-can use either --no-color option or the following statement
-in the monit configuration file to disable the colors completely:
+can use either -B option or the following statement in the monit
+configuration file to disable the tabular output and colors
+completely:
 
- SET TERMINAL < COLOR | NOCOLOR >
-
-
-
-=head1 TERMINAL TABLES
-
-Monit uses UTF-8 box drawing characters for output formating,
-if the terminal is set to UTF-8.
-
-If you want to process the monit CLI output in a script, you
-can use either --no-table option or the following statement
-in the monit configuration file to disable the tables completely:
-
- SET TERMINAL < TABLE | NOTABLE >
+ SET TERMINAL BATCH
 
 
 

@@ -207,10 +207,7 @@ set               { return SET; }
 daemon            { return DAEMON; }
 delay             { return DELAY; }
 terminal          { return TERMINAL; }
-color             { return COLOR; }
-nocolor           { return NOCOLOR; }
-table             { return TABLE; }
-notable           { return NOTABLE; }
+batch             { return BATCH; }
 logfile           { return LOGFILE; }
 syslog            { return SYSLOG; }
 facility          { return FACILITY; }

@@ -45,8 +45,8 @@
 /* -------------------------------------------------------- Public Methods */
 
 
-boolean_t TermColor_support() {
-        if (! (Run.flags & Run_NoColor)) {
+boolean_t Color_support() {
+        if (! (Run.flags & Run_Batch)) {
                 if (getenv("COLORTERM")) {
                         return true;
                 } else {
@@ -59,12 +59,12 @@ boolean_t TermColor_support() {
 }
 
 
-boolean_t TermColor_has(char *s) {
+boolean_t Color_has(char *s) {
         return STR_DEF(s) ? (boolean_t)Str_sub(s, "\033[") : false;
 }
 
 
-char *TermColor_strip(char *s) {
+char *Color_strip(char *s) {
         if (STR_DEF(s)) {
                 int x, y;
                 boolean_t ansi = false;

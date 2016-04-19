@@ -87,8 +87,8 @@ monit_SOURCES	= src/y.tab.c \
 		  src/protocols/tns.c \
 		  src/protocols/websocket.c \
 		  src/ssl/Ssl.c \
-		  src/terminal/TermColor.c \
-		  src/terminal/TermTable.c
+		  src/terminal/Box.c \
+		  src/terminal/Color.c
  
 monit_LDADD 	= libmonit/libmonit.la
 monit_LDFLAGS 	= -static $(EXTLDFLAGS)

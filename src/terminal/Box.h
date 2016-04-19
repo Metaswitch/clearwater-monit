@@ -23,8 +23,8 @@
  */
 
 
-#ifndef TERMTABLE_INCLUDED
-#define TERMTABLE_INCLUDED
+#ifndef BOX_INCLUDED
+#define BOX_INCLUDED
 
 
 /**
@@ -36,26 +36,14 @@
  */
 
 
-typedef struct TermTableColumn_T {
+typedef struct BoxColumn_T {
         const char *name;
         int width;
-} TermTableColumn_T;
+} BoxColumn_T;
 
 
-typedef struct TermTableOptions_T {
-        boolean_t noHeader;
-} TermTableOptions_T;
-
-
-#define T TermTable_T
+#define T Box_T
 typedef struct T *T;
-
-
-/**
- * Test terminal table support (requires UTF-8)
- * @return true if tables are supported, otherwise false
- */
-boolean_t TermTable_support();
 
 
 /**
@@ -63,25 +51,25 @@ boolean_t TermTable_support();
  * @param s The string to strip
  * @return A pointer to s
  */
-char *TermTable_strip(char *s);
+char *Box_strip(char *s);
 
 
 /**
  * Constructs a terminal table object.
  * @param b The output stringbuffer
  * @param columnsCount Count of table columns
- * @param columns Array of TermTableColumn_T columns specification
- * @param options The table options
+ * @param columns Array of BoxColumn_T columns specification
+ * @param printHeader true if the header should be printed otherwise false
  * @return A new terminal table object
  */
-T TermTable_new(StringBuffer_T b, int columnsCount, TermTableColumn_T *columns, TermTableOptions_T options); //FIXME: when OutputStream is added, use it instead of StringBuffer
+T Box_new(StringBuffer_T b, int columnsCount, BoxColumn_T *columns, boolean_t printHeader); //FIXME: when OutputStream is added, use it instead of StringBuffer
 
 
 /**
- * Destroy a TermTable object and free allocated resources
- * @param t a TermTable object reference
+ * Destroy a Box object and free allocated resources
+ * @param t a Box object reference
  */
-void TermTable_free(T *t);
+void Box_free(T *t);
 
 
 /**
@@ -89,7 +77,7 @@ void TermTable_free(T *t);
  * @param t The terminal table object
  * @param format A string with optional var args
  */
-void TermTable_printColumn(T t, const char *format, ...) __attribute__((format (printf, 2, 3)));
+void Box_printColumn(T t, const char *format, ...) __attribute__((format (printf, 2, 3)));
 
 
 #undef T

@@ -172,8 +172,7 @@ typedef enum {
         Run_Stopped              = 0x400,                          /**< Stop Monit */
         Run_DoReload             = 0x800,                        /**< Reload Monit */
         Run_DoWakeup             = 0x1000,                       /**< Wakeup Monit */
-        Run_NoColor              = 0x2000,                      /**< No CLI colors */
-        Run_NoTable              = 0x4000                       /**< No CLI tables */
+        Run_Batch                = 0x2000                      /**< CLI batch mode */
 } __attribute__((__packed__)) Run_Flags;
 
 

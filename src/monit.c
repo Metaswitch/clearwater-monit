@@ -606,7 +606,7 @@ static void handle_options(int argc, char **argv) {
         int deferred_opt = 0;
         opterr = 0;
         Run.mygroup = NULL;
-        const char *shortopts = "c:d:g:l:p:s:HIirtvVhNT";
+        const char *shortopts = "c:d:g:l:p:s:HIirtvVhB";
 #ifdef HAVE_GETOPT_LONG
         struct option longopts[] = {
                 {"conf",        required_argument,      NULL,   'c'},
@@ -623,8 +623,7 @@ static void handle_options(int argc, char **argv) {
                 {"verbose",     no_argument,            NULL,   'v'},
                 {"version",     no_argument,            NULL,   'V'},
                 {"help",        no_argument,            NULL,   'h'},
-                {"no-color",    no_argument,            NULL,   'N'},
-                {"no-table",    no_argument,            NULL,   'T'},
+                {"batch",       no_argument,            NULL,   'B'},
                 {0}
         };
         while ((opt = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1)
@@ -727,14 +726,9 @@ static void handle_options(int argc, char **argv) {
                                         exit(0);
                                         break;
                                 }
-                                case 'N':
+                                case 'B':
                                 {
-                                        Run.flags |= Run_NoColor;
-                                        break;
-                                }
-                                case 'T':
-                                {
-                                        Run.flags |= Run_NoTable;
+                                        Run.flags |= Run_Batch;
                                         break;
                                 }
                                 case '?':
@@ -812,8 +806,7 @@ static void help() {
         printf(" -I            Do not run in background (needed for run from init)\n");
         printf(" --id          Print Monit's unique ID\n");
         printf(" --resetid     Reset Monit's unique ID. Use with caution\n");
-        printf(" --no-color    No colors in command-line output\n");
-        printf(" --no-table    No table borders in command-line output\n");
+        printf(" -B            Batch command line mode (nontabular output with no colors)\n");
         printf(" -t            Run syntax check for the control file\n");
         printf(" -v            Verbose mode, work noisy (diagnostic output)\n");
         printf(" -vv           Very verbose mode, same as -v plus log stacktrace on error\n");

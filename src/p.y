@@ -310,7 +310,7 @@ static int verifyMaxForward(int);
 }
 
 %token IF ELSE THEN OR FAILED
-%token SET LOGFILE FACILITY DAEMON SYSLOG MAILSERVER HTTPD ALLOW REJECTOPT ADDRESS INIT TERMINAL COLOR NOCOLOR TABLE NOTABLE
+%token SET LOGFILE FACILITY DAEMON SYSLOG MAILSERVER HTTPD ALLOW REJECTOPT ADDRESS INIT TERMINAL BATCH
 %token READONLY CLEARTEXT MD5HASH SHA1HASH CRYPT DELAY
 %token PEMFILE ENABLE DISABLE SSL CLIENTPEMFILE ALLOWSELFCERTIFICATION SELFSIGNED VERIFY CERTIFICATE CACERTIFICATEFILE CACERTIFICATEPATH VALID
 %token INTERFACE LINK PACKET BYTEIN BYTEOUT PACKETIN PACKETOUT SPEED SATURATION UPLOAD DOWNLOAD TOTAL
@@ -587,17 +587,8 @@ setdaemon       : SET DAEMON NUMBER startdelay {
                   }
                 ;
 
-setterminal     : SET TERMINAL COLOR {
-                        // Enabled by default
-                  }
-                | SET TERMINAL NOCOLOR {
-                        Run.flags |= Run_NoColor;
-                  }
-                | SET TERMINAL TABLE {
-                        // Enabled by default
-                  }
-                | SET TERMINAL NOTABLE {
-                        Run.flags |= Run_NoTable;
+setterminal     : SET TERMINAL BATCH {
+                        Run.flags |= Run_Batch;
                   }
                 ;
 

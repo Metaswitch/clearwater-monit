@@ -28,8 +28,8 @@
 #include <stdlib.h>
 
 #include "monit.h"
-#include "TermColor.h"
-#include "TermTable.h"
+#include "Color.h"
+#include "Box.h"
 
 // libmonit
 #include "util/Str.h"
@@ -61,7 +61,7 @@
 #define BOX_UP_LEFT             "\u2518" // ┘
 
 
-#define T TermTable_T
+#define T Box_T
 struct T {
         struct {
                 unsigned row;
@@ -69,12 +69,12 @@ struct T {
         } index;
         struct {
                 struct {
-                        boolean_t disabled;
+                        boolean_t enabled;
                         char *color;
                 } header;
         } options;
         unsigned columnsCount;
-        TermTableColumn_T *columns;
+        BoxColumn_T *columns;
         StringBuffer_T b;
 };
 
@@ -83,48 +83,48 @@ struct T {
 
 
 static void _printBorderTop(T t) {
-        StringBuffer_append(t->b, BOX_DOWN_RIGHT BOX_HORIZONTAL);
+        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_DOWN_RIGHT BOX_HORIZONTAL);
         for (int i = 0; i < t->columnsCount; i++) {
                 for (int j = 0; j < t->columns[i].width; j++)
                         StringBuffer_append(t->b, BOX_HORIZONTAL);
                 if (i < t->columnsCount - 1)
                         StringBuffer_append(t->b, BOX_HORIZONTAL BOX_HORIZONTAL_DOWN BOX_HORIZONTAL);
         }
-        StringBuffer_append(t->b, BOX_HORIZONTAL BOX_DOWN_LEFT "\n");
+        StringBuffer_append(t->b, BOX_HORIZONTAL BOX_DOWN_LEFT COLOR_RESET "\n");
 }
 
 
 static void _printBorderMiddle(T t) {
-        StringBuffer_append(t->b, BOX_VERTICAL_RIGHT BOX_HORIZONTAL);
+        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL_RIGHT BOX_HORIZONTAL);
         for (int i = 0; i < t->columnsCount; i++) {
                 for (int j = 0; j < t->columns[i].width; j++)
                         StringBuffer_append(t->b, BOX_HORIZONTAL);
                 if (i < t->columnsCount - 1)
                         StringBuffer_append(t->b, BOX_HORIZONTAL BOX_VERTICAL_HORIZONTAL BOX_HORIZONTAL);
         }
-        StringBuffer_append(t->b, BOX_HORIZONTAL BOX_VERTICAL_LEFT "\n");
+        StringBuffer_append(t->b, BOX_HORIZONTAL BOX_VERTICAL_LEFT COLOR_RESET "\n");
 }
 
 
 static void _printBorderBottom(T t) {
-        StringBuffer_append(t->b, BOX_UP_RIGHT BOX_HORIZONTAL);
+        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_UP_RIGHT BOX_HORIZONTAL);
         for (int i = 0; i < t->columnsCount; i++) {
                 for (int j = 0; j < t->columns[i].width; j++)
                         StringBuffer_append(t->b, BOX_HORIZONTAL);
                 if (i < t->columnsCount - 1)
                         StringBuffer_append(t->b, BOX_HORIZONTAL BOX_UP_HORIZONTAL BOX_HORIZONTAL);
         }
-        StringBuffer_append(t->b, BOX_HORIZONTAL BOX_UP_LEFT "\n");
+        StringBuffer_append(t->b, BOX_HORIZONTAL BOX_UP_LEFT COLOR_RESET "\n");
 }
 
 
 static void _printHeader(T t) {
         for (int i = 0; i < t->columnsCount; i++) {
-                StringBuffer_append(t->b, BOX_VERTICAL " ");
-                StringBuffer_append(t->b, "%s%-*s%s", t->options.header.color, t->columns[i].width, t->columns[i].name, TERMCOLOR_DEFAULT);
+                StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
+                StringBuffer_append(t->b, "%s%-*s%s", t->options.header.color, t->columns[i].width, t->columns[i].name, COLOR_RESET);
                 StringBuffer_append(t->b, " ");
         }
-        StringBuffer_append(t->b, BOX_VERTICAL "\n");
+        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET "\n");
         t->index.row++;
 }
 
@@ -132,17 +132,7 @@ static void _printHeader(T t) {
 /* -------------------------------------------------------- Public Methods */
 
 
-boolean_t TermTable_support() {
-        if (! (Run.flags & Run_NoTable)) {
-                char *locale = getenv("LC_CTYPE");
-                if (locale && Str_sub(locale, "UTF-8"))
-                        return true;
-        }
-        return false;
-}
-
-
-char *TermTable_strip(char *s) {
+char *Box_strip(char *s) {
         if (STR_DEF(s)) {
                 int x, y;
                 unsigned char *_s = (unsigned char *)s;
@@ -167,7 +157,7 @@ char *TermTable_strip(char *s) {
 }
 
 
-T TermTable_new(StringBuffer_T b, int columnsCount, TermTableColumn_T *columns, TermTableOptions_T options) {
+T Box_new(StringBuffer_T b, int columnsCount, BoxColumn_T *columns, boolean_t printHeader) {
         ASSERT(b);
         ASSERT(columns);
         ASSERT(columnsCount > 0);
@@ -177,26 +167,26 @@ T TermTable_new(StringBuffer_T b, int columnsCount, TermTableColumn_T *columns, 
         t->columnsCount = columnsCount;
         t->columns = columns;
         // Default options
-        t->options.header.color = TERMCOLOR_LIGHTCYAN; // Note: hardcoded, option setting can be implemented if needed
+        t->options.header.color = COLOR_BOLDCYAN; // Note: hardcoded, option setting can be implemented if needed
         // Options
-        t->options.header.disabled = options.noHeader;
+        t->options.header.enabled = printHeader;
         return t;
 }
 
 
-void TermTable_free(T *t) {
+void Box_free(T *t) {
         ASSERT(t && *t);
         _printBorderBottom(*t);
         FREE(*t);
 }
 
 
-void TermTable_printColumn(T t, const char *format, ...) {
+void Box_printColumn(T t, const char *format, ...) {
         ASSERT(t);
         ASSERT(format);
         if (t->index.row == 0 && t->index.column == 0) {
                 _printBorderTop(t);
-                if (! t->options.header.disabled) {
+                if (t->options.header.enabled) {
                         _printHeader(t);
                         _printBorderMiddle(t);
                 }
@@ -204,13 +194,13 @@ void TermTable_printColumn(T t, const char *format, ...) {
                 t->index.column = 0;
                 _printBorderMiddle(t);
         }
-        StringBuffer_append(t->b, BOX_VERTICAL " ");
+        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
         va_list ap;
         va_start(ap, format);
         char *s = Str_vcat(format, ap);
         va_end(ap);
-        if (TermColor_has(s)) {
-                StringBuffer_append(t->b, "%-*s", (int)(t->columns[t->index.column].width + strlen(TERMCOLOR_RED) + strlen(TERMCOLOR_DEFAULT)), s);
+        if (Color_has(s)) {
+                StringBuffer_append(t->b, "%-*s", (int)(t->columns[t->index.column].width + strlen(COLOR_DEFAULT) + strlen(COLOR_RESET)), s);
         } else {
                 Str_trunc(s, t->columns[t->index.column].width);
                 StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width, s);
@@ -218,7 +208,7 @@ void TermTable_printColumn(T t, const char *format, ...) {
         FREE(s);
         StringBuffer_append(t->b, " ");
         if (++t->index.column > t->columnsCount - 1) {
-                StringBuffer_append(t->b, BOX_VERTICAL "\n");
+                StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET "\n");
                 t->index.row++;
         }
 }

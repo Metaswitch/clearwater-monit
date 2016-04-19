@@ -73,12 +73,12 @@
 		9305FD5E1A96873200B7F8A2 /* Ssl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9305FD591A96873200B7F8A2 /* Ssl.c */; };
 		930E68271C4FD0D600D9F213 /* libssl.1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 930E68261C4FD0D600D9F213 /* libssl.1.0.0.dylib */; };
 		930E68291C4FD15900D9F213 /* libcrypto.1.0.0.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 930E68281C4FD15900D9F213 /* libcrypto.1.0.0.dylib */; };
+		933EC3031CC6D461007B479C /* Box.c in Sources */ = {isa = PBXBuildFile; fileRef = 933EC2FF1CC6D461007B479C /* Box.c */; };
+		933EC3041CC6D461007B479C /* Color.c in Sources */ = {isa = PBXBuildFile; fileRef = 933EC3011CC6D461007B479C /* Color.c */; };
 		934574641C771C9C00FF170F /* SMTP.c in Sources */ = {isa = PBXBuildFile; fileRef = 934574611C771C9C00FF170F /* SMTP.c */; };
 		9357B19B19F2F5A400329B3F /* mongodb.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19919F2F5A400329B3F /* mongodb.c */; };
 		9357B19C19F2F5A400329B3F /* redis.c in Sources */ = {isa = PBXBuildFile; fileRef = 9357B19A19F2F5A400329B3F /* redis.c */; };
 		9378737B1A13907100CF8C5E /* sieve.c in Sources */ = {isa = PBXBuildFile; fileRef = 9378737A1A13907100CF8C5E /* sieve.c */; };
-		938153231CC11D3B008FA1DB /* TermColor.c in Sources */ = {isa = PBXBuildFile; fileRef = 9381531F1CC11D3B008FA1DB /* TermColor.c */; };
-		938153241CC11D3B008FA1DB /* TermTable.c in Sources */ = {isa = PBXBuildFile; fileRef = 938153211CC11D3B008FA1DB /* TermTable.c */; };
 		93A23ED41C85E6890076FBFE /* Address.c in Sources */ = {isa = PBXBuildFile; fileRef = 93A23ED21C85E6890076FBFE /* Address.c */; };
 		93DE91B01CBAED0400BC8E0C /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 93DE91AE1CBAED0400BC8E0C /* client.c */; };
 /* End PBXBuildFile section */
@@ -286,15 +286,15 @@
 		9305FD5D1A96873200B7F8A2 /* SslServer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SslServer.h; sourceTree = "<group>"; };
 		930E68261C4FD0D600D9F213 /* libssl.1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libssl.1.0.0.dylib; path = ../../../../opt/local/lib/libssl.1.0.0.dylib; sourceTree = "<group>"; };
 		930E68281C4FD15900D9F213 /* libcrypto.1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libcrypto.1.0.0.dylib; path = ../../../../opt/local/lib/libcrypto.1.0.0.dylib; sourceTree = "<group>"; };
+		933EC2FF1CC6D461007B479C /* Box.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Box.c; sourceTree = "<group>"; };
+		933EC3001CC6D461007B479C /* Box.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Box.h; sourceTree = "<group>"; };
+		933EC3011CC6D461007B479C /* Color.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Color.c; sourceTree = "<group>"; };
+		933EC3021CC6D461007B479C /* Color.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Color.h; sourceTree = "<group>"; };
 		934574611C771C9C00FF170F /* SMTP.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = SMTP.c; sourceTree = "<group>"; };
 		934574621C771C9C00FF170F /* SMTP.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SMTP.h; sourceTree = "<group>"; };
 		9357B19919F2F5A400329B3F /* mongodb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = mongodb.c; sourceTree = "<group>"; };
 		9357B19A19F2F5A400329B3F /* redis.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = redis.c; sourceTree = "<group>"; };
 		9378737A1A13907100CF8C5E /* sieve.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = sieve.c; sourceTree = "<group>"; };
-		9381531F1CC11D3B008FA1DB /* TermColor.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = TermColor.c; sourceTree = "<group>"; };
-		938153201CC11D3B008FA1DB /* TermColor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TermColor.h; sourceTree = "<group>"; };
-		938153211CC11D3B008FA1DB /* TermTable.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = TermTable.c; sourceTree = "<group>"; };
-		938153221CC11D3B008FA1DB /* TermTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TermTable.h; sourceTree = "<group>"; };
 		93A23ED21C85E6890076FBFE /* Address.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = Address.c; sourceTree = "<group>"; };
 		93A23ED31C85E6890076FBFE /* Address.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Address.h; sourceTree = "<group>"; };
 		93DE91AE1CBAED0400BC8E0C /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
@@ -631,10 +631,10 @@
 		9381531B1CC11D3B008FA1DB /* terminal */ = {
 			isa = PBXGroup;
 			children = (
-				9381531F1CC11D3B008FA1DB /* TermColor.c */,
-				938153201CC11D3B008FA1DB /* TermColor.h */,
-				938153211CC11D3B008FA1DB /* TermTable.c */,
-				938153221CC11D3B008FA1DB /* TermTable.h */,
+				933EC2FF1CC6D461007B479C /* Box.c */,
+				933EC3001CC6D461007B479C /* Box.h */,
+				933EC3011CC6D461007B479C /* Color.c */,
+				933EC3021CC6D461007B479C /* Color.h */,
 			);
 			path = terminal;
 			sourceTree = "<group>";
@@ -761,8 +761,7 @@
 				52F6E82E13A74F220023F87A /* apache_status.c in Sources */,
 				52F6E82F13A74F220023F87A /* clamav.c in Sources */,
 				52F6E83013A74F220023F87A /* default.c in Sources */,
-				938153231CC11D3B008FA1DB /* TermColor.c in Sources */,
-				938153241CC11D3B008FA1DB /* TermTable.c in Sources */,
+				933EC3041CC6D461007B479C /* Color.c in Sources */,
 				934574641C771C9C00FF170F /* SMTP.c in Sources */,
 				52F6E83113A74F220023F87A /* dns.c in Sources */,
 				52F6E83213A74F220023F87A /* dwp.c in Sources */,
@@ -790,6 +789,7 @@
 				52F6E84413A74F220023F87A /* rdate.c in Sources */,
 				93DE91B01CBAED0400BC8E0C /* client.c in Sources */,
 				52F6E84513A74F220023F87A /* rsync.c in Sources */,
+				933EC3031CC6D461007B479C /* Box.c in Sources */,
 				52F6E84613A74F220023F87A /* sip.c in Sources */,
 				52F6E84713A74F220023F87A /* smtp.c in Sources */,
 				9305FD5E1A96873200B7F8A2 /* Ssl.c in Sources */,
