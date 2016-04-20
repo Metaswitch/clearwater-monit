@@ -8,6 +8,9 @@ New: The service status in monit command-line interface is now colorized and the
 a tabular format. To disable colors and display nontabular output, use a new -B command-line
 option or the "set terminal batch" statement in the monit configuration file.
 
+New: If the service has multiple errors, the service status will describe all errors (originally
+monit displayed only one error)
+
 New: New CLI command for services state overview added:
     monit report [up | down | initialising | unmonitored | total]
 Output example:

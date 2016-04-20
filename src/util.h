@@ -192,13 +192,12 @@ int Util_isProcessRunning(Service_T s);
 
 
 /**
- * Compute an uptime string based on the delta time in seconds. The
- * caller must free the returned string.
+ * Compute an uptime string based on the delta time in seconds.
  * @param delta seconds.
- * @param sep string separator
- * @return an uptime string
+ * @param s A result buffer, must be large enough to hold 256 chars
+ * @return A pointer to s
  */
-char *Util_getUptime(time_t delta, char *sep);
+char *Util_getUptime(time_t delta, char s[256]);
 
 
 /**

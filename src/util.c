@@ -1509,29 +1509,30 @@ int Util_isProcessRunning(Service_T s) {
 }
 
 
-char *Util_getUptime(time_t delta, char *sep) {
+char *Util_getUptime(time_t delta, char s[256]) {
         static int min = 60;
         static int hour = 3600;
         static int day = 86400;
         long rest_d;
         long rest_h;
         long rest_m;
-        char buf[STRLEN] = {};
-        char *p = buf;
+        char *p = s;
 
-        if (delta < 0)
-                return(Str_dup(""));
-        if ((rest_d = delta / day)>0) {
-                p += snprintf(p, STRLEN - (p - buf), "%ldd%s", rest_d, sep);
-                delta -= rest_d * day;
+        if (delta < 0) {
+                *s = 0;
+        } else {
+                if ((rest_d = delta / day) > 0) {
+                        p += snprintf(p, 256 - (p - s), "%ldd ", rest_d);
+                        delta -= rest_d * day;
+                }
+                if ((rest_h = delta / hour) > 0 || (rest_d > 0)) {
+                        p += snprintf(p, 256 - (p - s), "%ldh ", rest_h);
+                        delta -= rest_h * hour;
+                }
+                rest_m = delta / min;
+                snprintf(p, 256 - (p - s), "%ldm", rest_m);
         }
-        if ((rest_h = delta / hour) > 0 || (rest_d > 0)) {
-                p += snprintf(p, STRLEN - (p - buf), "%ldh%s", rest_h, sep);
-                delta -= rest_h * hour;
-        }
-        rest_m = delta / min;
-        snprintf(p, STRLEN - (p - buf), "%ldm%s", rest_m, sep);
-        return Str_dup(buf);
+        return s;
 }
 
 
