@@ -21,6 +21,8 @@ Output example:
     unmonitored:    1 (3.6%)
     total:         28 services
 
+New: Issue #344: Added MONIT_SERVICE environment variable to a check program context.
+
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
 but a zombie was left. Thanks to Guillem Jover for patch.
 

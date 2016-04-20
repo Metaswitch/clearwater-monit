@@ -2984,6 +2984,8 @@ static void addservice(Service_T s) {
                                 Command_setUid(s->program->C, s->program->args->uid);
                         if (s->program->args->has_gid)
                                 Command_setGid(s->program->C, s->program->args->gid);
+                        // Set environment
+                        Command_setEnv(s->program->C, "MONIT_SERVICE", s->name);
                         break;
                 case Service_Net:
                         if (! s->linkstatuslist) {

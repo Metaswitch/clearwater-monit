@@ -3484,11 +3484,25 @@ F<~/.monit.id>
 =head1 ENVIRONMENT
 
 No environment variables are used by Monit. However, when Monit
-execute a start/stop/restart program or an exec action, it will
+executes a start/stop/restart program or an exec action, it will
 set several environment variables which can be utilised by the
 executable to get informations about the event, which triggered
-the action. The following and I<only> the following environment
-variables are available:
+the action.
+
+The following environment variable is set for every program
+executed by monit, including I<check program>:
+
+=over 4
+
+=item MONIT_SERVICE
+
+The name of the service (from monitrc) for which is the program
+executed.
+
+=back
+
+The following environment variables are only available in the
+service start/stop/restart program and exec action context:
 
 =over 4
 
@@ -3499,11 +3513,6 @@ The event that occurred on the service
 =item MONIT_DESCRIPTION
 
 A description of the error condition
-
-=item MONIT_SERVICE
-
-The name of the service (from monitrc) on which the event
-occurred.
 
 =item MONIT_DATE
 
@@ -3516,7 +3525,8 @@ The host the event occurred on
 =back
 
 The following environment variables are only available in the
-I<check process> service context:
+I<check process> start/stop/restart program and exec action
+context:
 
 =over 4
 
@@ -3539,7 +3549,8 @@ Process cpu%. This may be 0 if the process was (re)started,
 =back
 
 The following environment variables are only available for
-I<check program> service context:
+I<check program> start/stop/restart program and exec action
+context:
 
 =over 4
 
