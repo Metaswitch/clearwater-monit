@@ -111,19 +111,19 @@ void monit_http(Httpd_Action action) {
                 case Httpd_Stop:
                         if (! running)
                                 break;
-                        LogInfo("Shutting down Monit HTTP server\n");
+                        LogDebug("Shutting down Monit HTTP server\n");
                         Engine_stop();
                         Thread_join(thread);
-                        LogInfo("Monit HTTP server stopped\n");
+                        LogDebug("Monit HTTP server stopped\n");
                         running = false;
                         break;
                 case Httpd_Start:
                         if (Run.httpd.flags & Httpd_Net)
-                                LogInfo("Starting Monit HTTP server at [%s]:%d\n", Run.httpd.socket.net.address ? Run.httpd.socket.net.address : "*", Run.httpd.socket.net.port);
+                                LogDebug("Starting Monit HTTP server at [%s]:%d\n", Run.httpd.socket.net.address ? Run.httpd.socket.net.address : "*", Run.httpd.socket.net.port);
                         else if (Run.httpd.flags & Httpd_Unix)
-                                LogInfo("Starting Monit HTTP server at %s\n", Run.httpd.socket.unix.path);
+                                LogDebug("Starting Monit HTTP server at %s\n", Run.httpd.socket.unix.path);
                         Thread_create(thread, thread_wrapper, NULL);
-                        LogInfo("Monit HTTP server started\n");
+                        LogDebug("Monit HTTP server started\n");
                         running = true;
                         break;
                 default:
