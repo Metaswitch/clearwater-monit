@@ -158,6 +158,7 @@ typedef enum {
 #define PROGRAM_TIMEOUT    300
 
 
+//FIXME: refactor Run_Flags to bit field
 typedef enum {
         Run_Once                 = 0x1,                   /**< Run Monit only once */
         Run_Foreground           = 0x2,                 /**< Don't daemonize Monit */ //FIXME: cleanup: Run_Foreground and Run_Daemon are mutually exclusive => no need for 2 flags
