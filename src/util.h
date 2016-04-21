@@ -418,13 +418,5 @@ int Util_getfqdnhostname(char *buf, unsigned len);
 const char *Util_timestr(int time);
 
 
-/**
- * Parse the response from Monit HTTP interface.
- * @param S Socket reference
- * @exception IOException in the case of communication error or AssertException if monit returned application error.
- */
-void Util_parseMonitHttpResponse(Socket_T S);
-
-
 #endif
 
