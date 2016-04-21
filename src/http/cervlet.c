@@ -64,6 +64,10 @@
 #include <sys/time.h>
 #endif
 
+#ifdef HAVE_CTYPE_H
+#include <ctype.h>
+#endif
+
 // libmonit
 #include "system/Time.h"
 #include "util/List.h"
@@ -163,13 +167,12 @@ static void print_service_rules_pid(HttpResponse, Service_T);
 static void print_service_rules_ppid(HttpResponse, Service_T);
 static void print_service_rules_program(HttpResponse, Service_T);
 static void print_service_rules_resource(HttpResponse, Service_T);
-static void print_service_status_program_output(HttpResponse, Service_T);
 static void print_status(HttpRequest, HttpResponse, int);
 static void print_summary(HttpRequest, HttpResponse);
 static void _printReport(HttpRequest req, HttpResponse res);
 static void status_service_txt(Service_T, HttpResponse);
-static char *get_monitoring_status(Service_T s, char *, int);
-static char *get_service_status(Service_T, char *, int);
+static char *get_monitoring_status(Output_Type, Service_T s, char *, int);
+static char *get_service_status(Output_Type, Service_T, char *, int);
 
 
 /**
@@ -224,32 +227,190 @@ static char *_getUptime(time_t delta, char s[256]) {
 }
 
 
-static void _printStatus(const char *name, Event_Type errorType, Output_Type type, HttpResponse res, Service_T s, boolean_t validValue, const char *value, ...) {
-        StringBuffer_append(res->outputbuffer, type == HTML ? "<tr><td>%s</td>" : "  %-33s ", name);
-        if (! Util_hasServiceStatus(s) || ! validValue) {
+static void _formatStatus(const char *name, Event_Type errorType, Output_Type type, HttpResponse res, Service_T s, boolean_t validValue, const char *value, ...) {
+        if (type == HTML) {
+                StringBuffer_append(res->outputbuffer, "<tr><td>%c%s</td>", toupper(name[0]), name + 1);
+        } else {
+                StringBuffer_append(res->outputbuffer, "  %-33s ", name);
+        }
+        if (! validValue) {
                 StringBuffer_append(res->outputbuffer, type == HTML ? "<td class='gray-text'>-</td>" : COLOR_DARKGRAY "-" COLOR_RESET);
         } else {
+                va_list ap;
+                va_start(ap, value);
+                char *_value = Str_vcat(value, ap);
+                va_end(ap);
                 if (errorType != Event_Null && s->error & errorType)
                         StringBuffer_append(res->outputbuffer, type == HTML ? "<td class='red-text'>" : COLOR_LIGHTRED);
                 else
                         StringBuffer_append(res->outputbuffer, type == HTML ? "<td>" : COLOR_DEFAULT);
-                va_list ap;
-                va_start(ap, value);
-                StringBuffer_vappend(res->outputbuffer, value, ap);
-                va_end(ap);
-                StringBuffer_append(res->outputbuffer, type == HTML ? "</td>" : COLOR_RESET);
+                if (type == HTML) {
+                        // If the output contains multiple line, wrap use <pre>, otherwise keep as is
+                        int multiline = strrchr(_value, '\n') > 0;
+                        if (multiline)
+                                StringBuffer_append(res->outputbuffer, "<pre>");
+                        escapeHTML(res->outputbuffer, _value);
+                        StringBuffer_append(res->outputbuffer, "%s</td>", multiline ? "</pre>" : "");
+                } else {
+                        int column = 0;
+                        for (int i = 0; _value[i]; i++) {
+                                if (_value[i] == '\r') {
+                                        // Discard CR
+                                        continue;
+                                } else if (_value[i] == '\n') {
+                                        // Indent 2nd+ line
+                                        if (_value[i + 1])
+                                        StringBuffer_append(res->outputbuffer, "\n                                    ");
+                                        column = 0;
+                                        continue;
+                                } else if (column <= 200) {
+                                        StringBuffer_append(res->outputbuffer, "%c", _value[i]);
+                                        column++;
+                                }
+                        }
+                        StringBuffer_append(res->outputbuffer, COLOR_RESET);
+                }
         }
         StringBuffer_append(res->outputbuffer, type == HTML ? "</tr>" : "\n");
 }
 
 
-static void _printServiceStatus(StringBuffer_T sb, Service_T s) {
-        ASSERT(sb);
-        ASSERT(s);
-        StringBuffer_append(sb, "<span class='%s-text'>", (s->monitor == Monitor_Not || s->monitor & Monitor_Init) ? "gray" : ((! s->error) ? "green" : "red"));
-        char buf[STRLEN];
-        escapeHTML(sb, Color_strip(get_service_status(s, buf, sizeof(buf))));
-        StringBuffer_append(sb, "</span>");
+static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
+        if (Util_hasServiceStatus(s)) {
+                switch (s->type) {
+                        case Service_System:
+                                _formatStatus("load average", Event_Resource, type, res, s, true, "[%.2f] [%.2f] [%.2f]", systeminfo.loadavg[0], systeminfo.loadavg[1], systeminfo.loadavg[2]);
+                                _formatStatus("cpu", Event_Resource, type, res, s, true, "%.1f%%us %.1f%%sy"
+#ifdef HAVE_CPU_WAIT
+                                        " %.1f%%wa"
+#endif
+                                        , systeminfo.total_cpu_user_percent > 0. ? systeminfo.total_cpu_user_percent : 0., systeminfo.total_cpu_syst_percent > 0. ? systeminfo.total_cpu_syst_percent : 0.
+#ifdef HAVE_CPU_WAIT
+                                        , systeminfo.total_cpu_wait_percent > 0. ? systeminfo.total_cpu_wait_percent : 0.
+#endif
+                                );
+                                _formatStatus("memory usage", Event_Resource, type, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_mem, (char[10]){}), systeminfo.total_mem_percent);
+                                _formatStatus("swap usage", Event_Resource, type, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_swap, (char[10]){}), systeminfo.total_swap_percent);
+                                break;
+
+                        case Service_File:
+                                _formatStatus("permission", Event_Permission, type, res, s, s->inf->priv.file.mode >= 0, "%o", s->inf->priv.file.mode & 07777);
+                                _formatStatus("uid", Event_Uid, type, res, s, s->inf->priv.file.uid >= 0, "%d", s->inf->priv.file.uid);
+                                _formatStatus("gid", Event_Gid, type, res, s, s->inf->priv.file.gid >= 0, "%d", s->inf->priv.file.gid);
+                                _formatStatus("size", Event_Size, type, res, s, s->inf->priv.file.size >= 0, "%s", Str_bytesToSize(s->inf->priv.file.size, (char[10]){}));
+                                _formatStatus("timestamp", Event_Timestamp, type, res, s, s->inf->priv.file.timestamp > 0, "%s", Time_string(s->inf->priv.file.timestamp, (char[32]){}));
+                                if (s->matchlist)
+                                        _formatStatus("content match", Event_Content, type, res, s, true, "%s", (s->error & Event_Content) ? "yes" : "no");
+                                if (s->checksum)
+                                        _formatStatus("checksum", Event_Checksum, type, res, s, *s->inf->priv.file.cs_sum, "%s (%s)", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
+                                break;
+
+                        case Service_Directory:
+                                _formatStatus("permission", Event_Permission, type, res, s, s->inf->priv.directory.mode >= 0, "%o", s->inf->priv.directory.mode & 07777);
+                                _formatStatus("uid", Event_Uid, type, res, s, s->inf->priv.directory.uid >= 0, "%d", s->inf->priv.directory.uid);
+                                _formatStatus("gid", Event_Gid, type, res, s, s->inf->priv.directory.gid >= 0, "%d", s->inf->priv.directory.gid);
+                                _formatStatus("timestamp", Event_Timestamp, type, res, s, s->inf->priv.directory.timestamp > 0, "%s", Time_string(s->inf->priv.directory.timestamp, (char[32]){}));
+                                break;
+
+                        case Service_Fifo:
+                                _formatStatus("permission", Event_Permission, type, res, s, s->inf->priv.fifo.mode >= 0, "%o", s->inf->priv.fifo.mode & 07777);
+                                _formatStatus("uid", Event_Uid, type, res, s, s->inf->priv.fifo.uid >= 0, "%d", s->inf->priv.fifo.uid);
+                                _formatStatus("gid", Event_Gid, type, res, s, s->inf->priv.fifo.gid >= 0, "%d", s->inf->priv.fifo.gid);
+                                _formatStatus("timestamp", Event_Timestamp, type, res, s, s->inf->priv.fifo.timestamp > 0, "%s", Time_string(s->inf->priv.fifo.timestamp, (char[32]){}));
+                                break;
+
+                        case Service_Net:
+                                {
+                                        long long speed = Link_getSpeed(s->inf->priv.net.stats);
+                                        long long ibytes = Link_getBytesInPerSecond(s->inf->priv.net.stats);
+                                        long long obytes = Link_getBytesOutPerSecond(s->inf->priv.net.stats);
+                                        _formatStatus("link", Event_Link, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%d errors", Link_getErrorsInPerSecond(s->inf->priv.net.stats) + Link_getErrorsOutPerSecond(s->inf->priv.net.stats));
+                                        if (speed > 0) {
+                                                _formatStatus("capacity", Event_Speed, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%.0lf Mb/s %s-duplex", (double)speed / 1000000., Link_getDuplex(s->inf->priv.net.stats) == 1 ? "full" : "half");
+                                                _formatStatus("download bytes", Event_ByteIn, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s (%.1f%% link saturation)", Str_bytesToSize(ibytes, (char[10]){}), 100. * ibytes * 8 / (double)speed);
+                                                _formatStatus("upload bytes", Event_ByteOut, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s (%.1f%% link saturation)", Str_bytesToSize(obytes, (char[10]){}), 100. * obytes * 8 / (double)speed);
+                                        } else {
+                                                _formatStatus("download bytes", Event_ByteIn, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s", Str_bytesToSize(ibytes, (char[10]){}));
+                                                _formatStatus("upload bytes", Event_ByteOut, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s", Str_bytesToSize(obytes, (char[10]){}));
+                                        }
+                                        _formatStatus("download packets", Event_PacketIn, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%lld per second", Link_getPacketsInPerSecond(s->inf->priv.net.stats));
+                                        _formatStatus("upload packets", Event_PacketOut, type, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%lld per second", Link_getPacketsOutPerSecond(s->inf->priv.net.stats));
+                                }
+                                break;
+
+                        case Service_Filesystem:
+                                _formatStatus("permission", Event_Permission, type, res, s, s->inf->priv.filesystem.mode >= 0, "%o", s->inf->priv.filesystem.mode & 07777);
+                                _formatStatus("uid", Event_Uid, type, res, s, s->inf->priv.filesystem.uid >= 0, "%d", s->inf->priv.filesystem.uid);
+                                _formatStatus("gid", Event_Gid, type, res, s, s->inf->priv.filesystem.gid >= 0, "%d", s->inf->priv.filesystem.gid);
+                                _formatStatus("filesystem flags", Event_Fsflag, type, res, s, true, "0x%x", s->inf->priv.filesystem.flags);
+                                _formatStatus("block size", Event_Null, type, res, s, true, "%s", Str_bytesToSize(s->inf->priv.filesystem.f_bsize, (char[10]){}));
+                                _formatStatus("space total", Event_Null, type, res, s, true, "%s (of which %.1f%% is reserved for root user)",
+                                        s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocks * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
+                                        s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)(s->inf->priv.filesystem.f_blocksfreetotal - s->inf->priv.filesystem.f_blocksfree) / (float)s->inf->priv.filesystem.f_blocks) : 0);
+                                _formatStatus("space free for non superuser", Event_Null, type, res, s, true, "%s [%.1f%%]",
+                                        s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfree * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
+                                        s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfree / (float)s->inf->priv.filesystem.f_blocks) : 0);
+                                _formatStatus("space free total", Event_Resource, type, res, s, true, "%s [%.1f%%]",
+                                        s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfreetotal * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
+                                        s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfreetotal / (float)s->inf->priv.filesystem.f_blocks) : 0);
+                                if (s->inf->priv.filesystem.f_files > 0) {
+                                        _formatStatus("inodes total", Event_Null, type, res, s, true, "%lld", s->inf->priv.filesystem.f_files);
+                                        _formatStatus("inodes free", Event_Resource, type, res, s, true, "%lld [%.1f%%]", s->inf->priv.filesystem.f_filesfree, (float)100 * (float)s->inf->priv.filesystem.f_filesfree / (float)s->inf->priv.filesystem.f_files);
+                                }
+                                break;
+
+                        case Service_Process:
+                                _formatStatus("pid", Event_Pid, type, res, s, s->inf->priv.process.pid >= 0, "%d", s->inf->priv.process.pid);
+                                _formatStatus("parent pid", Event_PPid, type, res, s, s->inf->priv.process.ppid >= 0, "%d", s->inf->priv.process.ppid);
+                                _formatStatus("uid", Event_Uid, type, res, s, s->inf->priv.process.uid >= 0, "%d", s->inf->priv.process.uid);
+                                _formatStatus("effective uid", Event_Uid, type, res, s, s->inf->priv.process.euid >= 0, "%d", s->inf->priv.process.euid);
+                                _formatStatus("gid", Event_Gid, type, res, s, s->inf->priv.process.gid >= 0, "%d", s->inf->priv.process.gid);
+                                _formatStatus("uptime", Event_Uptime, type, res, s, s->inf->priv.process.uptime >= 0, "%s", _getUptime(s->inf->priv.process.uptime, (char[256]){}));
+                                if (Run.flags & Run_ProcessEngineEnabled) {
+                                        _formatStatus("threads", Event_Resource, type, res, s, s->inf->priv.process.threads >= 0, "%d", s->inf->priv.process.threads);
+                                        _formatStatus("children", Event_Resource, type, res, s, s->inf->priv.process.children >= 0, "%d", s->inf->priv.process.children);
+                                        _formatStatus("cpu", Event_Resource, type, res, s, s->inf->priv.process.cpu_percent >= 0, "%.1f%%", s->inf->priv.process.cpu_percent);
+                                        _formatStatus("cpu total", Event_Resource, type, res, s, s->inf->priv.process.total_cpu_percent >= 0, "%.1f%%", s->inf->priv.process.total_cpu_percent);
+                                        _formatStatus("memory", Event_Resource, type, res, s, s->inf->priv.process.mem_percent >= 0, "%.1f%% [%s]", s->inf->priv.process.mem_percent, Str_bytesToSize(s->inf->priv.process.mem, (char[10]){}));
+                                        _formatStatus("memory total", Event_Resource, type, res, s, s->inf->priv.process.total_mem_percent >= 0, "%.1f%% [%s]", s->inf->priv.process.total_mem_percent, Str_bytesToSize(s->inf->priv.process.total_mem, (char[10]){}));
+                                }
+                                break;
+
+                        case Service_Program:
+                                if (s->program->started) {
+                                        _formatStatus("last started", Event_Null, type, res, s, true, "%s", Time_string(s->program->started, (char[32]){}));
+                                        _formatStatus("last exit value", Event_Status, type, res, s, true, "%d", s->program->exitStatus);
+                                        _formatStatus("last output", Event_Status, type, res, s, StringBuffer_length(s->program->output), "%s", StringBuffer_toString(s->program->output));
+                                } else {
+                                        _formatStatus("last started", Event_Null, type, res, s, true, "Not yet started");
+                                }
+                                break;
+
+                        default:
+                                break;
+                }
+                for (Icmp_T i = s->icmplist; i; i = i->next) {
+                        if (i->is_available == Connection_Failed)
+                                _formatStatus("ping response time", Event_Icmp, type, res, s, true, "connection failed");
+                        else
+                                _formatStatus("ping response time", Event_Connection, type, res, s, i->is_available != Connection_Init && i->response >= 0., "%s", Str_milliToTime(i->response, (char[23]){}));
+                }
+                for (Port_T p = s->portlist; p; p = p->next) {
+                        if (p->is_available == Connection_Failed) {
+                                _formatStatus("port response time", Event_Connection, type, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                        } else {
+                                _formatStatus("port response time", Event_Connection, type, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                        }
+                }
+                for (Port_T p = s->socketlist; p; p = p->next) {
+                        if (p->is_available == Connection_Failed) {
+                                _formatStatus("unix socket response time", Event_Connection, type, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                        } else {
+                                _formatStatus("unix socket response time", Event_Connection, type, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                        }
+                }
+        }
+        _formatStatus("data collected", Event_Null, type, res, s, true, "%s", Time_string(s->collected.tv_sec, (char[32]){}));
 }
 
 
@@ -364,6 +525,7 @@ static void do_head(HttpResponse res, const char *path, const char *name, int re
                             " .green-text {color:#00ff00;} "\
                             " .gray-text {color:#999999;} "\
                             " .blue-text {color:#0000ff;} "\
+                            " .yellow-text {color:#ffff00;} "\
                             " .orange-text {color:#ff8800;} "\
                             " .short {overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 350px;}"\
                             " #wrap {min-height: 100%%;} "\
@@ -824,9 +986,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>Interface</td><td>%s</td></tr>", s->path);
         else if (s->type != Service_System)
                 StringBuffer_append(res->outputbuffer, "<tr><td>Path</td><td>%s</td></tr>", s->path);
-        StringBuffer_append(res->outputbuffer, "<tr><td>Status</td><td>");
-        _printServiceStatus(res->outputbuffer, s);
-        StringBuffer_append(res->outputbuffer, "</td></tr>");
+        StringBuffer_append(res->outputbuffer, "<tr><td>Status</td><td>%s</td></tr>", get_service_status(HTML, s, buf, sizeof(buf)));
         for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next)
                 for (list_t m = sg->members->head; m; m = m->next)
                         if (m->e == s)
@@ -834,7 +994,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
         StringBuffer_append(res->outputbuffer,
                             "<tr><td>Monitoring mode</td><td>%s</td></tr>", modenames[s->mode]);
         StringBuffer_append(res->outputbuffer,
-                            "<tr><td>Monitoring status</td><td>%s</td></tr>", Color_strip(get_monitoring_status(s, buf, sizeof(buf))));
+                            "<tr><td>Monitoring status</td><td>%s</td></tr>", get_monitoring_status(HTML, s, buf, sizeof(buf)));
         for (Dependant_T d = s->dependantlist; d; d = d->next) {
                 if (d->dependant != NULL) {
                         StringBuffer_append(res->outputbuffer,
@@ -899,133 +1059,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                         StringBuffer_append(res->outputbuffer, "not every <code>\"%s\"</code>", s->every.spec.cron);
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
-        // Status
-        switch (s->type) {
-                case Service_Filesystem:
-                        _printStatus("Permission", Event_Permission, HTML, res, s, s->inf->priv.filesystem.mode >= 0, "%o", s->inf->priv.filesystem.mode & 07777);
-                        _printStatus("UID", Event_Uid, HTML, res, s, s->inf->priv.filesystem.uid >= 0, "%d", s->inf->priv.filesystem.uid);
-                        _printStatus("GID", Event_Gid, HTML, res, s, s->inf->priv.filesystem.gid >= 0, "%d", s->inf->priv.filesystem.gid);
-                        _printStatus("Filesystem flags", Event_Fsflag, HTML, res, s, true, "0x%x", s->inf->priv.filesystem.flags);
-                        _printStatus("Block size", Event_Null, HTML, res, s, true, "%s", Str_bytesToSize(s->inf->priv.filesystem.f_bsize, (char[10]){}));
-                        _printStatus("Space total", Event_Null, HTML, res, s, true, "%s (of which %.1f%% is reserved for root user)",
-                                s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocks * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
-                                s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)(s->inf->priv.filesystem.f_blocksfreetotal - s->inf->priv.filesystem.f_blocksfree) / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                        _printStatus("Space free for non superuser", Event_Null, HTML, res, s, true, "%s [%.1f%%]",
-                                s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfree * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
-                                s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfree / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                        _printStatus("Space free total", Event_Resource, HTML, res, s, true, "%s [%.1f%%]",
-                                s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfreetotal * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
-                                s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfreetotal / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                        if (s->inf->priv.filesystem.f_files > 0) {
-                                _printStatus("Inodes total", Event_Null, HTML, res, s, true, "%lld", s->inf->priv.filesystem.f_files);
-                                _printStatus("Inodes free", Event_Resource, HTML, res, s, true, "%lld [%.1f%%]", s->inf->priv.filesystem.f_filesfree, (float)100 * (float)s->inf->priv.filesystem.f_filesfree / (float)s->inf->priv.filesystem.f_files);
-                        }
-                        break;
-                case Service_Directory:
-                        _printStatus("Permission", Event_Permission, HTML, res, s, s->inf->priv.directory.mode >= 0, "%o", s->inf->priv.directory.mode & 07777);
-                        _printStatus("UID", Event_Uid, HTML, res, s, s->inf->priv.directory.uid >= 0, "%d", s->inf->priv.directory.uid);
-                        _printStatus("GID", Event_Gid, HTML, res, s, s->inf->priv.directory.gid >= 0, "%d", s->inf->priv.directory.gid);
-                        _printStatus("Timestamp", Event_Timestamp, HTML, res, s, s->inf->priv.directory.timestamp > 0, "%s", Time_string(s->inf->priv.directory.timestamp, (char[32]){}));
-                        break;
-                case Service_File:
-                        _printStatus("Permission", Event_Permission, HTML, res, s, s->inf->priv.file.mode >= 0, "%o", s->inf->priv.file.mode & 07777);
-                        _printStatus("UID", Event_Uid, HTML, res, s, s->inf->priv.file.uid >= 0, "%d", s->inf->priv.file.uid);
-                        _printStatus("GID", Event_Gid, HTML, res, s, s->inf->priv.file.gid >= 0, "%d", s->inf->priv.file.gid);
-                        _printStatus("Timestamp", Event_Timestamp, HTML, res, s, s->inf->priv.file.timestamp > 0, "%s", Time_string(s->inf->priv.file.timestamp, (char[32]){}));
-                        _printStatus("Size", Event_Size, HTML, res, s, s->inf->priv.file.size >= 0, "%s", Str_bytesToSize(s->inf->priv.file.size, (char[10]){}));
-                        if (s->matchlist)
-                                _printStatus("Content matches pattern(s)", Event_Content, HTML, res, s, true, "%s", (s->error & Event_Content) ? "yes" : "no");
-                        if (s->checksum)
-                                _printStatus("Checksum", Event_Checksum, HTML, res, s, true, "%s (%s)", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
-                        break;
-                case Service_Process:
-                        _printStatus("Process id", Event_Pid, HTML, res, s, s->inf->priv.process.pid >= 0, "%d", s->inf->priv.process.pid);
-                        _printStatus("Parent process id", Event_PPid, HTML, res, s, s->inf->priv.process.ppid >= 0, "%d", s->inf->priv.process.ppid);
-                        _printStatus("UID", Event_Uid, HTML, res, s, s->inf->priv.process.uid >= 0, "%d", s->inf->priv.process.uid);
-                        _printStatus("Effective UID", Event_Uid, HTML, res, s, s->inf->priv.process.euid >= 0, "%d", s->inf->priv.process.euid);
-                        _printStatus("GID", Event_Gid, HTML, res, s, s->inf->priv.process.gid >= 0, "%d", s->inf->priv.process.gid);
-                        _printStatus("Process uptime", Event_Uptime, HTML, res, s, s->inf->priv.process.uptime >= 0, "%s", _getUptime(s->inf->priv.process.uptime, (char[256]){}));
-                        if (Run.flags & Run_ProcessEngineEnabled) {
-                                _printStatus("Threads", Event_Resource, HTML, res, s, s->inf->priv.process.threads >= 0, "%d", s->inf->priv.process.threads);
-                                _printStatus("Children", Event_Resource, HTML, res, s, s->inf->priv.process.children >= 0, "%d", s->inf->priv.process.children);
-                                _printStatus("CPU usage", Event_Resource, HTML, res, s, s->inf->priv.process.cpu_percent >= 0, "%.1f%%", s->inf->priv.process.cpu_percent);
-                                _printStatus("Total CPU usage (incl. children)", Event_Resource, HTML, res, s, s->inf->priv.process.total_cpu_percent >= 0, "%.1f%%", s->inf->priv.process.total_cpu_percent);
-                                _printStatus("Memory usage", Event_Resource, HTML, res, s, s->inf->priv.process.mem_percent >= 0, "%.1f%% [%s]", s->inf->priv.process.mem_percent, Str_bytesToSize(s->inf->priv.process.mem, (char[10]){}));
-                                _printStatus("Total memory usage (incl. children)", Event_Resource, HTML, res, s, s->inf->priv.process.total_mem_percent >= 0, "%.1f%% [%s]",
-                                        s->inf->priv.process.total_mem_percent, Str_bytesToSize(s->inf->priv.process.total_mem, (char[10]){}));
-                        }
-                        break;
-                case Service_System:
-                        _printStatus("Load average", Event_Resource, HTML, res, s, true, "[%.2f] [%.2f] [%.2f]", systeminfo.loadavg[0], systeminfo.loadavg[1], systeminfo.loadavg[2]);
-                        _printStatus("CPU usage", Event_Resource, HTML, res, s, true, "%.1f%%us %.1f%%sy"
-#ifdef HAVE_CPU_WAIT
-                                    " %.1f%%wa"
-#endif
-                                    , systeminfo.total_cpu_user_percent > 0. ? systeminfo.total_cpu_user_percent : 0., systeminfo.total_cpu_syst_percent > 0. ? systeminfo.total_cpu_syst_percent : 0.
-#ifdef HAVE_CPU_WAIT
-                                    , systeminfo.total_cpu_wait_percent > 0. ? systeminfo.total_cpu_wait_percent : 0.
-#endif
-                                    );
-                        _printStatus("Memory usage", Event_Resource, HTML, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_mem, (char[10]){}), systeminfo.total_mem_percent);
-                        _printStatus("Swap usage", Event_Resource, HTML, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_swap, (char[10]){}), systeminfo.total_swap_percent);
-                        break;
-                case Service_Fifo:
-                        _printStatus("Permission", Event_Permission, HTML, res, s, s->inf->priv.fifo.mode >= 0, "%o", s->inf->priv.fifo.mode & 07777);
-                        _printStatus("UID", Event_Uid, HTML, res, s, s->inf->priv.fifo.uid >= 0, "%d", s->inf->priv.fifo.uid);
-                        _printStatus("GID", Event_Gid, HTML, res, s, s->inf->priv.fifo.gid >= 0, "%d", s->inf->priv.fifo.gid);
-                        _printStatus("Timestamp", Event_Timestamp, HTML, res, s, s->inf->priv.fifo.timestamp > 0, "%s", Time_string(s->inf->priv.fifo.timestamp, (char[32]){}));
-                        break;
-                case Service_Program:
-                        if (s->program->started) {
-                                _printStatus("Last started", Event_Null, HTML, res, s, true, "%s", Time_string(s->program->started, (char[32]){}));
-                                _printStatus("Last exit value", Event_Status, HTML, res, s, true, "%d", s->program->exitStatus);
-                                print_service_status_program_output(res, s);
-                        } else {
-                                _printStatus("Last started", Event_Null, HTML, res, s, true, "Not yet started");
-                        }
-                        break;
-                case Service_Net:
-                        {
-                                long long speed = Link_getSpeed(s->inf->priv.net.stats);
-                                long long ibytes = Link_getBytesInPerSecond(s->inf->priv.net.stats);
-                                long long obytes = Link_getBytesOutPerSecond(s->inf->priv.net.stats);
-                                _printStatus("Link", Event_Link, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%d errors", Link_getErrorsInPerSecond(s->inf->priv.net.stats) + Link_getErrorsOutPerSecond(s->inf->priv.net.stats));
-                                if (speed > 0) {
-                                        _printStatus("Capacity", Event_Speed, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%.0lf Mb&#47;s %s-duplex", (double)speed / 1000000., Link_getDuplex(s->inf->priv.net.stats) == 1 ? "full" : "half");
-                                        _printStatus("Download bytes", Event_ByteIn, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s (%.1f%% link saturation)", Str_bytesToSize(ibytes, (char[10]){}), 100. * ibytes * 8 / (double)speed);
-                                        _printStatus("Upload bytes", Event_ByteOut, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s (%.1f%% link saturation)", Str_bytesToSize(obytes, (char[10]){}), 100. * obytes * 8 / (double)speed);
-                                } else {
-                                        _printStatus("Download bytes", Event_ByteIn, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s", Str_bytesToSize(ibytes, (char[10]){}));
-                                        _printStatus("Upload bytes", Event_ByteOut, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s", Str_bytesToSize(obytes, (char[10]){}));
-                                }
-                                _printStatus("Download packets", Event_PacketIn, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%lld per second", Link_getPacketsInPerSecond(s->inf->priv.net.stats));
-                                _printStatus("Upload packets", Event_PacketOut, HTML, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%lld per second", Link_getPacketsOutPerSecond(s->inf->priv.net.stats));
-                        }
-                        break;
-                default:
-                        break;
-        }
-        for (Icmp_T i = s->icmplist; i; i = i->next) {
-                if (i->is_available == Connection_Failed)
-                        _printStatus("Ping response time", Event_Icmp, HTML, res, s, true, "connection failed");
-                else
-                        _printStatus("Ping response time", Event_Connection, HTML, res, s, i->is_available != Connection_Init && i->response >= 0., "%s", Str_milliToTime(i->response, (char[23]){}));
-        }
-        for (Port_T p = s->portlist; p; p = p->next) {
-                if (p->is_available == Connection_Failed) {
-                        _printStatus("Port response time", Event_Connection, HTML, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
-                } else {
-                        _printStatus("Port response time", Event_Connection, HTML, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
-                }
-        }
-        for (Port_T p = s->socketlist; p; p = p->next) {
-                if (p->is_available == Connection_Failed) {
-                        _printStatus("Unix socket response time", Event_Connection, HTML, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
-                } else {
-                        _printStatus("Unix socket response time", Event_Connection, HTML, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
-                }
-        }
-        StringBuffer_append(res->outputbuffer, "<tr><td>Data collected</td><td>%s</td></tr>", Time_string(s->collected.tv_sec, buf));
+        _printStatus(HTML, res, s);
         // Rules
         print_service_rules_timeout(res, s);
         print_service_rules_existence(res, s);
@@ -1082,11 +1116,9 @@ static void do_home_system(HttpRequest req, HttpResponse res) {
                             "</tr>"
                             "<tr class='stripe'>"
                             "<td align='left'><a href='%s'>%s</a></td>"
-                            "<td align='left'>",
-                            s->name, s->name);
-        _printServiceStatus(res->outputbuffer, s);
-        StringBuffer_append(res->outputbuffer,
-                            "</td>");
+                            "<td align='left'>%s</td>",
+                            s->name, s->name,
+                            get_service_status(HTML, s, buf, sizeof(buf)));
         if (Run.flags & Run_ProcessEngineEnabled) {
                 StringBuffer_append(res->outputbuffer,
                                     "<td align='right'>[%.2f]&nbsp;[%.2f]&nbsp;[%.2f]</td>"
@@ -1142,12 +1174,10 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.process.uptime < 0)
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                 else
@@ -1171,6 +1201,7 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
 
 
 static void do_home_program(HttpRequest req, HttpResponse res) {
+        char buf[STRLEN];
         boolean_t on = true;
         boolean_t header = true;
 
@@ -1192,12 +1223,10 @@ static void do_home_program(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
                         StringBuffer_append(res->outputbuffer, "<td align='left'>-</td>");
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
@@ -1263,13 +1292,10 @@ static void do_home_net(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
-
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || Link_getState(s->inf->priv.net.stats) != 1) {
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
@@ -1307,12 +1333,10 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
                         StringBuffer_append(res->outputbuffer,
                                             "<td align='right'>- [-]</td>"
@@ -1341,6 +1365,7 @@ static void do_home_filesystem(HttpRequest req, HttpResponse res) {
 
 
 static void do_home_file(HttpRequest req, HttpResponse res) {
+        char buf[STRLEN];
         boolean_t on = true;
         boolean_t header = true;
 
@@ -1364,12 +1389,10 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.file.size < 0)
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                 else
@@ -1395,6 +1418,7 @@ static void do_home_file(HttpRequest req, HttpResponse res) {
 
 
 static void do_home_fifo(HttpRequest req, HttpResponse res) {
+        char buf[STRLEN];
         boolean_t on = true;
         boolean_t header = true;
 
@@ -1416,12 +1440,10 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.fifo.mode < 0)
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                 else
@@ -1443,6 +1465,7 @@ static void do_home_fifo(HttpRequest req, HttpResponse res) {
 
 
 static void do_home_directory(HttpRequest req, HttpResponse res) {
+        char buf[STRLEN];
         boolean_t on = true;
         boolean_t header = true;
 
@@ -1464,12 +1487,10 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s) || s->inf->priv.directory.mode < 0)
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                 else
@@ -1491,6 +1512,7 @@ static void do_home_directory(HttpRequest req, HttpResponse res) {
 
 
 static void do_home_host(HttpRequest req, HttpResponse res) {
+        char buf[STRLEN];
         boolean_t on = true;
         boolean_t header = true;
 
@@ -1510,12 +1532,10 @@ static void do_home_host(HttpRequest req, HttpResponse res) {
                 StringBuffer_append(res->outputbuffer,
                                     "<tr %s>"
                                     "<td align='left'><a href='%s'>%s</a></td>"
-                                    "<td align='left'>",
+                                    "<td align='left'>%s</td>",
                                     on ? "class='stripe'" : "",
-                                    s->name, s->name);
-                _printServiceStatus(res->outputbuffer, s);
-                StringBuffer_append(res->outputbuffer,
-                                    "</td>");
+                                    s->name, s->name,
+                                    get_service_status(HTML, s, buf, sizeof(buf)));
                 if (! Util_hasServiceStatus(s)) {
                         StringBuffer_append(res->outputbuffer,
                                             "<td align='right'>-</td>");
@@ -2137,33 +2157,6 @@ static void print_service_rules_resource(HttpResponse res, Service_T s) {
 }
 
 
-static void print_service_status_program_output(HttpResponse res, Service_T s) {
-        StringBuffer_append(res->outputbuffer, "<tr><td>Last output</td>");
-        if (! Util_hasServiceStatus(s)) {
-                StringBuffer_append(res->outputbuffer, "<td>-</td>");
-        } else {
-                if (s->program->started) {
-                        StringBuffer_append(res->outputbuffer, "<td>");
-                        if (StringBuffer_length(s->program->output)) {
-                                // If the output contains multiple line, wrap use <pre>, otherwise keep as is
-                                int multiline = StringBuffer_lastIndexOf(s->program->output, "\n") > 0;
-                                if (multiline)
-                                        StringBuffer_append(res->outputbuffer, "<pre>");
-                                escapeHTML(res->outputbuffer, StringBuffer_toString(s->program->output));
-                                if (multiline)
-                                        StringBuffer_append(res->outputbuffer, "</pre>");
-                        } else {
-                                StringBuffer_append(res->outputbuffer, "no output");
-                        }
-                        StringBuffer_append(res->outputbuffer, "</td>");
-                } else {
-                        StringBuffer_append(res->outputbuffer, "<td class='gray-text'>-</td>");
-                }
-        }
-        StringBuffer_append(res->outputbuffer, "</tr>");
-}
-
-
 static boolean_t is_readonly(HttpRequest req) {
         if (req->remote_user) {
                 Auth_T user_creds = Util_getUserCredentials(req->remote_user);
@@ -2226,7 +2219,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
 
 static void _printServiceSummary(Box_T t, Service_T s) {
         Box_printColumn(t, "%s", s->name);
-        Box_printColumn(t, "%s", get_service_status(s, (char[STRLEN]){}, STRLEN));
+        Box_printColumn(t, "%s", get_service_status(TXT, s, (char[STRLEN]){}, STRLEN));
         Box_printColumn(t, "%s", servicetypes[s->type]);
 }
 
@@ -2353,197 +2346,56 @@ static void _printReport(HttpRequest req, HttpResponse res) {
 static void status_service_txt(Service_T s, HttpResponse res) {
         char buf[STRLEN];
         StringBuffer_append(res->outputbuffer,
-                            COLOR_BOLDCYAN "%s '%s'" COLOR_RESET "\n"
-                            "  %-33s %s\n",
-                            servicetypes[s->type], s->name,
-                            "status", get_service_status(s, buf, sizeof(buf)));
+                COLOR_BOLDCYAN "%s '%s'" COLOR_RESET "\n"
+                "  %-33s %s\n",
+                servicetypes[s->type], s->name,
+                "status", get_service_status(TXT, s, buf, sizeof(buf)));
         StringBuffer_append(res->outputbuffer,
-                            "  %-33s %s\n",
-                            "monitoring status", get_monitoring_status(s, buf, sizeof(buf)));
-
-        if (Util_hasServiceStatus(s)) {
-                switch (s->type) {
-                        case Service_System:
-                                _printStatus("load average", Event_Resource, TXT, res, s, true, "[%.2f] [%.2f] [%.2f]", systeminfo.loadavg[0], systeminfo.loadavg[1], systeminfo.loadavg[2]);
-                                _printStatus("cpu", Event_Resource, TXT, res, s, true, "%.1f%%us %.1f%%sy"
-#ifdef HAVE_CPU_WAIT
-                                        " %.1f%%wa"
-#endif
-                                        , systeminfo.total_cpu_user_percent > 0. ? systeminfo.total_cpu_user_percent : 0., systeminfo.total_cpu_syst_percent > 0. ? systeminfo.total_cpu_syst_percent : 0.
-#ifdef HAVE_CPU_WAIT
-                                        , systeminfo.total_cpu_wait_percent > 0. ? systeminfo.total_cpu_wait_percent : 0.
-#endif
-                                );
-                                _printStatus("memory usage", Event_Resource, TXT, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_mem, (char[10]){}), systeminfo.total_mem_percent);
-                                _printStatus("swap usage", Event_Resource, TXT, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_swap, (char[10]){}), systeminfo.total_swap_percent);
-                                break;
-
-                        case Service_File:
-                                _printStatus("permission", Event_Permission, TXT, res, s, s->inf->priv.file.mode >= 0, "%o", s->inf->priv.file.mode & 07777);
-                                _printStatus("uid", Event_Uid, TXT, res, s, s->inf->priv.file.uid >= 0, "%d", s->inf->priv.file.uid);
-                                _printStatus("gid", Event_Gid, TXT, res, s, s->inf->priv.file.gid >= 0, "%d", s->inf->priv.file.gid);
-                                _printStatus("size", Event_Size, TXT, res, s, s->inf->priv.file.size >= 0, "%s", Str_bytesToSize(s->inf->priv.file.size, (char[10]){}));
-                                _printStatus("timestamp", Event_Timestamp, TXT, res, s, s->inf->priv.file.timestamp > 0, "%s", Time_string(s->inf->priv.file.timestamp, (char[32]){}));
-                                if (s->matchlist)
-                                        _printStatus("content match", Event_Content, TXT, res, s, true, "%s", (s->error & Event_Content) ? "yes" : "no");
-                                if (s->checksum)
-                                        _printStatus("checksum", Event_Checksum, TXT, res, s, *s->inf->priv.file.cs_sum, "%s (%s)", s->inf->priv.file.cs_sum, checksumnames[s->checksum->type]);
-                                break;
-
-                        case Service_Directory:
-                                _printStatus("permission", Event_Permission, TXT, res, s, s->inf->priv.directory.mode >= 0, "%o", s->inf->priv.directory.mode & 07777);
-                                _printStatus("uid", Event_Uid, TXT, res, s, s->inf->priv.directory.uid >= 0, "%d", s->inf->priv.directory.uid);
-                                _printStatus("gid", Event_Gid, TXT, res, s, s->inf->priv.directory.gid >= 0, "%d", s->inf->priv.directory.gid);
-                                _printStatus("timestamp", Event_Timestamp, TXT, res, s, s->inf->priv.directory.timestamp > 0, "%s", Time_string(s->inf->priv.directory.timestamp, (char[32]){}));
-                                break;
-
-                        case Service_Fifo:
-                                _printStatus("permission", Event_Permission, TXT, res, s, s->inf->priv.fifo.mode >= 0, "%o", s->inf->priv.fifo.mode & 07777);
-                                _printStatus("uid", Event_Uid, TXT, res, s, s->inf->priv.fifo.uid >= 0, "%d", s->inf->priv.fifo.uid);
-                                _printStatus("gid", Event_Gid, TXT, res, s, s->inf->priv.fifo.gid >= 0, "%d", s->inf->priv.fifo.gid);
-                                _printStatus("timestamp", Event_Timestamp, TXT, res, s, s->inf->priv.fifo.timestamp > 0, "%s", Time_string(s->inf->priv.fifo.timestamp, (char[32]){}));
-                                break;
-
-                        case Service_Net:
-                                {
-                                        long long speed = Link_getSpeed(s->inf->priv.net.stats);
-                                        long long ibytes = Link_getBytesInPerSecond(s->inf->priv.net.stats);
-                                        long long obytes = Link_getBytesOutPerSecond(s->inf->priv.net.stats);
-                                        _printStatus("link", Event_Link, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%d errors", Link_getErrorsInPerSecond(s->inf->priv.net.stats) + Link_getErrorsOutPerSecond(s->inf->priv.net.stats));
-                                        if (speed > 0) {
-                                                _printStatus("capacity", Event_Speed, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%.0lf Mb/s %s-duplex", (double)speed / 1000000., Link_getDuplex(s->inf->priv.net.stats) == 1 ? "full" : "half");
-                                                _printStatus("download bytes", Event_ByteIn, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s (%.1f%% link saturation)", Str_bytesToSize(ibytes, (char[10]){}), 100. * ibytes * 8 / (double)speed);
-                                                _printStatus("upload bytes", Event_ByteOut, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s (%.1f%% link saturation)", Str_bytesToSize(obytes, (char[10]){}), 100. * obytes * 8 / (double)speed);
-                                        } else {
-                                                _printStatus("download bytes", Event_ByteIn, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s", Str_bytesToSize(ibytes, (char[10]){}));
-                                                _printStatus("upload bytes", Event_ByteOut, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%s/s", Str_bytesToSize(obytes, (char[10]){}));
-                                        }
-                                        _printStatus("download packets", Event_PacketIn, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%lld per second", Link_getPacketsInPerSecond(s->inf->priv.net.stats));
-                                        _printStatus("upload packets", Event_PacketOut, TXT, res, s, Link_getState(s->inf->priv.net.stats) == 1, "%lld per second", Link_getPacketsOutPerSecond(s->inf->priv.net.stats));
-                                }
-                                break;
-
-                        case Service_Filesystem:
-                                _printStatus("permission", Event_Permission, TXT, res, s, s->inf->priv.filesystem.mode >= 0, "%o", s->inf->priv.filesystem.mode & 07777);
-                                _printStatus("uid", Event_Uid, TXT, res, s, s->inf->priv.filesystem.uid >= 0, "%d", s->inf->priv.filesystem.uid);
-                                _printStatus("gid", Event_Gid, TXT, res, s, s->inf->priv.filesystem.gid >= 0, "%d", s->inf->priv.filesystem.gid);
-                                _printStatus("gid", Event_Gid, TXT, res, s, true, "%d", s->inf->priv.filesystem.gid);
-                                _printStatus("filesystem flags", Event_Fsflag, TXT, res, s, true, "0x%x", s->inf->priv.filesystem.flags);
-                                _printStatus("block size", Event_Null, TXT, res, s, true, "%s", Str_bytesToSize(s->inf->priv.filesystem.f_bsize, (char[10]){}));
-                                _printStatus("space total", Event_Null, TXT, res, s, true, "%s (of which %.1f%% is reserved for root user)",
-                                        s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocks * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
-                                        s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)(s->inf->priv.filesystem.f_blocksfreetotal - s->inf->priv.filesystem.f_blocksfree) / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                                _printStatus("space free for non superuser", Event_Null, TXT, res, s, true, "%s [%.1f%%]",
-                                        s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfree * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
-                                        s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfree / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                                _printStatus("space free total", Event_Resource, TXT, res, s, true, "%s [%.1f%%]",
-                                        s->inf->priv.filesystem.f_bsize > 0 ? Str_bytesToSize(s->inf->priv.filesystem.f_blocksfreetotal * s->inf->priv.filesystem.f_bsize, (char[10]){}) : "0 MB",
-                                        s->inf->priv.filesystem.f_blocks > 0 ? ((float)100 * (float)s->inf->priv.filesystem.f_blocksfreetotal / (float)s->inf->priv.filesystem.f_blocks) : 0);
-                                if (s->inf->priv.filesystem.f_files > 0) {
-                                        _printStatus("inodes total", Event_Null, TXT, res, s, true, "%lld", s->inf->priv.filesystem.f_files);
-                                        _printStatus("inodes free", Event_Resource, TXT, res, s, true, "%lld [%.1f%%]", s->inf->priv.filesystem.f_filesfree, (float)100 * (float)s->inf->priv.filesystem.f_filesfree / (float)s->inf->priv.filesystem.f_files);
-                                }
-                                break;
-
-                        case Service_Process:
-                                _printStatus("pid", Event_Pid, TXT, res, s, s->inf->priv.process.pid >= 0, "%d", s->inf->priv.process.pid);
-                                _printStatus("parent pid", Event_PPid, TXT, res, s, s->inf->priv.process.ppid >= 0, "%d", s->inf->priv.process.ppid);
-                                _printStatus("uid", Event_Uid, TXT, res, s, s->inf->priv.process.uid >= 0, "%d", s->inf->priv.process.uid);
-                                _printStatus("effective uid", Event_Uid, TXT, res, s, s->inf->priv.process.euid >= 0, "%d", s->inf->priv.process.euid);
-                                _printStatus("gid", Event_Gid, TXT, res, s, s->inf->priv.process.gid >= 0, "%d", s->inf->priv.process.gid);
-                                _printStatus("uptime", Event_Uptime, TXT, res, s, s->inf->priv.process.uptime >= 0, "%s", _getUptime(s->inf->priv.process.uptime, (char[256]){}));
-                                if (Run.flags & Run_ProcessEngineEnabled) {
-                                        _printStatus("threads", Event_Resource, TXT, res, s, s->inf->priv.process.threads >= 0, "%d", s->inf->priv.process.threads);
-                                        _printStatus("children", Event_Resource, TXT, res, s, s->inf->priv.process.children >= 0, "%d", s->inf->priv.process.children);
-                                        _printStatus("cpu", Event_Resource, TXT, res, s, s->inf->priv.process.cpu_percent >= 0, "%.1f%%", s->inf->priv.process.cpu_percent);
-                                        _printStatus("cpu total", Event_Resource, TXT, res, s, s->inf->priv.process.total_cpu_percent >= 0, "%.1f%%", s->inf->priv.process.total_cpu_percent);
-                                        _printStatus("memory", Event_Resource, TXT, res, s, s->inf->priv.process.mem_percent >= 0, "%.1f%% [%s]", s->inf->priv.process.mem_percent, Str_bytesToSize(s->inf->priv.process.mem, (char[10]){}));
-                                        _printStatus("memory total", Event_Resource, TXT, res, s, s->inf->priv.process.total_mem_percent >= 0, "%.1f%% [%s]", s->inf->priv.process.total_mem_percent, Str_bytesToSize(s->inf->priv.process.total_mem, (char[10]){}));
-                                }
-                                break;
-
-                        case Service_Program:
-                                if (s->program->started) {
-                                        _printStatus("last started", Event_Null, TXT, res, s, true, "%s", Time_string(s->program->started, (char[32]){}));
-                                        _printStatus("last exit value", Event_Status, TXT, res, s, true, "%d", s->program->exitStatus);
-                                        if (StringBuffer_length(s->program->output)) {
-                                                const char *output = StringBuffer_toString(s->program->output);
-                                                StringBuffer_append(res->outputbuffer,
-                                                        "  %-33s ", "last output");
-                                                int column = 0;
-                                                for (int i = 0; output[i]; i++) {
-                                                        if (output[i] == '\r') {
-                                                                // Discard CR
-                                                                continue;
-                                                        } else if (output[i] == '\n') {
-                                                                // Indent 2nd+ line
-                                                                if (output[i + 1])
-                                                                        StringBuffer_append(res->outputbuffer, "\n                                    ");
-                                                                column = 0;
-                                                                continue;
-                                                        } else if (column <= 200) {
-                                                                StringBuffer_append(res->outputbuffer, "%c", output[i]);
-                                                                column++;
-                                                        }
-                                                }
-                                                StringBuffer_append(res->outputbuffer,
-                                                        "\n");
-                                        }
-                                } else {
-                                        _printStatus("last started", Event_Null, TXT, res, s, true, "Not yet started");
-                                }
-                                break;
-
-                        default:
-                                break;
-                }
-                for (Icmp_T i = s->icmplist; i; i = i->next) {
-                        if (i->is_available == Connection_Failed)
-                                _printStatus("ping response time", Event_Icmp, TXT, res, s, true, "connection failed");
-                        else
-                                _printStatus("ping response time", Event_Connection, TXT, res, s, i->is_available != Connection_Init && i->response >= 0., "%s", Str_milliToTime(i->response, (char[23]){}));
-                }
-                for (Port_T p = s->portlist; p; p = p->next) {
-                        if (p->is_available == Connection_Failed) {
-                                _printStatus("port response time", Event_Connection, TXT, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
-                        } else {
-                                _printStatus("port response time", Event_Connection, TXT, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
-                        }
-                }
-                for (Port_T p = s->socketlist; p; p = p->next) {
-                        if (p->is_available == Connection_Failed) {
-                                _printStatus("unix socket response time", Event_Connection, TXT, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
-                        } else {
-                                _printStatus("unix socket response time", Event_Connection, TXT, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
-                        }
-                }
-        }
-        StringBuffer_append(res->outputbuffer, "  %-33s %s\n\n", "data collected", Time_string(s->collected.tv_sec, buf));
+                "  %-33s %s\n",
+                "monitoring status", get_monitoring_status(TXT, s, buf, sizeof(buf)));
+        _printStatus(TXT, res, s);
+        StringBuffer_append(res->outputbuffer, "\n");
 }
 
 
-static char *get_monitoring_status(Service_T s, char *buf, int buflen) {
+static char *get_monitoring_status(Output_Type type, Service_T s, char *buf, int buflen) {
         ASSERT(s);
         ASSERT(buf);
-        if (s->monitor == Monitor_Not)
-                snprintf(buf, buflen, Color_lightYellow("Not monitored"));
-        else if (s->monitor & Monitor_Waiting)
-                snprintf(buf, buflen, Color_white("Waiting"));
-        else if (s->monitor & Monitor_Init)
-                snprintf(buf, buflen, Color_lightBlue("Initializing"));
-        else if (s->monitor & Monitor_Yes)
-                snprintf(buf, buflen, "Monitored");
+        if (s->monitor == Monitor_Not) {
+                if (type == HTML)
+                        snprintf(buf, buflen, "<span class='gray-text'>Not monitored</span>");
+                else
+                        snprintf(buf, buflen, Color_lightYellow("Not monitored"));
+        } else if (s->monitor & Monitor_Waiting) {
+                if (type == HTML)
+                        snprintf(buf, buflen, "<span>Waiting</span>");
+                else
+                        snprintf(buf, buflen, Color_white("Waiting"));
+        } else if (s->monitor & Monitor_Init) {
+                if (type == HTML)
+                        snprintf(buf, buflen, "<span class='blue-text'>Initializing</span>");
+                else
+                        snprintf(buf, buflen, Color_lightBlue("Initializing"));
+        } else if (s->monitor & Monitor_Yes) {
+                if (type == HTML)
+                        snprintf(buf, buflen, "<span>Monitored</span>");
+                else
+                        snprintf(buf, buflen, "Monitored");
+        }
         return buf;
 }
 
 
-static char *get_service_status(Service_T s, char *buf, int buflen) {
+static char *get_service_status(Output_Type type, Service_T s, char *buf, int buflen) {
         ASSERT(s);
         ASSERT(buf);
         if (s->monitor == Monitor_Not || s->monitor & Monitor_Init) {
-                get_monitoring_status(s, buf, buflen);
+                get_monitoring_status(type, s, buf, buflen);
         } else if (s->error == 0) {
-                snprintf(buf, buflen, Color_lightGreen("%s", statusnames[s->type]));
+                if (type == HTML)
+                        snprintf(buf, buflen, "<span class='green-text'>%s</span>", statusnames[s->type]);
+                else
+                        snprintf(buf, buflen, Color_lightGreen("%s", statusnames[s->type]));
         } else {
                 // In the case that the service has actualy some failure, the error bitmap will be non zero
                 char *p = buf;
@@ -2552,10 +2404,17 @@ static char *get_service_status(Service_T s, char *buf, int buflen) {
                         if (s->error & (*et).id) {
                                 if (p > buf)
                                         p += snprintf(p, buflen - (p - buf), " | ");
-                                if (s->error_hint & (*et).id)
-                                        p += snprintf(p, buflen - (p - buf), Color_lightYellow("%s", (*et).description_changed));
-                                else
-                                        p += snprintf(p, buflen - (p - buf), Color_lightRed("%s", (*et).description_failed));
+                                if (s->error_hint & (*et).id) {
+                                        if (type == HTML)
+                                                p += snprintf(p, buflen - (p - buf), "<span class='orange-text'>%s</span>", (*et).description_changed);
+                                        else
+                                                p += snprintf(p, buflen - (p - buf), Color_lightYellow("%s", (*et).description_changed));
+                                } else {
+                                        if (type == HTML)
+                                                p += snprintf(p, buflen - (p - buf), "<span class='red-text'>%s</span>", (*et).description_failed);
+                                        else
+                                                p += snprintf(p, buflen - (p - buf), Color_lightRed("%s", (*et).description_failed));
+                                }
                         }
                         et++;
                 }
