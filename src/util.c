@@ -1509,33 +1509,6 @@ int Util_isProcessRunning(Service_T s) {
 }
 
 
-char *Util_getUptime(time_t delta, char s[256]) {
-        static int min = 60;
-        static int hour = 3600;
-        static int day = 86400;
-        long rest_d;
-        long rest_h;
-        long rest_m;
-        char *p = s;
-
-        if (delta < 0) {
-                *s = 0;
-        } else {
-                if ((rest_d = delta / day) > 0) {
-                        p += snprintf(p, 256 - (p - s), "%ldd ", rest_d);
-                        delta -= rest_d * day;
-                }
-                if ((rest_h = delta / hour) > 0 || (rest_d > 0)) {
-                        p += snprintf(p, 256 - (p - s), "%ldh ", rest_h);
-                        delta -= rest_h * hour;
-                }
-                rest_m = delta / min;
-                snprintf(p, 256 - (p - s), "%ldm", rest_m);
-        }
-        return s;
-}
-
-
 boolean_t Util_isurlsafe(const char *url) {
         ASSERT(url && *url);
         for (int i = 0; url[i]; i++)
@@ -1595,23 +1568,6 @@ char *Util_encodeServiceName(char *name) {
         for (i = 0; s[i]; i++)
                 if (s[i] == '/') return Util_replaceString(&s, "/", "%2F");
         return s;
-}
-
-
-char *Util_getBasicAuthHeaderMonit() {
-        Auth_T c = Run.httpd.credentials;
-
-        /* We find the first cleartext credential for authorization */
-        while (c != NULL) {
-                if (c->digesttype == Digest_Cleartext && ! c->is_readonly)
-                        break;
-                c = c->next;
-        }
-
-        if (c)
-                return Util_getBasicAuthHeader(c->uname, c->passwd);
-
-        return NULL;
 }
 
 

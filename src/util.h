@@ -192,15 +192,6 @@ int Util_isProcessRunning(Service_T s);
 
 
 /**
- * Compute an uptime string based on the delta time in seconds.
- * @param delta seconds.
- * @param s A result buffer, must be large enough to hold 256 chars
- * @return A pointer to s
- */
-char *Util_getUptime(time_t delta, char s[256]);
-
-
-/**
  * Returns true if url contains url safe characters otherwise false
  * @param url an url string to test
  * @return true if url is url safe otherwise false
@@ -233,13 +224,6 @@ char *Util_urlDecode(char *url);
  * @return the escaped string
  */
 char *Util_encodeServiceName(char *name);
-
-
-/**
- * @return a Basic Authentication Authorization string (RFC 2617),
- * with credentials from the Run object, NULL if credentials are not defined.
- */
-char *Util_getBasicAuthHeaderMonit();
 
 
 /**

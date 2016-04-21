@@ -81,9 +81,23 @@ static void _argument(StringBuffer_T data, const char *name, const char *value) 
 }
 
 
+static char *_getBasicAuthHeader() {
+        Auth_T c = Run.httpd.credentials;
+        // Find the first cleartext credential for authorization
+        while (c != NULL) {
+                if (c->digesttype == Digest_Cleartext && ! c->is_readonly)
+                        break;
+                c = c->next;
+        }
+        if (c)
+                return Util_getBasicAuthHeader(c->uname, c->passwd);
+        return NULL;
+}
+
+
 static void _send(Socket_T S, const char *request, StringBuffer_T data) {
         _argument(data, "format", "text");
-        char *_auth = Util_getBasicAuthHeaderMonit();
+        char *_auth = _getBasicAuthHeader();
         int rv = Socket_print(S,
                 "POST %s HTTP/1.0\r\n"
                 "Content-Type: application/x-www-form-urlencoded\r\n"

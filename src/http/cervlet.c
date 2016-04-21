@@ -197,6 +197,33 @@ void init_service() {
 /* ----------------------------------------------------------------- Private */
 
 
+static char *_getUptime(time_t delta, char s[256]) {
+        static int min = 60;
+        static int hour = 3600;
+        static int day = 86400;
+        long rest_d;
+        long rest_h;
+        long rest_m;
+        char *p = s;
+
+        if (delta < 0) {
+                *s = 0;
+        } else {
+                if ((rest_d = delta / day) > 0) {
+                        p += snprintf(p, 256 - (p - s), "%ldd ", rest_d);
+                        delta -= rest_d * day;
+                }
+                if ((rest_h = delta / hour) > 0 || (rest_d > 0)) {
+                        p += snprintf(p, 256 - (p - s), "%ldh ", rest_h);
+                        delta -= rest_h * hour;
+                }
+                rest_m = delta / min;
+                snprintf(p, 256 - (p - s), "%ldm", rest_m);
+        }
+        return s;
+}
+
+
 static void _printStatus(const char *name, Event_Type errorType, Output_Type type, HttpResponse res, Service_T s, boolean_t validValue, const char *value, ...) {
         StringBuffer_append(res->outputbuffer, type == HTML ? "<tr><td>%s</td>" : "  %-33s ", name);
         if (! Util_hasServiceStatus(s) || ! validValue) {
@@ -400,7 +427,7 @@ static void do_home(HttpRequest req, HttpResponse res) {
                             "  <p align='center'>Monit is <a href='_runtime'>running</a> on %s with <i>uptime, %s</i> and monitoring:</p><br>"
                             "  </td>"
                             " </tr>"
-                            "</table>", Run.system->name, Util_getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
+                            "</table>", Run.system->name, _getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
 
         do_home_system(req, res);
         do_home_process(req, res);
@@ -917,7 +944,7 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                         _printStatus("UID", Event_Uid, HTML, res, s, s->inf->priv.process.uid >= 0, "%d", s->inf->priv.process.uid);
                         _printStatus("Effective UID", Event_Uid, HTML, res, s, s->inf->priv.process.euid >= 0, "%d", s->inf->priv.process.euid);
                         _printStatus("GID", Event_Gid, HTML, res, s, s->inf->priv.process.gid >= 0, "%d", s->inf->priv.process.gid);
-                        _printStatus("Process uptime", Event_Uptime, HTML, res, s, s->inf->priv.process.uptime >= 0, "%s", Util_getUptime(s->inf->priv.process.uptime, (char[256]){}));
+                        _printStatus("Process uptime", Event_Uptime, HTML, res, s, s->inf->priv.process.uptime >= 0, "%s", _getUptime(s->inf->priv.process.uptime, (char[256]){}));
                         if (Run.flags & Run_ProcessEngineEnabled) {
                                 _printStatus("Threads", Event_Resource, HTML, res, s, s->inf->priv.process.threads >= 0, "%d", s->inf->priv.process.threads);
                                 _printStatus("Children", Event_Resource, HTML, res, s, s->inf->priv.process.children >= 0, "%d", s->inf->priv.process.children);
@@ -1124,7 +1151,7 @@ static void do_home_process(HttpRequest req, HttpResponse res) {
                 if (! Util_hasServiceStatus(s) || s->inf->priv.process.uptime < 0)
                         StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
                 else
-                        StringBuffer_append(res->outputbuffer, "<td align='right'>%s</td>", Util_getUptime(s->inf->priv.process.uptime, (char[256]){}));
+                        StringBuffer_append(res->outputbuffer, "<td align='right'>%s</td>", _getUptime(s->inf->priv.process.uptime, (char[256]){}));
                 if (Run.flags & Run_ProcessEngineEnabled) {
                         if (! Util_hasServiceStatus(s) || s->inf->priv.process.total_cpu_percent < 0)
                                 StringBuffer_append(res->outputbuffer, "<td align='right'>-</td>");
@@ -2162,7 +2189,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
         } else {
                 set_content_type(res, "text/plain");
 
-                StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, Util_getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
+                StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, _getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
 
                 int found = 0;
                 const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
@@ -2219,7 +2246,7 @@ static int _printServiceSummaryByType(Box_T t, Service_Type type) {
 static void print_summary(HttpRequest req, HttpResponse res) {
         set_content_type(res, "text/plain");
 
-        StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, Util_getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
+        StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, _getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
 
         int found = 0;
         const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
@@ -2424,7 +2451,7 @@ static void status_service_txt(Service_T s, HttpResponse res) {
                                 _printStatus("uid", Event_Uid, TXT, res, s, s->inf->priv.process.uid >= 0, "%d", s->inf->priv.process.uid);
                                 _printStatus("effective uid", Event_Uid, TXT, res, s, s->inf->priv.process.euid >= 0, "%d", s->inf->priv.process.euid);
                                 _printStatus("gid", Event_Gid, TXT, res, s, s->inf->priv.process.gid >= 0, "%d", s->inf->priv.process.gid);
-                                _printStatus("uptime", Event_Uptime, TXT, res, s, s->inf->priv.process.uptime >= 0, "%s", Util_getUptime(s->inf->priv.process.uptime, (char[256]){}));
+                                _printStatus("uptime", Event_Uptime, TXT, res, s, s->inf->priv.process.uptime >= 0, "%s", _getUptime(s->inf->priv.process.uptime, (char[256]){}));
                                 if (Run.flags & Run_ProcessEngineEnabled) {
                                         _printStatus("threads", Event_Resource, TXT, res, s, s->inf->priv.process.threads >= 0, "%d", s->inf->priv.process.threads);
                                         _printStatus("children", Event_Resource, TXT, res, s, s->inf->priv.process.children >= 0, "%d", s->inf->priv.process.children);
