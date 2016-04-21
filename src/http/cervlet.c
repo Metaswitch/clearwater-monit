@@ -270,6 +270,7 @@ static void _formatStatus(const char *name, Event_Type errorType, Output_Type ty
                         }
                         StringBuffer_append(res->outputbuffer, COLOR_RESET);
                 }
+                FREE(_value);
         }
         StringBuffer_append(res->outputbuffer, type == HTML ? "</tr>" : "\n");
 }
