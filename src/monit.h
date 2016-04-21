@@ -1217,7 +1217,6 @@ extern char *sslnames[];
 boolean_t parse(char *);
 boolean_t control_service(const char *, Action_Type);
 boolean_t control_service_string(List_T, const char *);
-boolean_t control_service_daemon(List_T, const char *);
 void  spawn(Service_T, command_t, Event_T);
 boolean_t log_init();
 void  LogEmergency(const char *, ...) __attribute__((format (printf, 1, 2)));

@@ -434,7 +434,7 @@ static void do_action(char **args) {
                         } else {
                                 List_append(services, service);
                         }
-                        errors = exist_daemon() ? control_service_daemon(services, action) : control_service_string(services, action);
+                        errors = exist_daemon() ? (HttpClient_action(action, services) ? 0 : 1) : control_service_string(services, action);
                         List_free(&services);
                         if (errors)
                                 exit(1);

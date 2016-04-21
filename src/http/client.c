@@ -62,6 +62,7 @@
 
 // libmonit
 #include "exceptions/AssertException.h"
+#include "exceptions/IOException.h"
 
 /**
  *  The monit HTTP GUI client
@@ -73,17 +74,49 @@
 /* ----------------------------------------------------------------- Private */
 
 
-static void _argument(StringBuffer_T request, const char *name, const char *value) {
+static void _argument(StringBuffer_T data, const char *name, const char *value) {
         char *_value = Util_urlEncode((char *)value);
-        StringBuffer_append(request, "%s%s=%s", StringBuffer_indexOf(request, "?") != -1 ? "&" : "?", name, _value);
+        StringBuffer_append(data, "%s%s=%s", StringBuffer_length(data) ? "&" : "", name, _value);
         FREE(_value);
 }
 
 
-static boolean_t _client(const char *request) {
+static void _send(Socket_T S, const char *request, StringBuffer_T data) {
+        _argument(data, "format", "text");
+        char *_auth = Util_getBasicAuthHeaderMonit();
+        int rv = Socket_print(S,
+                "POST %s HTTP/1.0\r\n"
+                "Content-Type: application/x-www-form-urlencoded\r\n"
+                "Content-Length: %d\r\n"
+                 "%s"
+                 "\r\n"
+                 "%s",
+                request,
+                StringBuffer_length(data),
+                _auth ? _auth : "",
+                StringBuffer_toString(data));
+        FREE(_auth);
+        if (rv < 0)
+                THROW(IOException, "Action failed: cannot send the command to the monit daemon -- %s", STRERROR);
+}
+
+
+static void _receive(Socket_T S) {
+        char buf[1024];
+        Util_parseMonitHttpResponse(S);
+        boolean_t strip = (Run.flags & Run_Batch || ! Color_support()) ? true : false;
+        while (Socket_readLine(S, buf, sizeof(buf))) {
+                if (strip)
+                        Color_strip(Box_strip(buf));
+                printf("%s", buf);
+        }
+}
+
+
+static boolean_t _client(const char *request, StringBuffer_T data) {
         boolean_t status = false;
         if (! exist_daemon()) {
-                LogError("Status not available -- the monit daemon is not running\n");
+                LogError("Action failed: the monit daemon is not running\n");
                 return status;
         }
         Socket_T S = NULL;
@@ -98,23 +131,13 @@ static boolean_t _client(const char *request) {
         } else if (Run.httpd.flags & Httpd_Unix) {
                 S = Socket_createUnix(Run.httpd.socket.unix.path, Socket_Tcp, Run.limits.networkTimeout);
         } else {
-                LogError("Status not available - monit http interface is not enabled, please add the 'set httpd' statement\n");
+                LogError("Action failed: the monit HTTP interface is not enabled, please add the 'set httpd' statement and use an 'allow' option to allow monit to connect to it\n");
         }
         if (S) {
-                Socket_print(S, "GET %s%sformat=text", request, Str_sub(request, "?") ? "&" : "?");
-                char *_auth = Util_getBasicAuthHeaderMonit();
-                Socket_print(S, " HTTP/1.0\r\n%s\r\n", _auth ? _auth : "");
-                FREE(_auth);
-                char buf[1024];
                 TRY
                 {
-                        Util_parseMonitHttpResponse(S);
-                        boolean_t strip = (Run.flags & Run_Batch || ! Color_support()) ? true : false;
-                        while (Socket_readLine(S, buf, sizeof(buf))) {
-                                if (strip)
-                                        Color_strip(Box_strip(buf));
-                                printf("%s", buf);
-                        }
+                        _send(S, request, data);
+                        _receive(S);
                         status = true;
                 }
                 ELSE
@@ -131,36 +154,53 @@ static boolean_t _client(const char *request) {
 /* ------------------------------------------------------------------ Public */
 
 
-boolean_t HttpClient_status(const char *group, const char *service) {
-        StringBuffer_T request = StringBuffer_new("/_status");
-        if (STR_DEF(service))
-                _argument(request, "service", service);
-        if (STR_DEF(group))
-                _argument(request, "group", group);
-        boolean_t rv = _client(StringBuffer_toString(request));
-        StringBuffer_free(&request);
-        return rv;
-}
-
-
-boolean_t HttpClient_summary(const char *group, const char *service) {
-        StringBuffer_T request = StringBuffer_new("/_summary");
-        if (STR_DEF(service))
-                _argument(request, "service", service);
-        if (STR_DEF(group))
-                _argument(request, "group", group);
-        boolean_t rv = _client(StringBuffer_toString(request));
-        StringBuffer_free(&request);
+boolean_t HttpClient_action(const char *action, List_T services) {
+        ASSERT(services);
+        ASSERT(action);
+        if (Util_getAction(action) == Action_Ignored) {
+                LogError("Invalid action %s\n", action);
+                return false;
+        }
+        StringBuffer_T data = StringBuffer_create(64);
+        _argument(data, "action", action);
+        for (list_t s = services->head; s; s = s->next)
+                _argument(data, "service", s->e);
+        boolean_t rv = _client("/_doaction", data);
+        StringBuffer_free(&data);
         return rv;
 }
 
 
 boolean_t HttpClient_report(const char *type) {
-        StringBuffer_T request = StringBuffer_new("/_report");
+        StringBuffer_T data = StringBuffer_create(64);
         if (STR_DEF(type))
-                _argument(request, "type", type);
-        boolean_t rv = _client(StringBuffer_toString(request));
-        StringBuffer_free(&request);
+                _argument(data, "type", type);
+        boolean_t rv = _client("/_report", data);
+        StringBuffer_free(&data);
+        return rv;
+}
+
+
+boolean_t HttpClient_status(const char *group, const char *service) {
+        StringBuffer_T data = StringBuffer_create(64);
+        if (STR_DEF(service))
+                _argument(data, "service", service);
+        if (STR_DEF(group))
+                _argument(data, "group", group);
+        boolean_t rv = _client("/_status", data);
+        StringBuffer_free(&data);
+        return rv;
+}
+
+
+boolean_t HttpClient_summary(const char *group, const char *service) {
+        StringBuffer_T data = StringBuffer_create(64);
+        if (STR_DEF(service))
+                _argument(data, "service", service);
+        if (STR_DEF(group))
+                _argument(data, "group", group);
+        boolean_t rv = _client("/_summary", data);
+        StringBuffer_free(&data);
         return rv;
 }
 

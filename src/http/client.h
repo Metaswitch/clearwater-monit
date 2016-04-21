@@ -27,6 +27,23 @@
 
 
 /**
+ * Do service action
+ * @param action A string representation of Action_Type
+ * @param services List of services
+ * @return true if succeeded otherwise false
+ */
+boolean_t HttpClient_action(const char *action, List_T services);
+
+
+/**
+ * Print service report
+ * @param type Report type or NULL
+ * @return true if succeeded otherwise false
+ */
+boolean_t HttpClient_report(const char *type);
+
+
+/**
  * Print service status
  * @param group Service group or NULL
  * @param service Service name or NULL
@@ -42,14 +59,6 @@ boolean_t HttpClient_status(const char *group, const char *service);
  * @return true if succeeded otherwise false
  */
 boolean_t HttpClient_summary(const char *group, const char *service);
-
-
-/**
- * Print service report
- * @param type Report type or NULL
- * @return true if succeeded otherwise false
- */
-boolean_t HttpClient_report(const char *type);
 
 
 #endif
