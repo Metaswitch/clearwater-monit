@@ -535,8 +535,6 @@ static void do_default() {
 
                 if (! (Run.flags & Run_Foreground))
                         daemonize();
-                else if (! Run.debug)
-                        Util_redirectStdFds();
 
                 if (! file_createPidFile(Run.files.pid)) {
                         LogError("Monit daemon died\n");
