@@ -351,10 +351,10 @@ or does not contain the PID number of a running process, Monit will
 call the entry's start method if defined.
 
 <regex> is an alternative to using PID files and uses process name
-pattern matching to find the process to monitor. The first-match and
-top-most-parent is used, so this form of check is most useful if the
-process name is unique. Pid-file should be used where possible as it
-defines expected PID exactly. You can test if a process match a pattern
+pattern matching to find the process to monitor. The top-most matching
+parent with highest uptime is selected, so this form of check is most
+useful if the process name is unique. Pid-file should be used where possible
+as it defines expected PID exactly. You can test if a process match a pattern
 from the command-line using C<monit procmatch "regex-pattern">. This will
 lists all processes matching or not, the regex-pattern.
 

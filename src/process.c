@@ -380,7 +380,7 @@ void process_testmatch(char *pattern) {
                 printf("------------------------------------------\n");
                 printf("Total matches: %d\n", count);
                 if (count > 1)
-                        printf("WARNING: multiple processes matched the pattern, please refine the pattern if possible. The check is FIRST-MATCH and TOP-MOST-PARENT based.\n");
+                        printf("WARNING: multiple processes matched the pattern, please refine the pattern if possible. The check is TOP-MOST-PARENT with highest uptime based.\n");
         }
 }
 
