@@ -355,8 +355,7 @@ char *Str_trunc(char *s, int n) {
         if (s) {
                 size_t sl = strlen(s);
                 if (sl > (n + 4)) {
-                        int e = n + 3;
-                        for (; n < e; n++)
+                        for (int e = n + 3; n < e; n++)
                                 s[n] = '.';
                         s[n] = 0;
                 }
