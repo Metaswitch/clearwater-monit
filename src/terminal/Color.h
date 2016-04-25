@@ -100,10 +100,10 @@ boolean_t Color_support();
 
 
 /**
- * Test if the string contains an ANSI color sequence.
- * @return true if color is present, otherwise false
+ * Return length of ANSI color sequences in the string.
+ * @return bytes used by control sequences or 0 if the string has no colors
  */
-boolean_t Color_has(char *s);
+int Color_length(char *s);
 
 
 /**

@@ -59,8 +59,26 @@ boolean_t Color_support() {
 }
 
 
-boolean_t Color_has(char *s) {
-        return STR_DEF(s) ? (boolean_t)Str_sub(s, "\033[") : false;
+int Color_length(char *s) {
+        if (STR_DEF(s)) {
+                int length = 0;
+                boolean_t ansi = false;
+                for (int i = 0; s[i]; i++) {
+                        if (s[i] == '\033' && s[i + 1] == '[') {
+                                // Escape sequence start
+                                ansi = true;
+                                length += 2;
+                                i++;
+                        } else if (ansi) {
+                                length++;
+                                // Escape sequence stop
+                                if (s[i] >= 64 && s[i] <= 126)
+                                        ansi = false;
+                        }
+                }
+                return length;
+        }
+        return 0;
 }
 
 

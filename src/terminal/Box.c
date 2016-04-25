@@ -199,11 +199,15 @@ void Box_printColumn(T t, const char *format, ...) {
         va_start(ap, format);
         char *s = Str_vcat(format, ap);
         va_end(ap);
-        if (Color_has(s)) {
-                StringBuffer_append(t->b, "%-*s", (int)(t->columns[t->index.column].width + strlen(COLOR_DEFAULT) + strlen(COLOR_RESET)), s);
+        int colorLengthOriginal = Color_length(s);
+        if (strlen(s) - colorLengthOriginal > t->columns[t->index.column].width) {
+                Str_trunc(s, t->columns[t->index.column].width - 3); // Space for "..." in truncated string
+                int colorLengthCurrent = Color_length(s);
+                StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthCurrent, s);
+                if (colorLengthCurrent < colorLengthOriginal)
+                        StringBuffer_append(t->b, COLOR_RESET);
         } else {
-                Str_trunc(s, t->columns[t->index.column].width);
-                StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width, s);
+                StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthOriginal, s);
         }
         FREE(s);
         StringBuffer_append(t->b, " ");
