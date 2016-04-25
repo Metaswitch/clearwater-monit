@@ -31,6 +31,8 @@ message.
 
 Fixed: Issue #336: CHECK PROGRAM timeout parsing issue when run as another user
 
+Fixed: Issue #351: Duplicate "set httpd" statement's "allow" option cause startup to fail
+
 Fixed: When the pattern based process check finds multiple matching processes, it will select the
 top-most matching parent with highest uptime (oldest). Originally the pattern based process check
 was first-match based only.

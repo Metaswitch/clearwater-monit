@@ -366,7 +366,7 @@ boolean_t Engine_addHostAllow(char *pattern) {
                 .ai_family = AF_INET, /* we support just IPv4 currently */
                 .ai_protocol = IPPROTO_TCP
         };
-        int added = 0;
+        int rv = false;
         if (! getaddrinfo(pattern, NULL, &hints, &res)) {
                 for (struct addrinfo *_res = res; _res; _res = _res->ai_next) {
                         if (_res->ai_family == AF_INET) {
@@ -378,21 +378,21 @@ boolean_t Engine_addHostAllow(char *pattern) {
                                 LOCK(mutex)
                                 {
                                         if (_hasHostAllow(h))  {
-                                                DEBUG("Skipping redundant host '%s'\n", pattern);
+                                                LogWarning("Skipping redundant host '%s'\n", pattern);
                                                 FREE(h);
                                         } else {
                                                 DEBUG("Adding host allow '%s'\n", pattern);
                                                 h->next = hostlist;
                                                 hostlist = h;
-                                                added++;
                                         }
+                                        rv = true;
                                 }
                                 END_LOCK;
                         }
                 }
                 freeaddrinfo(res);
         }
-        return added ? true : false;
+        return rv;
 }
 
 
@@ -402,21 +402,19 @@ boolean_t Engine_addNetAllow(char *pattern) {
         HostsAllow_T h;
         NEW(h);
         if (_parseNetwork(pattern, h)) {
-                int added = 0;
                 LOCK(mutex)
                 {
                         if (_hasHostAllow(h)) {
-                                DEBUG("Skipping redundant net '%s'\n", pattern);
+                                LogWarning("Skipping redundant net '%s'\n", pattern);
                                 FREE(h);
                         } else {
                                 DEBUG("Adding net allow '%s'\n", pattern);
                                 h->next = hostlist;
                                 hostlist = h;
-                                added++;
                         }
                 }
                 END_LOCK;
-                return added ? true : false;
+                return true;
         }
         FREE(h);
         return false;
