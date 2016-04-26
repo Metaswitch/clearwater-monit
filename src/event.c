@@ -560,7 +560,7 @@ void Event_queue_process() {
                         /* read event structure version */
                         int *version = file_readQueue(file, &size);
                         if (! version) {
-                                LogError("skipping queued event %s - unknown data format\n", file_name);
+                                DEBUG("Skipping file %s - not an event queue data format\n", file_name);
                                 goto error2;
                         }
                         if (size != sizeof(int)) {
