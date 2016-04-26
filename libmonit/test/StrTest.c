@@ -238,10 +238,12 @@ int main(void) {
                 assert(Str_trunc(NULL, 100) == NULL);
                 assert(Str_isEqual(Str_trunc("", 0), ""));
                 assert(Str_isEqual(Str_trunc(s, (int)strlen(s)), "This string will be trailed someplace"));
-                printf("\tResult: %s\n", Str_trunc(s, 27));
+                printf("\tResult: %s\n", Str_trunc(s, 30));
                 assert(Str_isEqual(s, "This string will be trailed..."));
-                printf("\tResult: %s\n", Str_trunc(s, 0));
+                printf("\tResult: %s\n", Str_trunc(s, 3));
                 assert(Str_isEqual(s, "..."));
+                printf("\tResult: %s\n", Str_trunc(s, 0));
+                assert(Str_isEqual(s, ""));
         }
         printf("=> Test15: OK\n\n");
 
