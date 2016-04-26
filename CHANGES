@@ -31,6 +31,11 @@ message.
 
 Fixed: Issue #336: CHECK PROGRAM timeout parsing issue when run as another user
 
+Fixed: Issue #350: If the "check program" used a custom schedule (based on "every" statement),
+the exit value evaluation and check for program timeout was deferred until the next cycle, which
+matched the schedule. Monit now collects the exit value ASAP (i.e. next cycle) and kills the program
+if timed out.
+
 Fixed: Issue #351: Duplicate "set httpd" statement's "allow" option cause startup to fail
 
 Fixed: Issue #354: If eventqueue directory contains also other files (like monit state file), monit

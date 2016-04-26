@@ -1066,7 +1066,8 @@ int validate() {
         for (Service_T s = servicelist; s; s = s->next) {
                 if (Run.flags & Run_Stopped)
                         break;
-                if (! _doScheduledAction(s) && s->monitor && ! _checkSkip(s)) {
+                // FIXME: The Service_Program must collect the exit value from last run, even if the program start should be skipped in this cycle => let check program always run the test (to be refactored with new scheduler)
+                if (! _doScheduledAction(s) && s->monitor && (s->type == Service_Program || ! _checkSkip(s))) {
                         _checkTimeout(s); // Can disable monitoring => need to check s->monitor again
                         if (s->monitor) {
                                 State_Type state = s->check(s);
@@ -1372,14 +1373,17 @@ State_Type check_program(Service_T s) {
         } else {
                 rv = State_Init;
         }
-        // Start program
-        s->program->P = Command_execute(s->program->C);
-        if (! s->program->P) {
-                rv = State_Failed;
-                Event_post(s, Event_Status, State_Failed, s->action_EXEC, "failed to execute '%s' -- %s", s->path, STRERROR);
-        } else {
-                Event_post(s, Event_Status, State_Succeeded, s->action_EXEC, "program started");
-                s->program->started = now;
+        //FIXME: the current off-by-one-cycle based design requires that the check program will collect the exit value next cycle even if program startup should be skipped in the given cycle => must test skip here (new scheduler will obsolete this deferred skip checking)
+        if (! _checkSkip(s)) {
+                // Start program
+                s->program->P = Command_execute(s->program->C);
+                if (! s->program->P) {
+                        rv = State_Failed;
+                        Event_post(s, Event_Status, State_Failed, s->action_EXEC, "failed to execute '%s' -- %s", s->path, STRERROR);
+                } else {
+                        Event_post(s, Event_Status, State_Succeeded, s->action_EXEC, "program started");
+                        s->program->started = now;
+                }
         }
         return rv;
 }
