@@ -88,8 +88,13 @@ void init_env() {
         // Ensure that std descriptors (0, 1 and 2) are open
         for (int i = 0; i < 3; i++) {
                 struct stat st;
-                if (fstat(i, &st) == -1 && open("/dev/null", O_RDWR) != i)
-                        THROW(AssertException, "Cannot open /dev/null -- %s", STRERROR);
+                if (fstat(i, &st) == -1) {
+                        int rv = open("/dev/null", O_RDWR);
+                        if (rv == -1)
+                                THROW(AssertException, "Cannot open /dev/null -- %s", STRERROR);
+                        else if (rv != i)
+                                THROW(AssertException, "Standard filedescriptor -- expected %d, got %d", i, rv);
+                }
         }
         // Get password struct with user info
         char buf[4096];
