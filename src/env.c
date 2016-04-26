@@ -93,7 +93,7 @@ void init_env() {
                         if (rv == -1)
                                 THROW(AssertException, "Cannot open /dev/null -- %s", STRERROR);
                         else if (rv != i)
-                                THROW(AssertException, "Standard filedescriptor -- expected %d, got %d", i, rv);
+                                THROW(AssertException, "Standard filedescriptor open failed -- expected fd %d, got %d", i, rv);
                 }
         }
         // Get password struct with user info
