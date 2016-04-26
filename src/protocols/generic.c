@@ -116,7 +116,7 @@ void check_generic(Socket_T socket) {
                                 FREE(buf);
                                 THROW(IOException, "%s", error);
                         } else {
-                                DEBUG("GENERIC: successfully received: '%s'\n", Str_trunc(buf, STRLEN - 4));
+                                DEBUG("GENERIC: successfully received: '%s'\n", Str_trunc(buf, STRLEN));
                         }
                 } else {
                         /* This should not happen */

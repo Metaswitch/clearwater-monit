@@ -345,18 +345,18 @@ char *Str_vcat(const char *s, va_list ap);
 
 /**
  * Truncate <code>s</code> at <code>n</code> and add a trailing ellipsis
- * to the end of <code>s</code>. If <code>s</code> is shorter than 
- * <code>n</code> or has no space for the trail, <code>s</code> is left
- * untouched otherwise this function modifies <code>s</code>. 
+ * to the end of <code>s</code>. If <code>s</code> is shorter than
+ * <code>n</code>, <code>s</code> is left untouched otherwise this
+ * function modifies <code>s</code>.
  * <pre>
- * Example: 
+ * Example:
  *  char s[] = "Hello World!";
- *  Str_trunc(s, strlen(s)); -> "Hello World!" 
- *  Str_trunc(s, 5); -> "Hello..."
- *  Str_trunc(s, 0); -> "..."
+ *  Str_trunc(s, strlen(s)); -> "Hello World!"
+ *  Str_trunc(s, 8); -> "Hello..."
+ *  Str_trunc(s, 3); -> "..."
  * </pre>
  * @param s String to truncate at n
- * @param n number of bytes from where s is truncated
+ * @param n maximum number of bytes left after truncation
  * @return A pointer to s
  * @exception AssertException if n is less than 0
 */
@@ -364,7 +364,7 @@ char *Str_trunc(char *s, int n);
 
 
 /**
- * Cut string <code>s</code> short at <code>t</code>. That is, 
+ * Cut string <code>s</code> short at <code>t</code>. That is,
  * remove all bytes in <code>s</code> from and including 
  * <code>t</code> to the end of the string. If <code>t</code>
  * is not found in <code>s</code>, <code>s</code> is not modified.

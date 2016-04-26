@@ -201,7 +201,7 @@ void Box_printColumn(T t, const char *format, ...) {
         va_end(ap);
         int colorLengthOriginal = Color_length(s);
         if (strlen(s) - colorLengthOriginal > t->columns[t->index.column].width) {
-                Str_trunc(s, t->columns[t->index.column].width - 3); // Space for "..." in truncated string
+                Str_trunc(s, t->columns[t->index.column].width);
                 int colorLengthCurrent = Color_length(s);
                 StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthCurrent, s);
                 if (colorLengthCurrent < colorLengthOriginal)
