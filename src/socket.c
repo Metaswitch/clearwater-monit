@@ -334,7 +334,7 @@ static T _createUnixSocket(const char *pathname, Socket_Type type, int timeout) 
                                 S->host = Str_dup(LOCALHOST);
                                 return S;
                         }
-                        LogError("%s\n", error);
+                        LogError("Unix socket %s error -- %s\n", pathname, error);
                 } else {
                         LogError("Cannot set nonblocking unix socket %s -- %s\n", pathname, STRERROR);
                 }
