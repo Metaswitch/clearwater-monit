@@ -231,7 +231,7 @@ static void _formatStatus(const char *name, Event_Type errorType, Output_Type ty
         if (type == HTML) {
                 StringBuffer_append(res->outputbuffer, "<tr><td>%c%s</td>", toupper(name[0]), name + 1);
         } else {
-                StringBuffer_append(res->outputbuffer, "  %-33s ", name);
+                StringBuffer_append(res->outputbuffer, "  %-28s ", name);
         }
         if (! validValue) {
                 StringBuffer_append(res->outputbuffer, type == HTML ? "<td class='gray-text'>-</td>" : COLOR_DARKGRAY "-" COLOR_RESET);
@@ -2348,11 +2348,11 @@ static void status_service_txt(Service_T s, HttpResponse res) {
         char buf[STRLEN];
         StringBuffer_append(res->outputbuffer,
                 COLOR_BOLDCYAN "%s '%s'" COLOR_RESET "\n"
-                "  %-33s %s\n",
+                "  %-28s %s\n",
                 servicetypes[s->type], s->name,
                 "status", get_service_status(TXT, s, buf, sizeof(buf)));
         StringBuffer_append(res->outputbuffer,
-                "  %-33s %s\n",
+                "  %-28s %s\n",
                 "monitoring status", get_monitoring_status(TXT, s, buf, sizeof(buf)));
         _printStatus(TXT, res, s);
         StringBuffer_append(res->outputbuffer, "\n");
