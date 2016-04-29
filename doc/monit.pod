@@ -853,9 +853,10 @@ Authentication headers will be encrypted.
 =head4 Cleartext user and password
 
 Monit will use Basic Authentication if an allow statement contains a
-username and a password separated with a single ':' character. Special
-characters can be used, but for non-alphanumerics the password has to
-be quoted.
+username and a password separated with a single ':' character.
+
+Note: Special characters can be used, but for non-alphanumerics the
+password has to be quoted.
 
 Syntax:
 
@@ -940,6 +941,36 @@ A user is set to read-only by using the I<read-only> keyword
 B<after> username:password. In the above example the user I<hauk>
 is defined as a read-only user, while the I<admin> user has all
 access rights.
+
+
+=head1 CENTRAL MANAGEMENT OF MULTIPLE MONIT HOSTS WITH M/MONIT
+
+You can use L<M/Monit|https://mmonit.com> for central management of multiple
+Monit hosts and to keep event log, draw charts, trends and more.
+
+To send data to M/Monit, add the following statement:
+
+  SET MMONIT <url>
+
+Example:
+
+ set mmonit http://monit:monit@192.168.1.10:8080/collector
+
+Monit will register itself in M/Monit and will start sending service
+statistics (for charts) and events to M/Monit.
+
+By default Monit registers its own credentials from the SET HTTPD statement's
+ALLOW option, so M/Monit can communicate back to Monit (such as restart a specific service).
+
+It is possible to disable credentials registration, Monit will still be able
+to send statistics and events to M/Monit, but if you'll want to control some
+service remotely from M/Monit, you'll have to enter credentials manually. Example:
+
+ set mmonit http://monit:monit@192.168.1.10:8080/collector and register without credentials
+
+The password should be URL encoded if it contains URL-significant characters like ":", "?", "@".
+
+Important: always use M/Monit with HTTPS url scheme, so the communication is encrypted.
 
 
 =head1 ALERT MESSAGES
