@@ -155,6 +155,24 @@ static void _copyMail(Mail_T n, Mail_T o) {
 }
 
 
+// Append the alert to a notification list IFF:
+// 1) is the given event type allowed for this recipient?
+// 2a) state change notifications is always delivered
+// 2b) failure notification is sent only of it matches reminder settings
+static void _appendMail(List_T list, Mail_T m, Event_T e, char *host) {
+        if (IS_EVENT_SET(m->events, e->id) && (e->state_changed || (e->state && m->reminder && e->count % m->reminder == 0))) {
+                Mail_T tmp = NULL;
+                NEW(tmp);
+                tmp->host = host;
+                _copyMail(tmp, m);
+                _substitute(tmp, e);
+                _escape(tmp);
+                List_append(list, tmp);
+                DEBUG("Sending %s notification to %s\n", Event_get_description(e), m->to);
+        }
+}
+
+
 static MailServer_T _connectMTA() {
         if (! Run.mailservers)
                 THROW(IOException, "No mail servers are defined -- see manual for 'set mailserver' statement");
@@ -176,71 +194,75 @@ static MailServer_T _connectMTA() {
 }
 
 
-static boolean_t _sendMail(Mail_T mail) {
-        ASSERT(mail);
+static boolean_t _send(List_T list) {
         boolean_t failed = false;
-        volatile SMTP_T smtp = NULL;
-        volatile MailServer_T mta = NULL;
-        TRY
-        {
-                mta = _connectMTA();
-                smtp = SMTP_new(mta->socket);
-                SMTP_greeting(smtp);
-                SMTP_helo(smtp, Run.mail_hostname ? Run.mail_hostname : mail->host);
-                if (mta->ssl.flags == SSL_StartTLS)
-                        SMTP_starttls(smtp, mta->ssl);
-                if (mta->username && mta->password)
-                        SMTP_auth(smtp, mta->username, mta->password);
-                char now[STRLEN];
-                Time_gmtstring(Time_now(), now);
-                for (Mail_T m = mail; m; m = m->next) {
-                        SMTP_from(smtp, m->from->address);
-                        SMTP_to(smtp, m->to);
-                        SMTP_dataBegin(smtp);
-                        if (
-                                (m->replyto && ((m->replyto->name ? Socket_print(mta->socket, "Reply-To: \"%s\" <%s>\r\n", m->replyto->name, m->replyto->address) : Socket_print(mta->socket, "Reply-To: %s\r\n", m->replyto->address)) <= 0))
-                                ||
-                                ((m->from->name ? Socket_print(mta->socket, "From: \"%s\" <%s>\r\n", m->from->name, m->from->address) : Socket_print(mta->socket, "From: %s\r\n", m->from->address)) <= 0)
-                                ||
-                                Socket_print(mta->socket,
-                                        "To: %s\r\n"
-                                        "Subject: %s\r\n"
-                                        "Date: %s\r\n"
-                                        "X-Mailer: Monit %s\r\n"
-                                        "MIME-Version: 1.0\r\n"
-                                        "Content-Type: text/plain; charset=\"iso-8859-1\"\r\n"
-                                        "Content-Transfer-Encoding: 8bit\r\n"
-                                        "Message-Id: <%lld.%lu@%s>\r\n"
-                                        "\r\n"
-                                        "%s",
-                                        m->to,
-                                        m->subject,
-                                        now,
-                                        VERSION,
-                                        (long long)Time_now(), random(), Run.mail_hostname ? Run.mail_hostname : mail->host,
-                                        m->message) <= 0
-                           )
-                        {
-                                THROW(IOException, "Error sending data to mail server %s -- %s", mta->host, STRERROR);
+        if (List_length(list)) {
+                volatile Mail_T m = NULL;
+                volatile SMTP_T smtp = NULL;
+                volatile MailServer_T mta = NULL;
+                TRY
+                {
+                        mta = _connectMTA();
+                        smtp = SMTP_new(mta->socket);
+                        SMTP_greeting(smtp);
+                        SMTP_helo(smtp, Run.mail_hostname ? Run.mail_hostname : Run.system->name);
+                        if (mta->ssl.flags == SSL_StartTLS)
+                                SMTP_starttls(smtp, mta->ssl);
+                        if (mta->username && mta->password)
+                                SMTP_auth(smtp, mta->username, mta->password);
+                        char now[STRLEN];
+                        Time_gmtstring(Time_now(), now);
+                        while ((m = List_pop(list))) {
+                                SMTP_from(smtp, m->from->address);
+                                SMTP_to(smtp, m->to);
+                                SMTP_dataBegin(smtp);
+                                if (
+                                        (m->replyto && ((m->replyto->name ? Socket_print(mta->socket, "Reply-To: \"%s\" <%s>\r\n", m->replyto->name, m->replyto->address) : Socket_print(mta->socket, "Reply-To: %s\r\n", m->replyto->address)) <= 0))
+                                        ||
+                                        ((m->from->name ? Socket_print(mta->socket, "From: \"%s\" <%s>\r\n", m->from->name, m->from->address) : Socket_print(mta->socket, "From: %s\r\n", m->from->address)) <= 0)
+                                        ||
+                                        Socket_print(mta->socket,
+                                                "To: %s\r\n"
+                                                "Subject: %s\r\n"
+                                                "Date: %s\r\n"
+                                                "X-Mailer: Monit %s\r\n"
+                                                "MIME-Version: 1.0\r\n"
+                                                "Content-Type: text/plain; charset=\"iso-8859-1\"\r\n"
+                                                "Content-Transfer-Encoding: 8bit\r\n"
+                                                "Message-Id: <%lld.%lu@%s>\r\n"
+                                                "\r\n"
+                                                "%s",
+                                                m->to,
+                                                m->subject,
+                                                now,
+                                                VERSION,
+                                                (long long)Time_now(), random(), Run.mail_hostname ? Run.mail_hostname : m->host,
+                                                m->message) <= 0
+                                   )
+                                {
+                                        THROW(IOException, "Error sending data to mail server %s -- %s", mta->host, STRERROR);
+                                }
+                                SMTP_dataCommit(smtp);
+                                gc_mail_list((Mail_T *)&m);
                         }
-                        SMTP_dataCommit(smtp);
+                        SMTP_quit(smtp);
                 }
-                SMTP_quit(smtp);
+                ELSE
+                {
+                        failed = true;
+                        LogError("Mail: %s\n", Exception_frame.message);
+                }
+                FINALLY
+                {
+                        if (m)
+                                gc_mail_list((Mail_T *)&m);
+                        if (smtp)
+                                SMTP_free((SMTP_T *)&smtp);
+                        if (mta && mta->socket)
+                                Socket_free(&(mta->socket));
+                }
+                END_TRY;
         }
-        ELSE
-        {
-                failed = true;
-                LogError("Mail: %s\n", Exception_frame.message);
-        }
-        FINALLY
-        {
-                if (smtp)
-                        SMTP_free((SMTP_T *)&smtp);
-                if (mta && mta->socket)
-                        Socket_free(&(mta->socket));
-
-        }
-        END_TRY;
         return failed;
 }
 
@@ -258,80 +280,23 @@ Handler_Type handle_alert(Event_T E) {
 
         Handler_Type rv = Handler_Succeeded;
         if (E->source->maillist || Run.maillist) {
-                Mail_T list = NULL;
                 char host[256];
                 _getFQDNhostname(host);
-                /*
-                 * Build a mail-list with local recipients that has registered interest
-                 * for this event.
-                 */
-                for (Mail_T m = E->source->maillist; m; m = m->next) {
-                        if (
-                            /* particular event notification type is allowed for given recipient */
-                            IS_EVENT_SET(m->events, E->id) &&
-                            (
-                             /* state change notification is sent always */
-                             E->state_changed       ||
-                             /* in the case that the state is failed for more cycles we check
-                              * whether we should send the reminder */
-                             (E->state && m->reminder && E->count % m->reminder == 0)
-                             )
-                            )
-                        {
-                                Mail_T tmp = NULL;
-                                NEW(tmp);
-                                tmp->host = host;
-                                _copyMail(tmp, m);
-                                _substitute(tmp, E);
-                                _escape(tmp);
-                                tmp->next = list;
-                                list = tmp;
-                                DEBUG("Sending %s notification to %s\n", Event_get_description(E), m->to);
-                        }
-                }
-                /*
-                 * Build a mail-list with global recipients that has registered interest
-                 * for this event. Recipients which are defined in the service localy
-                 * overrides the same recipient events which are registered globaly.
-                 */
+                List_T list = List_new();
+                // Build a mail-list with local recipients that has registered interest for this event
+                for (Mail_T m = E->source->maillist; m; m = m->next)
+                        _appendMail(list, m, E, host);
+                // Build a mail-list with global recipients that has registered interest for this event. Recipients which are defined in the service localy overrides the same recipient events which are registered globaly.
                 for (Mail_T m = Run.maillist; m; m = m->next) {
-                        boolean_t skip = false;
-                        for (Mail_T n = E->source->maillist; n; n = n->next) {
-                                if (IS(m->to, n->to)) {
-                                        skip = true;
-                                        break;
-                                }
-                        }
-                        if (
-                            /* the local service alert definition has not overrided the global one */
-                            ! skip &&
-                            /* particular event notification type is allowed for given recipient */
-                            IS_EVENT_SET(m->events, E->id) &&
-                            (
-                             /* state change notification is sent always */
-                             E->state_changed       ||
-                             /* in the case that the state is failed for more cycles we check
-                              * whether we should send the reminder */
-                             (E->state && m->reminder && E->count % m->reminder == 0)
-                             )
-                            )
-                        {
-                                Mail_T tmp = NULL;
-                                NEW(tmp);
-                                tmp->host = host;
-                                _copyMail(tmp, m);
-                                _substitute(tmp, E);
-                                _escape(tmp);
-                                tmp->next = list;
-                                list = tmp;
-                                DEBUG("Sending %s notification to %s\n", Event_get_description(E), m->to);
-                        }
+                        for (Mail_T n = E->source->maillist; n; n = n->next)
+                                if (IS(m->to, n->to))
+                                        continue; // Handled by local alert definition already
+                        _appendMail(list, m, E, host);
                 }
-                if (list) {
-                        if (_sendMail(list))
+                if (List_length(list))
+                        if (_send(list))
                                 rv = Handler_Alert;
-                        gc_mail_list(&list);
-                }
+                List_free(&list);
         }
         return rv;
 }
