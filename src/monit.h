@@ -482,6 +482,7 @@ typedef struct mymail {
         Address_T replyto;                          /**< Optional reply-to address */
         char *subject;                                       /**< The mail subject */
         char *message;                                       /**< The mail message */
+        char *host;                                             /**< FQDN hostname */
         unsigned int events;  /*< Events for which this mail object should be sent */
         unsigned int reminder;              /*< Send error reminder each Xth cycle */
 

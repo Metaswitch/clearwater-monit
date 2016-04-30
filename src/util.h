@@ -402,15 +402,6 @@ char *Util_portDescription(Port_T p, char *buf, int bufsize);
 
 
 /**
- * Returns the FQDN hostname or fallback to gethostname() output
- * @param buf the character array for hostname
- * @param len the length of buf
- * @return zero on success
- */
-int Util_getfqdnhostname(char *buf, unsigned len);
-
-
-/**
  * Return string presentation of TIME_* unit
  *  @param time The TIME_* unit (see monit.h)
  *  @return string

@@ -1186,14 +1186,17 @@ checknet        : CHECKNET SERVICENAME ADDRESS STRING {
                 ;
 
 checksystem     : CHECKSYSTEM SERVICENAME {
-                    char hostname[STRLEN];
-                    if (Util_getfqdnhostname(hostname, sizeof(hostname))) {
-                      LogError("Cannot get system hostname\n");
-                      cfg_errflag++;
-                    }
-                    char *servicename = $<string>2;
-                    Util_replaceString(&servicename, "$HOST", hostname);
-                    Run.system = createservice(Service_System, servicename, Str_dup(""), check_system); // The name given in the 'check system' statement overrides system hostname
+                        char *servicename = $<string>2;
+                        if (Str_sub(servicename, "$HOST")) {
+                                char hostname[STRLEN];
+                                if (gethostname(hostname, sizeof(hostname))) {
+                                        LogError("System hostname error -- %s\n", STRERROR);
+                                        cfg_errflag++;
+                                } else {
+                                        Util_replaceString(&servicename, "$HOST", hostname);
+                                }
+                        }
+                        Run.system = createservice(Service_System, servicename, Str_dup(""), check_system); // The name given in the 'check system' statement overrides system hostname
                   }
                 ;
 
@@ -2844,17 +2847,16 @@ static void postparse() {
         /* Add the default general system service if not specified explicitly: service name default to hostname */
         if (! Run.system) {
                 char hostname[STRLEN];
-                if (Util_getfqdnhostname(hostname, sizeof(hostname))) {
+                if (gethostname(hostname, sizeof(hostname))) {
                         LogError("Cannot get system hostname -- please add 'check system <name>'\n");
                         cfg_errflag++;
                 }
                 if (Util_existService(hostname)) {
                         LogError("'check system' not defined in control file, failed to add automatic configuration (service name %s is used already) -- please add 'check system <name>' manually\n", hostname);
                         cfg_errflag++;
-                } else {
-                        Run.system = createservice(Service_System, Str_dup(hostname), Str_dup(""), check_system);
-                        addservice(Run.system);
                 }
+                Run.system = createservice(Service_System, Str_dup(hostname), Str_dup(""), check_system);
+                addservice(Run.system);
         }
         addeventaction(&(Run.system->action_MONIT_START), Action_Start, Action_Ignored);
         addeventaction(&(Run.system->action_MONIT_STOP), Action_Stop,  Action_Ignored);

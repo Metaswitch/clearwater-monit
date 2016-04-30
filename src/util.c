@@ -1983,38 +1983,6 @@ char *Util_portDescription(Port_T p, char *buf, int bufsize) {
 }
 
 
-int Util_getfqdnhostname(char *buf, unsigned len) {
-        int status;
-        char hostname[STRLEN];
-
-        // Set the base hostname
-        if (gethostname(hostname, sizeof(hostname))) {
-                LogError("Error getting hostname -- %s\n", STRERROR);
-                return -1;
-        }
-        snprintf(buf, len, "%s", hostname);
-
-        // Try to look for FQDN hostname
-        struct addrinfo *result = NULL, hints = {
-                .ai_family = AF_UNSPEC,
-                .ai_flags = AI_CANONNAME,
-                .ai_socktype = SOCK_STREAM
-        };
-        if (! (status = getaddrinfo(hostname, NULL, &hints, &result))) {
-                for (struct addrinfo *r = result; r; r = r->ai_next) {
-                        if (Str_startsWith(r->ai_canonname, hostname)) {
-                                snprintf(buf, len, "%s", r->ai_canonname);
-                                break;
-                        }
-                }
-                freeaddrinfo(result);
-        } else {
-                LogError("Cannot translate '%s' to FQDN name -- %s\n", hostname, status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
-        }
-        return 0;
-}
-
-
 const char *Util_timestr(int time) {
         int i = 0;
         struct mytimetable {

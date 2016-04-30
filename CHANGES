@@ -99,6 +99,8 @@ may fail.
 Fixed: Issue #329: The send/expect protocol test returned error if the target server sent more
 data then buffer limit.
 
+Fixed: Issue #356: Monit start or reload can be slow int the case of DNS problem.
+
 Fixed: A 32-bit platform with more then 4GB of RAM reported wrong system memory and
 swap value (regression in Monit 5.16).
 

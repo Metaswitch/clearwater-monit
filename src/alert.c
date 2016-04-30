@@ -70,13 +70,38 @@
 /* ----------------------------------------------------------------- Private */
 
 
+// Translate system hostname to FQDN, fallback to plain system hostname if failed
+static char *_getFQDNhostname(char host[256]) {
+        struct addrinfo *result = NULL, hints = {
+                .ai_family = AF_UNSPEC,
+                .ai_flags = AI_CANONNAME,
+                .ai_socktype = SOCK_STREAM
+        };
+        int status = getaddrinfo(Run.system->name, NULL, &hints, &result);
+        if (status == 0) {
+                for (struct addrinfo *r = result; r; r = r->ai_next) {
+                        if (Str_startsWith(r->ai_canonname, Run.system->name)) {
+                                strncpy(host, r->ai_canonname, 255);
+                                break;
+                        }
+                }
+                freeaddrinfo(result);
+        } else {
+                // Fallback
+                LogError("Cannot translate '%s' to FQDN name -- %s\n", Run.system->name, status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
+                strncpy(host, Run.system->name, 255);
+        }
+        return host;
+}
+
+
 static void _substitute(Mail_T m, Event_T e) {
         ASSERT(m);
         ASSERT(e);
 
-        Util_replaceString(&m->from->address, "$HOST", Run.system->name);
-        Util_replaceString(&m->subject, "$HOST", Run.system->name);
-        Util_replaceString(&m->message, "$HOST", Run.system->name);
+        Util_replaceString(&m->from->address, "$HOST", m->host);
+        Util_replaceString(&m->subject, "$HOST", m->host);
+        Util_replaceString(&m->message, "$HOST", m->host);
 
         char timestamp[26];
         Time_string(e->collected.tv_sec, timestamp);
@@ -161,7 +186,7 @@ static boolean_t _sendMail(Mail_T mail) {
                 mta = _connectMTA();
                 smtp = SMTP_new(mta->socket);
                 SMTP_greeting(smtp);
-                SMTP_helo(smtp, Run.mail_hostname ? Run.mail_hostname : Run.system->name);
+                SMTP_helo(smtp, Run.mail_hostname ? Run.mail_hostname : mail->host);
                 if (mta->ssl.flags == SSL_StartTLS)
                         SMTP_starttls(smtp, mta->ssl);
                 if (mta->username && mta->password)
@@ -192,7 +217,7 @@ static boolean_t _sendMail(Mail_T mail) {
                                         m->subject,
                                         now,
                                         VERSION,
-                                        (long long)Time_now(), random(), Run.mail_hostname ? Run.mail_hostname : Run.system->name,
+                                        (long long)Time_now(), random(), Run.mail_hostname ? Run.mail_hostname : mail->host,
                                         m->message) <= 0
                            )
                         {
@@ -234,6 +259,8 @@ Handler_Type handle_alert(Event_T E) {
         Handler_Type rv = Handler_Succeeded;
         if (E->source->maillist || Run.maillist) {
                 Mail_T list = NULL;
+                char host[256];
+                _getFQDNhostname(host);
                 /*
                  * Build a mail-list with local recipients that has registered interest
                  * for this event.
@@ -253,6 +280,7 @@ Handler_Type handle_alert(Event_T E) {
                         {
                                 Mail_T tmp = NULL;
                                 NEW(tmp);
+                                tmp->host = host;
                                 _copyMail(tmp, m);
                                 _substitute(tmp, E);
                                 _escape(tmp);
@@ -290,6 +318,7 @@ Handler_Type handle_alert(Event_T E) {
                         {
                                 Mail_T tmp = NULL;
                                 NEW(tmp);
+                                tmp->host = host;
                                 _copyMail(tmp, m);
                                 _substitute(tmp, E);
                                 _escape(tmp);
