@@ -379,11 +379,8 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
 
                         case Service_Program:
                                 if (s->program->started) {
-                                        _formatStatus("last started", Event_Null, type, res, s, true, "%s", Time_string(s->program->started, (char[32]){}));
                                         _formatStatus("last exit value", Event_Status, type, res, s, true, "%d", s->program->exitStatus);
                                         _formatStatus("last output", Event_Status, type, res, s, StringBuffer_length(s->program->output), "%s", StringBuffer_toString(s->program->output));
-                                } else {
-                                        _formatStatus("last started", Event_Null, type, res, s, true, "Not yet started");
                                 }
                                 break;
 

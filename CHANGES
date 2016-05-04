@@ -41,6 +41,8 @@ Fixed: Issue #351: Duplicate "set httpd" statement's "allow" option cause startu
 Fixed: Issue #354: If eventqueue directory contains also other files (like monit state file), monit
 will not log error anymore (just warning when debug mode is enabled).
 
+Fixed: Issue #358: Drop the "last started" report for a 'check program'.
+
 Fixed: When the pattern based process check finds multiple matching processes, it will select the
 top-most matching parent with highest uptime (oldest). Originally the pattern based process check
 was first-match based only.
