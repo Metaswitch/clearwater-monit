@@ -1,0 +1,11 @@
+[Unit]
+Description=Monit service manager
+
+[Service]
+ExecStart=/usr/bin/monit-wrapper
+ExecStop=/usr/bin/monit -c /etc/monit/monitrc quit
+Restart=on-failure
+LimitCORE=infinity
+
+[Install]
+WantedBy=multi-user.target

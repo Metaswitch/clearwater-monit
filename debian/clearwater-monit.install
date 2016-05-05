@@ -1,1 +1,2 @@
 debian/monitrc etc/monit/
+debian/monit-wrapper usr/bin

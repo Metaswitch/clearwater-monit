@@ -6,7 +6,7 @@ Priority: optional
 # updating
 Maintainer: Project Clearwater Maintainers <maintainers@projectclearwater.org>
 DM-Upload-Allowed: yes
-Build-Depends: debhelper (>= 7.0.50), libssl-dev, libpam-dev, libkvm-dev [kfreebsd-any]
+Build-Depends: debhelper (>= 7.0.50), dh-systemd, libssl-dev, libpam-dev, libkvm-dev [kfreebsd-any]
 Standards-Version: 3.9.2
 Homepage: http://projectclearwater.org/
 
