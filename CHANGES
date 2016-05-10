@@ -11,7 +11,7 @@ option or the "set terminal batch" statement in the monit configuration file.
 New: If the service has multiple errors, the service status will describe all errors (originally
 monit displayed only one error)
 
-New: New CLI command for services state overview added:
+New: Issue #340: New CLI command for services state overview added:
     monit report [up | down | initialising | unmonitored | total]
 Output example:
     $ monit report
