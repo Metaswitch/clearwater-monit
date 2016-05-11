@@ -115,6 +115,15 @@ boolean_t init_process_info_sysdep(void) {
                 return false;
         }
 
+        struct timeval booted;
+        size_t size = sizeof(booted);
+        if (sysctlbyname("kern.boottime", &booted, &size, NULL, 0) == -1) {
+                DEBUG("system statistics error -- sysctl kern.boottime failed: %s\n", STRERROR);
+                return false;
+        } else {
+                systeminfo.booted = booted.tv_sec;
+        }
+
         return true;
 }
 
