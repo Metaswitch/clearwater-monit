@@ -292,6 +292,7 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                                 );
                                 _formatStatus("memory usage", Event_Resource, type, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_mem, (char[10]){}), systeminfo.total_mem_percent);
                                 _formatStatus("swap usage", Event_Resource, type, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_swap, (char[10]){}), systeminfo.total_swap_percent);
+                                _formatStatus("uptime", Event_Null, type, res, s, true, "%s", _getUptime(Time_now() - systeminfo.booted, (char[256]){}));
                                 _formatStatus("boot time", Event_Null, type, res, s, true, "%s", Time_string(systeminfo.booted, (char[32]){}));
                                 break;
 
