@@ -33,10 +33,15 @@ New: The "mode" statement options are reduced to "active" (automatic service res
 on error) and "passive" (no restart allowed on error). The "manual" option is deprecated (but
 still supported for backward compatibility) and replaced by the new "onreboot laststate" statement.
 
+New: The system status shows boot time and uptime in monit CLI and HTTP GUI.
+
 Fixed: Added missing "mode" statement support to system, status and network checks.
 
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
 but a zombie was left. Thanks to Guillem Jover for patch.
+
+Fixed: Issue #166: HTTP GUI: Added system uptime to the status details of system service and dropped
+the confusing monit's own uptime from the home page header.
 
 Fixed: Issue #335: The send/expect test now provides context of the failed pattern in the error
 message.

@@ -586,10 +586,10 @@ static void do_home(HttpRequest req, HttpResponse res) {
                             " <tr>"
                             "  <td colspan=2 valign='top' align='left' width='100%%'>"
                             "  <h1>Monit Service Manager</h1>"
-                            "  <p align='center'>Monit is <a href='_runtime'>running</a> on %s with <i>uptime, %s</i> and monitoring:</p><br>"
+                            "  <p align='center'>Monit is <a href='_runtime'>running</a> on %s and monitoring:</p><br>"
                             "  </td>"
                             " </tr>"
-                            "</table>", Run.system->name, _getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
+                            "</table>", Run.system->name);
 
         do_home_system(req, res);
         do_home_process(req, res);
