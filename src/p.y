@@ -161,8 +161,6 @@ extern char *currentfile;
 extern char *argcurrentfile;
 extern int buffer_stack_ptr;
 
-List_T included = NULL;
-
 /* Local variables */
 static int cfg_errflag = 0;
 static Service_T tail = NULL;
@@ -2750,13 +2748,7 @@ boolean_t parse(char *controlfile) {
         LOCK(Run.mutex)
         {
                 preparse();
-                included = List_new();
-                List_append(included, Str_dup(controlfile));
                 yyparse();
-                char *include = NULL;
-                while ((include = List_pop(included)))
-                        FREE(include);
-                List_free(&included);
                 fclose(yyin);
                 postparse();
         }

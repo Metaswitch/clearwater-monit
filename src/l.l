@@ -69,8 +69,6 @@ struct buffer_stack_s {
         YY_BUFFER_STATE buffer;
 } buffer_stack[MAX_STACK_DEPTH];
 
-extern List_T included;
-
 int lineno = 1;
 int arglineno = 1;
 char *currentfile = NULL;
@@ -950,10 +948,16 @@ static char *handle_quoted_string(char *string) {
 
 
 static void _include(const char *path) {
-        for (list_t l = included->head; l; l = l->next)
-                if (! Str_cmp((char *)(l->e), path))
+        if (Str_cmp(Run.files.control, path) == 0) {
+                yywarning("Include loop detected when trying to include %s", path);
+                return;
+        }
+        for (int i = 0; i < buffer_stack_ptr; i++) {
+                if (Str_cmp(buffer_stack[i].currentfile, path) == 0) {
+                        yywarning("Include loop detected when trying to include %s", path);
                         return;
-        List_append(included, Str_dup(path));
+                }
+        }
         FILE *yyin = fopen(path, "r");
         if (! yyin)
                 yyerror("Cannot include file '%s' -- %s", path, STRERROR);
@@ -979,7 +983,7 @@ static void include_file(char *pattern) {
 
 
 static void push_buffer_state(YY_BUFFER_STATE buffer, char *filename) {
-        if ( buffer_stack_ptr >= MAX_STACK_DEPTH ) {
+        if (buffer_stack_ptr >= MAX_STACK_DEPTH) {
                 yyerror("include files limit reached");
                 exit( 1 );
         }
