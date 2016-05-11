@@ -120,7 +120,7 @@ static time_t get_starttime() {
 
 boolean_t init_process_info_sysdep(void) {
         char *ptr;
-        char  buf[2048];
+        char  buf[4096];
 
         if ((hz = sysconf(_SC_CLK_TCK)) <= 0.) {
                 DEBUG("system statistic error -- cannot get hz: %s\n", STRERROR);
@@ -154,6 +154,21 @@ boolean_t init_process_info_sysdep(void) {
                 DEBUG("system reports cpu count 0, setting dummy cpu count 1\n");
                 systeminfo.cpus = 1;
         }
+
+        if (! read_proc_file(buf, sizeof(buf), "stat", -1, NULL)) {
+                DEBUG("system statistic error -- cannot read /proc/stat\n");
+                return false;
+        }
+        if (! (ptr = strstr(buf, "btime "))) {
+                DEBUG("system statistic error -- cannot get system boot time\n");
+                return false;
+        }
+        unsigned long booted;
+        if (sscanf(ptr + 6, "%lu", &booted) != 1) {
+                DEBUG("system statistic error -- cannot read system boot time\n");
+                return false;
+        }
+        systeminfo.booted = booted;
 
         return true;
 }
