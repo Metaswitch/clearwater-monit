@@ -163,6 +163,7 @@ AC_CHECK_HEADERS([ \
 	sys/vfs.h \
 	syslog.h \
 	unistd.h \
+	utmpx.h \
         uvm/uvm_extern.h \
         uvm/uvm_param.h \
         vm/vm.h \
