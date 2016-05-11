@@ -112,7 +112,18 @@ boolean_t init_process_info_sysdep(void) {
         systeminfo.cpus = sysconf( _SC_NPROCESSORS_ONLN);
         page_size = getpagesize();
         systeminfo.mem_max = (uint64_t)sysconf(_SC_PHYS_PAGES) * (uint64_t)page_size;
-
+        kstat_ctl_t *kctl = kstat_open();
+        if (kctl) {
+                kstat_t *kstat = kstat_lookup(kctl, "unix", 0, "system_misc");
+                if (kstat) {
+                        if (kstat_read(kctl, kstat, 0) != -1) {
+                                kstat_named_t *knamed = kstat_data_lookup(kstat, "boot_time");
+                                if (knamed)
+                                        systeminfo.booted = (uint64_t)knamed->value.ul;
+                        }
+                }
+                kstat_close(kctl);
+        }
         return true;
 }
 
