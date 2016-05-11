@@ -2289,9 +2289,9 @@ Example:
        if changed ppid then exec "/my/script"
 
 
-=head2 PROCESS UPTIME TESTING
+=head2 UPTIME TESTING
 
-The uptime statement may only be used in a process service
+The uptime statement may only be used in a process and system service
 type context.
 
 Syntax:

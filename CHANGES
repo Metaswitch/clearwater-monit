@@ -35,6 +35,10 @@ still supported for backward compatibility) and replaced by the new "onreboot la
 
 New: The system status shows boot time and uptime in monit CLI and HTTP GUI.
 
+New: Added a system uptime test. Example:
+    check system $HOST
+        if uptime > 180 days then alert
+
 Fixed: Added missing "mode" statement support to system, status and network checks.
 
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,

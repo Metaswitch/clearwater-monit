@@ -691,17 +691,17 @@ static State_Type _checkSize(Service_T s, off_t size) {
 /**
  * Test uptime
  */
-static State_Type _checkUptime(Service_T s) {
+static State_Type _checkUptime(Service_T s, long long uptime) {
         ASSERT(s);
         State_Type rv = State_Succeeded;
-        if (s->inf->priv.process.uptime < 0)
+        if (uptime < 0)
                 return State_Init;
         for (Uptime_T ul = s->uptimelist; ul; ul = ul->next) {
-                if (Util_evalQExpression(ul->operator, s->inf->priv.process.uptime, ul->uptime)) {
+                if (Util_evalQExpression(ul->operator, uptime, ul->uptime)) {
                         rv = State_Failed;
-                        Event_post(s, Event_Uptime, State_Failed, ul->action, "uptime test failed for %s -- current uptime is %llu seconds", s->path, (unsigned long long)s->inf->priv.process.uptime);
+                        Event_post(s, Event_Uptime, State_Failed, ul->action, "uptime test failed for %s -- current uptime is %llu seconds", s->path, (unsigned long long)uptime);
                 } else {
-                        Event_post(s, Event_Uptime, State_Succeeded, ul->action, "uptime test succeeded [current uptime=%llu seconds]", (unsigned long long)s->inf->priv.process.uptime);
+                        Event_post(s, Event_Uptime, State_Succeeded, ul->action, "uptime test succeeded [current uptime=%llu seconds]", (unsigned long long)uptime);
                 }
         }
         return rv;
@@ -1120,7 +1120,7 @@ State_Type check_process(Service_T s) {
                                 rv = State_Failed;
                         if (_checkGid(s, s->inf->priv.process.gid) == State_Failed)
                                 rv = State_Failed;
-                        if (_checkUptime(s) == State_Failed)
+                        if (_checkUptime(s, s->inf->priv.process.uptime) == State_Failed)
                                 rv = State_Failed;
                         for (Resource_T pr = s->resourcelist; pr; pr = pr->next)
                                 if (_checkProcessResources(s, pr) == State_Failed)
@@ -1448,6 +1448,8 @@ State_Type check_system(Service_T s) {
         for (Resource_T r = s->resourcelist; r; r = r->next)
                 if (_checkProcessResources(s, r) == State_Failed)
                         rv = State_Failed;
+        if (_checkUptime(s, Time_now() - systeminfo.booted) == State_Failed)
+                rv = State_Failed;
         return rv;
 }
 

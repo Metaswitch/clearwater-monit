@@ -292,7 +292,7 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                                 );
                                 _formatStatus("memory usage", Event_Resource, type, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_mem, (char[10]){}), systeminfo.total_mem_percent);
                                 _formatStatus("swap usage", Event_Resource, type, res, s, true, "%s [%.1f%%]", Str_bytesToSize(systeminfo.total_swap, (char[10]){}), systeminfo.total_swap_percent);
-                                _formatStatus("uptime", Event_Null, type, res, s, true, "%s", _getUptime(Time_now() - systeminfo.booted, (char[256]){}));
+                                _formatStatus("uptime", Event_Uptime, type, res, s, systeminfo.booted > 0, "%s", _getUptime(Time_now() - systeminfo.booted, (char[256]){}));
                                 _formatStatus("boot time", Event_Null, type, res, s, true, "%s", Time_string(systeminfo.booted, (char[32]){}));
                                 break;
 
@@ -1985,7 +1985,7 @@ static void print_service_rules_downloadpackets(HttpResponse res, Service_T s) {
 static void print_service_rules_uptime(HttpResponse res, Service_T s) {
         for (Uptime_T ul = s->uptimelist; ul; ul = ul->next) {
                 StringBuffer_append(res->outputbuffer, "<tr class='rule'><td>Uptime</td><td>");
-                Util_printRule(res->outputbuffer, ul->action, "If %s %llu second(s)", operatornames[ul->operator], ul->uptime);
+                Util_printRule(res->outputbuffer, ul->action, "If %s %s", operatornames[ul->operator], _getUptime(ul->uptime, (char[256]){}));
                 StringBuffer_append(res->outputbuffer, "</td></tr>");
         }
 }

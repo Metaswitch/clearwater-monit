@@ -536,6 +536,7 @@ optsystem       : start
                 | group
                 | depend
                 | resourcesystem
+                | uptime
                 ;
 
 optfifolist     : /* EMPTY */
