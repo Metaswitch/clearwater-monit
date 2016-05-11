@@ -331,7 +331,7 @@ static int verifyMaxForward(int);
 %token CHECKPROC CHECKFILESYS CHECKFILE CHECKDIR CHECKHOST CHECKSYSTEM CHECKFIFO CHECKPROGRAM CHECKNET
 %token THREADS CHILDREN STATUS ORIGIN VERSIONOPT
 %token RESOURCE MEMORY TOTALMEMORY LOADAVG1 LOADAVG5 LOADAVG15 SWAP
-%token MODE ACTIVE PASSIVE MANUAL CPU TOTALCPU CPUUSER CPUSYSTEM CPUWAIT
+%token MODE ACTIVE PASSIVE MANUAL ONREBOOT NOSTART LASTSTATE CPU TOTALCPU CPUUSER CPUSYSTEM CPUWAIT
 %token GROUP REQUEST DEPENDS BASEDIR SLOT EVENTQUEUE SECRET HOSTHEADER
 %token UID EUID GID MMONIT INSTANCE USERNAME PASSWORD
 %token TIMESTAMP CHANGED MILLISECOND SECOND MINUTE HOUR DAY MONTH
@@ -408,6 +408,7 @@ optproc         : start
                 | alert
                 | every
                 | mode
+                | onreboot
                 | group
                 | depend
                 | resourceprocess
@@ -432,6 +433,7 @@ optfile         : start
                 | size
                 | match
                 | mode
+                | onreboot
                 | group
                 | depend
                 ;
@@ -450,6 +452,7 @@ optfilesys      : start
                 | uid
                 | gid
                 | mode
+                | onreboot
                 | group
                 | depend
                 | inode
@@ -473,6 +476,7 @@ optdir          : start
                 | uid
                 | gid
                 | mode
+                | onreboot
                 | group
                 | depend
                 ;
@@ -491,6 +495,7 @@ opthost         : start
                 | alert
                 | every
                 | mode
+                | onreboot
                 | group
                 | depend
                 ;
@@ -509,6 +514,8 @@ optnet          : start
                 | download
                 | actionrate
                 | every
+                | mode
+                | onreboot
                 | alert
                 | group
                 | depend
@@ -524,6 +531,8 @@ optsystem       : start
                 | actionrate
                 | alert
                 | every
+                | mode
+                | onreboot
                 | group
                 | depend
                 | resourcesystem
@@ -545,6 +554,7 @@ optfifo         : start
                 | uid
                 | gid
                 | mode
+                | onreboot
                 | group
                 | depend
                 ;
@@ -559,6 +569,8 @@ optstatus       : start
                 | actionrate
                 | alert
                 | every
+                | mode
+                | onreboot
                 | group
                 | depend
                 | statusvalue
@@ -1933,15 +1945,27 @@ every           : EVERY NUMBER CYCLE {
                  }
                 ;
 
-mode            : MODE ACTIVE  {
-                    current->mode = Monitor_Active;
+mode            : MODE ACTIVE {
+                        current->mode = Monitor_Active;
                   }
                 | MODE PASSIVE {
-                    current->mode = Monitor_Passive;
+                        current->mode = Monitor_Passive;
                   }
-                | MODE MANUAL  {
-                    current->mode = Monitor_Manual;
-                    current->monitor = Monitor_Not;
+                | MODE MANUAL {
+                        // Deprecated since monit 5.18
+                        current->onreboot = Onreboot_Laststate;
+                  }
+                ;
+
+onreboot        : ONREBOOT START {
+                        current->onreboot = Onreboot_Start;
+                  }
+                | ONREBOOT NOSTART {
+                        current->onreboot = Onreboot_Nostart;
+                        current->monitor = Monitor_Not;
+                  }
+                | ONREBOOT LASTSTATE {
+                        current->onreboot = Onreboot_Laststate;
                   }
                 ;
 
@@ -2936,11 +2960,12 @@ static Service_T createservice(Service_Type type, char *name, char *value, State
         }
 
         /* Set default values */
-        current->monitor = Monitor_Init;
-        current->mode    = Monitor_Active;
-        current->name    = name;
-        current->check   = check;
-        current->path    = value;
+        current->mode     = Monitor_Active;
+        current->monitor  = Monitor_Init;
+        current->onreboot = Onreboot_Start;
+        current->name     = name;
+        current->check    = check;
+        current->path     = value;
 
         /* Initialize general event handlers */
         addeventaction(&(current)->action_DATA,     Action_Alert,     Action_Alert);

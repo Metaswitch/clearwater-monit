@@ -304,6 +304,9 @@ mode              { return MODE; }
 active            { return ACTIVE; }
 passive           { return PASSIVE; }
 manual            { return MANUAL; }
+onreboot          { return ONREBOOT; }
+nostart           { return NOSTART; }
+laststate         { return LASTSTATE; }
 uid               { return UID; }
 euid              { return EUID; }
 gid               { return GID; }

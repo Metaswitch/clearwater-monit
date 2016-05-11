@@ -990,9 +990,11 @@ static void do_service(HttpRequest req, HttpResponse res, Service_T s) {
                         if (m->e == s)
                                 StringBuffer_append(res->outputbuffer, "<tr><td>Group</td><td class='blue-text'>%s</td></tr>", sg->name);
         StringBuffer_append(res->outputbuffer,
+                            "<tr><td>Monitoring status</td><td>%s</td></tr>", get_monitoring_status(HTML, s, buf, sizeof(buf)));
+        StringBuffer_append(res->outputbuffer,
                             "<tr><td>Monitoring mode</td><td>%s</td></tr>", modenames[s->mode]);
         StringBuffer_append(res->outputbuffer,
-                            "<tr><td>Monitoring status</td><td>%s</td></tr>", get_monitoring_status(HTML, s, buf, sizeof(buf)));
+                            "<tr><td>On reboot</td><td>%s</td></tr>", onrebootnames[s->onreboot]);
         for (Dependant_T d = s->dependantlist; d; d = d->next) {
                 if (d->dependant != NULL) {
                         StringBuffer_append(res->outputbuffer,
@@ -2351,6 +2353,12 @@ static void status_service_txt(Service_T s, HttpResponse res) {
         StringBuffer_append(res->outputbuffer,
                 "  %-28s %s\n",
                 "monitoring status", get_monitoring_status(TXT, s, buf, sizeof(buf)));
+        StringBuffer_append(res->outputbuffer,
+                "  %-28s %s\n",
+                "monitoring mode", modenames[s->mode]);
+        StringBuffer_append(res->outputbuffer,
+                "  %-28s %s\n",
+                "on reboot", onrebootnames[s->onreboot]);
         _printStatus(TXT, res, s);
         StringBuffer_append(res->outputbuffer, "\n");
 }

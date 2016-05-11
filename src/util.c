@@ -961,6 +961,7 @@ void Util_printService(Service_T s) {
                 printf(" %-20s = %s\n", "Path", s->path);
         }
         printf(" %-20s = %s\n", "Monitoring mode", modenames[s->mode]);
+        printf(" %-20s = %s\n", "On reboot", onrebootnames[s->onreboot]);
         if (s->start) {
                 printf(" %-20s = '", "Start program");
                 for (int i = 0; s->start->arg[i]; i++)

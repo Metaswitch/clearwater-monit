@@ -1456,38 +1456,42 @@ statement:
 
 =head1 SERVICE MONITORING MODE
 
-Monit supports three monitoring modes per service: I<active>,
-I<passive> and I<manual>.
+Monit supports two monitoring modes: I<active> and I<passive>.
 
 Syntax:
 
-  MODE <ACTIVE | PASSIVE | MANUAL>
+  MODE <ACTIVE | PASSIVE>
 
 In I<active> mode (the default), Monit will pro-actively monitor a
-service and in case of problems raise alerts and/or restart
-the service.
+service and in case of problems raise alerts and restart the service.
 
-In I<passive> mode, Monit will passively monitor a service and will
-raise alerts, but will B<not> try to fix a problem by executing
-I<start>, I<stop> or I<restart>.
+The I<passive> mode is similar to the I<active> mode, except if the
+service fails, monit will B<not> try to fix a problem by restarting
+the service and will raise alerts only.
 
-In I<manual> mode, Monit will enter I<active> mode I<only> if a
-service was started via Monit:
 
-  monit start <servicename>
+=head1 SYSTEM REBOOT AND SERVICE STARTUP
 
-Use "monit stop <servicename>" to stop the service and take it out
-of Monit's control. The manual mode can be used to build a simple
-cluster with active/passive HA-services.
+Monit supports three reboot modes: I<start>, I<nostart> and I<laststate>.
 
-A service's monitoring state is persistent across Monit restart.
+Syntax:
 
-If you use Monit in a HA-cluster you should place the Monit state file
-in a temporary filesystem so if the machine which runs HA-services
-should crash and the stand-by machine take over its services, the
-HA-services won't be started after the crashed node will boot again:
+  ONREBOOT <START | NOSTART | LASTSTATE>
 
-  set statefile /tmp/monit.state
+In I<start> mode (B<DEFAULT>), Monit will always start the service automatically
+on reboot, even if it was stopped before it.
+
+In I<nostart> mode, the service is I<never> started automatically after reboot.
+This mode is intended for a high-availability solutions with active/passive clusters.
+For example: the service group HA is started on machine M1, the machine M2 is backup,
+heartbeat is in place between both machines. The service group HA (such as an mobile
+IP alias + application server). must be started on one node only. When M1 dies,
+M2 takes HA group over, but if M1 reboots, it is important that it won't try to start
+the HA group too (even though it was active on M1 before it crashed), as HA is running
+on M2 now.
+
+In I<laststate> mode, a service monitoring state is persistent across reboot, i.e. if
+the service was started before reboot, it'll be started after reboot too and vice versa.
 
 
 =head1 SERVICE RESTART LIMIT

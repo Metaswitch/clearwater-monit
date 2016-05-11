@@ -248,9 +248,15 @@ typedef enum {
 
 typedef enum {
         Monitor_Active = 0,
-        Monitor_Passive,
-        Monitor_Manual
+        Monitor_Passive
 } __attribute__((__packed__)) Monitor_Mode;
+
+
+typedef enum {
+        Onreboot_Start = 0,
+        Onreboot_Nostart,
+        Onreboot_Laststate
+} __attribute__((__packed__)) Onreboot_Type;
 
 
 typedef enum {
@@ -550,22 +556,23 @@ typedef struct myprocesstree {
 /** Defines data for systemwide statistic */
 //FIXME: structurize the data
 typedef struct mysysteminfo {
-        int cpus;                                              /**< Number of CPUs */
-        float total_mem_percent;       /**< Total real memory in use in the system */
-        float total_swap_percent;             /**< Total swap in use in the system */
-        float total_cpu_user_percent;    /**< Total CPU in use in user space (pct.)*/
-        float total_cpu_syst_percent;  /**< Total CPU in use in kernel space (pct.)*/
-        float total_cpu_wait_percent;       /**< Total CPU in use in waiting (pct.)*/
-        size_t argmax;                          /**< Program arguments maximum [B] */
-        uint64_t mem_max;                          /**< Maximal system real memory */
-        uint64_t swap_max;                                          /**< Swap size */
-        uint64_t total_mem;            /**< Total real memory in use in the system */
-        uint64_t total_swap;                  /**< Total swap in use in the system */
-        double loadavg[3];                                /**< Load average triple */
-        struct utsname uname;        /**< Platform information provided by uname() */
-        struct timeval collected;                    /**< When were data collected */
-        double time;                                             /**< 1/10 seconds */
-        double time_prev;                                        /**< 1/10 seconds */
+        int cpus;                                                                       /**< Number of CPUs */
+        float total_mem_percent;                                /**< Total real memory in use in the system */
+        float total_swap_percent;                                      /**< Total swap in use in the system */
+        float total_cpu_user_percent;                               /**< Total CPU in use in user space [%] */
+        float total_cpu_syst_percent;                             /**< Total CPU in use in kernel space [%] */
+        float total_cpu_wait_percent;                                  /**< Total CPU in use in waiting [%] */
+        size_t argmax;                                                   /**< Program arguments maximum [B] */
+        uint64_t mem_max;                                                   /**< Maximal system real memory */
+        uint64_t swap_max;                                                                   /**< Swap size */
+        uint64_t total_mem;                                     /**< Total real memory in use in the system */
+        uint64_t total_swap;                                           /**< Total swap in use in the system */
+        double loadavg[3];                                                         /**< Load average triple */
+        struct utsname uname;                                 /**< Platform information provided by uname() */
+        struct timeval collected;                                             /**< When were data collected */
+        uint64_t booted; /**< System boot time (seconds since UNIX epoch, using platform-agnostic uint64_t) */
+        double time;                                                                      /**< 1/10 seconds */
+        double time_prev;                                                                 /**< 1/10 seconds */
 } SystemInfo_T;
 
 
@@ -1013,6 +1020,7 @@ typedef struct myservice {
         Service_Type type;                             /**< Monitored service type */
         Monitor_State monitor;                             /**< Monitor state flag */
         Monitor_Mode mode;                    /**< Monitoring mode for the service */
+        Onreboot_Type onreboot;                                /**< On reboot mode */
         Action_Type doaction;                 /**< Action scheduled by http thread */
         int  ncycle;                          /**< The number of the current cycle */
         int  nstart;           /**< The number of current starts with this service */
@@ -1196,6 +1204,7 @@ extern int            ptreesize;
 
 extern char *actionnames[];
 extern char *modenames[];
+extern char *onrebootnames[];
 extern char *checksumnames[];
 extern char *operatornames[];
 extern char *operatorshortnames[];

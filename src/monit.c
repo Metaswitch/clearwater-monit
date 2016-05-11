@@ -136,7 +136,8 @@ int ptreesize = 0;
 ProcessTree_T *ptree = NULL;
 
 char *actionnames[] = {"ignore", "alert", "restart", "stop", "exec", "unmonitor", "start", "monitor", ""};
-char *modenames[] = {"active", "passive", "manual"};
+char *modenames[] = {"active", "passive"};
+char *onrebootnames[] = {"start", "nostart", "laststate"};
 char *checksumnames[] = {"UNKNOWN", "MD5", "SHA1"};
 char *operatornames[] = {"less than", "greater than", "equal to", "not equal to", "changed"};
 char *operatorshortnames[] = {"<", ">", "=", "!=", "<>"};
@@ -614,14 +615,14 @@ static void handle_options(int argc, char **argv) {
                 {"pidfile",     required_argument,      NULL,   'p'},
                 {"statefile",   required_argument,      NULL,   's'},
                 {"hash",        optional_argument,      NULL,   'H'},
-                {"interactive", no_argument,            NULL,   'I'},
                 {"id",          no_argument,            NULL,   'i'},
+                {"help",        no_argument,            NULL,   'h'},
                 {"resetid",     no_argument,            NULL,   'r'},
                 {"test",        no_argument,            NULL,   't'},
                 {"verbose",     no_argument,            NULL,   'v'},
-                {"version",     no_argument,            NULL,   'V'},
-                {"help",        no_argument,            NULL,   'h'},
                 {"batch",       no_argument,            NULL,   'B'},
+                {"interactive", no_argument,            NULL,   'I'},
+                {"version",     no_argument,            NULL,   'V'},
                 {0}
         };
         while ((opt = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1)
@@ -760,7 +761,7 @@ static void handle_options(int argc, char **argv) {
                 case 't':
                 {
                         do_init(); // Parses control file and initialize program, exit on error
-                        printf("Control file syntax OK\n"); //FIXME: green 
+                        printf("Control file syntax OK\n");
                         exit(0);
                         break;
                 }
@@ -793,45 +794,47 @@ static void handle_options(int argc, char **argv) {
  * Print the program's help message
  */
 static void help() {
-        printf("Usage: %s [options]+ [command]\n", prog);
-        printf("Options are as follows:\n");
-        printf(" -c file       Use this control file\n");
-        printf(" -d n          Run as a daemon once per n seconds\n");
-        printf(" -g name       Set group name for monit commands\n");
-        printf(" -l logfile    Print log information to this file\n");
-        printf(" -p pidfile    Use this lock file in daemon mode\n");
-        printf(" -s statefile  Set the file monit should write state information to\n");
-        printf(" -I            Do not run in background (needed for run from init)\n");
-        printf(" --id          Print Monit's unique ID\n");
-        printf(" --resetid     Reset Monit's unique ID. Use with caution\n");
-        printf(" -B            Batch command line mode (nontabular output with no colors)\n");
-        printf(" -t            Run syntax check for the control file\n");
-        printf(" -v            Verbose mode, work noisy (diagnostic output)\n");
-        printf(" -vv           Very verbose mode, same as -v plus log stacktrace on error\n");
-        printf(" -H [filename] Print SHA1 and MD5 hashes of the file or of stdin if the\n");
-        printf("               filename is omited; monit will exit afterwards\n");
-        printf(" -V            Print version number and patchlevel\n");
-        printf(" -h            Print this text\n");
-        printf("Optional commands are as follows:\n");
-        printf(" start all                                               - Start all services\n");
-        printf(" start <name>                                            - Only start the named service\n");
-        printf(" stop all                                                - Stop all services\n");
-        printf(" stop <name>                                             - Only stop the named service\n");
-        printf(" restart all                                             - Stop and start all services\n");
-        printf(" restart <name>                                          - Only restart the named service\n");
-        printf(" monitor all                                             - Enable monitoring of all services\n");
-        printf(" monitor <name>                                          - Only enable monitoring of the named service\n");
-        printf(" unmonitor all                                           - Disable monitoring of all services\n");
-        printf(" unmonitor <name>                                        - Only disable monitoring of the named service\n");
-        printf(" reload                                                  - Reinitialize monit\n");
-        printf(" status [name]                                           - Print full status information for service(s)\n");
-        printf(" summary [name]                                          - Print short status information for service(s)\n");
-        printf(" report [up | down | initialising | unmonitored | total] - Report services state\n");
-        printf(" quit                                                    - Kill monit daemon process\n");
-        printf(" validate                                                - Check all services and start if not running\n");
-        printf(" procmatch <pattern>                                     - Test process matching pattern\n");
-        printf("\n");
-        printf("(Action arguments operate on services defined in the control file)\n");
+        printf(
+                "Usage: %s [options]+ [command]\n"
+                "Options are as follows:\n"
+                " -c file       Use this control file\n"
+                " -d n          Run as a daemon once per n seconds\n"
+                " -g name       Set group name for monit commands\n"
+                " -l logfile    Print log information to this file\n"
+                " -p pidfile    Use this lock file in daemon mode\n"
+                " -s statefile  Set the file monit should write state information to\n"
+                " -I            Do not run in background (needed for run from init)\n"
+                " --id          Print Monit's unique ID\n"
+                " --resetid     Reset Monit's unique ID. Use with caution\n"
+                " -B            Batch command line mode (nontabular output with no colors)\n"
+                " -t            Run syntax check for the control file\n"
+                " -v            Verbose mode, work noisy (diagnostic output)\n"
+                " -vv           Very verbose mode, same as -v plus log stacktrace on error\n"
+                " -H [filename] Print SHA1 and MD5 hashes of the file or of stdin if the\n"
+                "               filename is omited; monit will exit afterwards\n"
+                " -V            Print version number and patchlevel\n"
+                " -h            Print this text\n"
+                "Optional commands are as follows:\n"
+                " start all                                               - Start all services\n"
+                " start <name>                                            - Only start the named service\n"
+                " stop all                                                - Stop all services\n"
+                " stop <name>                                             - Stop the named service\n"
+                " restart all                                             - Stop and start all services\n"
+                " restart <name>                                          - Only restart the named service\n"
+                " monitor all                                             - Enable monitoring of all services\n"
+                " monitor <name>                                          - Only enable monitoring of the named service\n"
+                " unmonitor all                                           - Disable monitoring of all services\n"
+                " unmonitor <name>                                        - Only disable monitoring of the named service\n"
+                " reload                                                  - Reinitialize monit\n"
+                " status [name]                                           - Print full status information for service(s)\n"
+                " summary [name]                                          - Print short status information for service(s)\n"
+                " report [up | down | initialising | unmonitored | total] - Report services state\n"
+                " quit                                                    - Kill monit daemon process\n"
+                " validate                                                - Check all services and start if not running\n"
+                " procmatch <pattern>                                     - Test process matching pattern\n"
+                "\n"
+                "(Action arguments operate on services defined in the control file)\n",
+                prog);
 }
 
 /**

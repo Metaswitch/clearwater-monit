@@ -23,6 +23,18 @@ Output example:
 
 New: Issue #344: Added MONIT_SERVICE environment variable to a check program context.
 
+New: A new ONREBOOT statement for service startup control on system reboot was added. The following
+modes are available:
+    onreboot start     ... always start the service automatically after reboot (DEFAULT mode)
+    onreboot nostart   ... never start the service automatically after reboot
+    onreboot laststate ... the service state is persistent across reboot (stopped before reboot => stopped after reboot and vice versa)
+
+New: The "mode" statement options are reduced to "active" (automatic service restarts allowed
+on error) and "passive" (no restart allowed on error). The "manual" option is deprecated (but
+still supported for backward compatibility) and replaced by the new "onreboot laststate" statement.
+
+Fixed: Added missing "mode" statement support to system, status and network checks.
+
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
 but a zombie was left. Thanks to Guillem Jover for patch.
 

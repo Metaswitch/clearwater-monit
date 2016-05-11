@@ -105,38 +105,13 @@
 typedef enum {
         StateVersion0 = 0,
         StateVersion1,
-        StateVersion2
+        StateVersion2,
+        StateVersion3
 } State_Version;
 
 
-/* Format version 0 (Monit <= 5.3) */
-typedef struct mystate0 {
-        char               name[STRLEN];
-        int                mode;                // obsolete since Monit 5.1
-        int                nstart;
-        int                ncycle;
-        int                monitor;
-        unsigned long long error;               // obsolete since Monit 5.0
-} State0_T;
-
-
-/* Extended format version 1 */
-typedef struct mystate1 {
-        char               name[STRLEN];
-        int                type;
-        int                monitor;
-        int                nstart;
-        int                ncycle;
-        union {
-                struct {
-                        unsigned long long inode;
-                        unsigned long long readpos;
-                } file;
-        } priv;
-} State1_T;
-
-/* Extended format version 2 */
-typedef struct mystate2 {
+/* Extended format version 3 */
+typedef struct mystate3 {
         char               name[STRLEN];
         int                type;
         int                monitor;
@@ -173,10 +148,42 @@ typedef struct mystate2 {
                         //FIXME: when Link API is moved from libmonit to monit, save also link bytes in/out and packets in/out history, so the network statistics is not reset on each monit reload
                 } net;
         } priv;
-} State2_T;
+} State3_T;
+
+
+/* Extended format version 2 (in V3 only a system boot time was added to state header, otherwise the V2 service state is identical to V3) */
+typedef struct mystate3 State2_T;
+
+
+/* Extended format version 1 */
+typedef struct mystate1 {
+        char               name[STRLEN];
+        int                type;
+        int                monitor;
+        int                nstart;
+        int                ncycle;
+        union {
+                struct {
+                        unsigned long long inode;
+                        unsigned long long readpos;
+                } file;
+        } priv;
+} State1_T;
+
+
+/* Format version 0 (Monit <= 5.3) */
+typedef struct mystate0 {
+        char               name[STRLEN];
+        int                mode;                // obsolete since Monit 5.1
+        int                nstart;
+        int                ncycle;
+        int                monitor;
+        unsigned long long error;               // obsolete since Monit 5.0
+} State0_T;
 
 
 static int file = -1;
+static uint64_t booted = 0ULL;
 
 
 /* ----------------------------------------------------------------- Private */
@@ -188,11 +195,20 @@ static void _updateStart(Service_T S, int nstart, int ncycle) {
 }
 
 
-static void _updateMonitor(Service_T S, int monitor) {
-        if (monitor == Monitor_Not)
-                S->monitor = monitor;
-        else if (S->monitor == Monitor_Not)
-                S->monitor = Monitor_Init;
+static void _updateMonitor(Service_T S, Monitor_State monitor) {
+        if (systeminfo.booted == booted || S->onreboot == Onreboot_Laststate) {
+                // Monit reload or restart within the same boot session OR persistent state => restore the monitoring state
+                if (monitor == Monitor_Not)
+                        S->monitor = Monitor_Not;
+                else if (S->monitor == Monitor_Not)
+                        S->monitor = Monitor_Init;
+        } else {
+                // System rebooted
+                if (S->onreboot == Onreboot_Nostart)
+                        S->monitor = Monitor_Not;
+                else
+                        S->monitor = Monitor_Init;
+        }
 }
 
 
@@ -250,34 +266,57 @@ static void _updateLinkSpeed(Service_T S, int duplex, long long speed) {
 }
 
 
-static void _restoreV0(int services) {
-        for (int i = 0; i < services; i++) {
-                State0_T state;
-                if (read(file, &state, sizeof(state)) != sizeof(state))
-                        THROW(IOException, "Unable to read service state");
-                Service_T service = Util_getService(state.name);
-                if (service) {
-                        _updateStart(service, state.nstart, state.ncycle);
-                        _updateMonitor(service, state.monitor);
-                }
-        }
-}
-
-
-static void _restoreV1() {
-        State1_T state;
+static void _restoreV3() {
+        // System header
+        if (read(file, &booted, sizeof(booted)) != sizeof(booted))
+                THROW(IOException, "Unable to read system boot time");
+        // Services state
+        State3_T state;
         while (read(file, &state, sizeof(state)) == sizeof(state)) {
                 Service_T service = Util_getService(state.name);
                 if (service && service->type == state.type) {
                         _updateStart(service, state.nstart, state.ncycle);
                         _updateMonitor(service, state.monitor);
-                        if (service->type == Service_File)
-                                _updateFilePosition(service, state.priv.file.inode, state.priv.file.readpos);
+                        switch (service->type) {
+                                case Service_Directory:
+                                        _updatePermission(service, state.priv.directory.mode);
+                                        _updateTimestamp(service, state.priv.directory.timestamp);
+                                        break;
+
+                                case Service_Fifo:
+                                        _updatePermission(service, state.priv.fifo.mode);
+                                        _updateTimestamp(service, state.priv.fifo.timestamp);
+                                        break;
+
+                                case Service_File:
+                                        _updatePermission(service, state.priv.file.mode);
+                                        _updateTimestamp(service, state.priv.file.timestamp);
+                                        _updateFilePosition(service, state.priv.file.inode, state.priv.file.readpos);
+                                        _updateSize(service, state.priv.file.size);
+                                        _updateChecksum(service, state.priv.file.hash);
+                                        break;
+
+                                case Service_Filesystem:
+                                        _updatePermission(service, state.priv.filesystem.mode);
+                                        _updateFilesystemFlags(service, state.priv.filesystem.flags);
+                                        break;
+
+                                case Service_Net:
+                                        _updateLinkSpeed(service, state.priv.net.duplex, state.priv.net.speed);
+                                        break;
+
+                                default:
+                                        break;
+                        }
                 }
         }
 }
 
+
 static void _restoreV2() {
+        // System header
+        booted = systeminfo.booted; // No boot time available => for backward compatibility, act as if the system was not rebooted, as we don't know if monit was only restarted or machine rebooted
+        // Services state
         State2_T state;
         while (read(file, &state, sizeof(state)) == sizeof(state)) {
                 Service_T service = Util_getService(state.name);
@@ -320,6 +359,40 @@ static void _restoreV2() {
 }
 
 
+static void _restoreV1() {
+        // System header
+        booted = systeminfo.booted; // No boot time available => for backward compatibility, act as if the system was not rebooted, as we don't know if monit was only restarted or machine rebooted
+        // Services state
+        State1_T state;
+        while (read(file, &state, sizeof(state)) == sizeof(state)) {
+                Service_T service = Util_getService(state.name);
+                if (service && service->type == state.type) {
+                        _updateStart(service, state.nstart, state.ncycle);
+                        _updateMonitor(service, state.monitor);
+                        if (service->type == Service_File)
+                                _updateFilePosition(service, state.priv.file.inode, state.priv.file.readpos);
+                }
+        }
+}
+
+
+static void _restoreV0(int services) {
+        // System header
+        booted = systeminfo.booted; // No boot time available => for backward compatibility, act as if the system was not rebooted, as we don't know if monit was only restarted or machine rebooted
+        // Services state
+        for (int i = 0; i < services; i++) {
+                State0_T state;
+                if (read(file, &state, sizeof(state)) != sizeof(state))
+                        THROW(IOException, "Unable to read service state");
+                Service_T service = Util_getService(state.name);
+                if (service) {
+                        _updateStart(service, state.nstart, state.ncycle);
+                        _updateMonitor(service, state.monitor);
+                }
+        }
+}
+
+
 /* ------------------------------------------------------------------ Public */
 
 
@@ -355,11 +428,13 @@ void State_save() {
                 if (write(file, &magic, sizeof(magic)) != sizeof(magic))
                         THROW(IOException, "Unable to write magic");
                 // Save always using the latest format version
-                int version = StateVersion2;
+                int version = StateVersion3;
                 if (write(file, &version, sizeof(version)) != sizeof(version))
                         THROW(IOException, "Unable to write format version");
+                if (write(file, &systeminfo.booted, sizeof(systeminfo.booted)) != sizeof(systeminfo.booted))
+                        THROW(IOException, "Unable to write system boot time");
                 for (Service_T service = servicelist; service; service = service->next) {
-                        State2_T state;
+                        State3_T state;
                         memset(&state, 0, sizeof(state));
                         snprintf(state.name, sizeof(state.name), "%s", service->name);
                         state.type = service->type;
@@ -445,6 +520,9 @@ void State_restore() {
                                         break;
                                 case StateVersion2:
                                         _restoreV2();
+                                        break;
+                                case StateVersion3:
+                                        _restoreV3();
                                         break;
                                 default:
                                         LogWarning("State file '%s': incompatible version %d\n", Run.files.state, version);
