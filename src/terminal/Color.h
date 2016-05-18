@@ -37,6 +37,7 @@
 
 
 #define COLOR_RESET        "\033[0m"
+#define COLOR_BOLD         "\033[1m"
 
 #define COLOR_BLACK        "\033[0;30m"
 #define COLOR_RED          "\033[0;31m"

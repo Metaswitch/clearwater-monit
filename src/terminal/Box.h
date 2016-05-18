@@ -39,6 +39,7 @@
 typedef struct BoxColumn_T {
         const char *name;
         int width;
+        boolean_t wrap;
 } BoxColumn_T;
 
 

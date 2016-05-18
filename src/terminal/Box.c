@@ -176,7 +176,8 @@ T Box_new(StringBuffer_T b, int columnsCount, BoxColumn_T *columns, boolean_t pr
 
 void Box_free(T *t) {
         ASSERT(t && *t);
-        _printBorderBottom(*t);
+        if ((*t)->index.row > 0)
+                _printBorderBottom(*t);
         FREE(*t);
 }
 
@@ -201,11 +202,63 @@ void Box_printColumn(T t, const char *format, ...) {
         va_end(ap);
         int colorLengthOriginal = Color_length(s);
         if (strlen(s) - colorLengthOriginal > t->columns[t->index.column].width) {
-                Str_trunc(s, t->columns[t->index.column].width);
-                int colorLengthCurrent = Color_length(s);
-                StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthCurrent, s);
-                if (colorLengthCurrent < colorLengthOriginal)
-                        StringBuffer_append(t->b, COLOR_RESET);
+                if (t->columns[t->index.column].wrap) {
+                        //Note: The content wrap is currently supported only in the last column - adding wrap support for any column will require caching all columns before we can print a full line
+                        ASSERT(t->index.column + 1 == t->columnsCount);
+                        int i;
+                        char color[STRLEN] = {};
+                        if (colorLengthOriginal) {
+                                // Cache the color code
+                                boolean_t ansi = false;
+                                for (int i = 0, j = 0; s[i]; i++) {
+                                        if (s[i] == '\033' && s[i + 1] == '[') {
+                                                // Escape sequence start
+                                                color[j++] = '\033';
+                                                color[j++] = '[';
+                                                i++;
+                                                ansi = true;
+                                        } else if (ansi) {
+                                                color[j++] = s[i];
+                                                // Escape sequence stop
+                                                if (s[i] >= 64 && s[i] <= 126)
+                                                        break;
+                                        }
+                                }
+                                // Strip the escape sequences, so we can break the line
+                                Color_strip(s);
+                        }
+                        for (i = 0; s[i]; i++) {
+                                if (i && i % t->columns[t->index.column].width == 0) {
+                                        // Terminate current line
+                                        if (*color)
+                                                StringBuffer_append(t->b, COLOR_RESET);
+                                        StringBuffer_append(t->b, " " COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET "\n");
+                                        // Seek to the same column position
+                                        for (int j = 0; j < t->index.column; j++) {
+                                                StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
+                                                StringBuffer_append(t->b, "%-*s", t->columns[j].width, " ");
+                                                StringBuffer_append(t->b, " ");
+                                        }
+                                        // Separator
+                                        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
+                                }
+                                if (*color && i % t->columns[t->index.column].width == 0)
+                                        StringBuffer_append(t->b, "%s", color);
+                                StringBuffer_append(t->b, "%c", s[i]);
+                        }
+                        // Last line padding
+                        int padding = t->columns[t->index.column].width - i % t->columns[t->index.column].width;
+                        if (padding > 0 && padding < t->columns[t->index.column].width)
+                                StringBuffer_append(t->b, "%-*s", padding, " ");
+                        if (*color)
+                                StringBuffer_append(t->b, COLOR_RESET);
+                } else {
+                        Str_trunc(s, t->columns[t->index.column].width);
+                        int colorLengthCurrent = Color_length(s);
+                        StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthCurrent, s);
+                        if (colorLengthCurrent < colorLengthOriginal)
+                                StringBuffer_append(t->b, COLOR_RESET);
+                }
         } else {
                 StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthOriginal, s);
         }

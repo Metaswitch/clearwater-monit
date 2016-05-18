@@ -132,7 +132,7 @@ boolean_t init_process_info_sysdep(void) {
                 return false;
         }
 
-        if (! read_proc_file(buf, sizeof(buf), "meminfo", -1, NULL)) {
+        if (! file_readProc(buf, sizeof(buf), "meminfo", -1, NULL)) {
                 DEBUG("system statistic error -- cannot read /proc/meminfo\n");
                 return false;
         }
@@ -155,7 +155,7 @@ boolean_t init_process_info_sysdep(void) {
                 systeminfo.cpus = 1;
         }
 
-        if (! read_proc_file(buf, sizeof(buf), "stat", -1, NULL)) {
+        if (! file_readProc(buf, sizeof(buf), "stat", -1, NULL)) {
                 DEBUG("system statistic error -- cannot read /proc/stat\n");
                 return false;
         }
@@ -219,7 +219,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 stat_pid = atoi(globbuf.gl_pathv[i] + 6); // skip "/proc/"
 
                 /********** /proc/PID/stat **********/
-                if (! read_proc_file(buf, sizeof(buf), "stat", stat_pid, NULL)) {
+                if (! file_readProc(buf, sizeof(buf), "stat", stat_pid, NULL)) {
                         DEBUG("system statistic error -- cannot read /proc/%d/stat\n", stat_pid);
                         continue;
                 }
@@ -249,7 +249,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                 }
 
                 /********** /proc/PID/status **********/
-                if (! read_proc_file(buf, sizeof(buf), "status", stat_pid, NULL)) {
+                if (! file_readProc(buf, sizeof(buf), "status", stat_pid, NULL)) {
                         DEBUG("system statistic error -- cannot read /proc/%d/status\n", stat_pid);
                         continue;
                 }
@@ -272,7 +272,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
 
                 /********** /proc/PID/cmdline **********/
                 if (pflags & ProcessEngine_CollectCommandLine) {
-                        if (! read_proc_file(buf, sizeof(buf), "cmdline", stat_pid, &bytes)) {
+                        if (! file_readProc(buf, sizeof(buf), "cmdline", stat_pid, &bytes)) {
                                 DEBUG("system statistic error -- cannot read /proc/%d/cmdline\n", stat_pid);
                                 continue;
                         }
@@ -315,7 +315,7 @@ int getloadavg_sysdep(double *loadv, int nelem) {
 #else
         char buf[STRLEN];
         double load[3];
-        if (! read_proc_file(buf, sizeof(buf), "loadavg", -1, NULL))
+        if (! file_readProc(buf, sizeof(buf), "loadavg", -1, NULL))
                 return -1;
         if (sscanf(buf, "%lf %lf %lf", &load[0], &load[1], &load[2]) != 3) {
                 DEBUG("system statistic error -- cannot get load average\n");
@@ -342,7 +342,7 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
         unsigned long  swap_total = 0UL;
         unsigned long  swap_free = 0UL;
 
-        if (! read_proc_file(buf, sizeof(buf), "meminfo", -1, NULL)) {
+        if (! file_readProc(buf, sizeof(buf), "meminfo", -1, NULL)) {
                 LogError("system statistic error -- cannot get real memory free amount\n");
                 goto error;
         }
@@ -397,7 +397,7 @@ boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
         unsigned long long cpu_softirq;
         char buf[STRLEN];
 
-        if (! read_proc_file(buf, sizeof(buf), "stat", -1, NULL)) {
+        if (! file_readProc(buf, sizeof(buf), "stat", -1, NULL)) {
                 LogError("system statistic error -- cannot read /proc/stat\n");
                 goto error;
         }

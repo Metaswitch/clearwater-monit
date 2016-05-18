@@ -126,4 +126,16 @@ boolean_t file_writeQueue(FILE *file, void *data, size_t size);
 void *file_readQueue(FILE *file, size_t *size);
 
 
+/**
+ * Reads an proc filesystem object
+ * @param buf buffer to write to
+ * @param buf_size size of buf
+ * @param name name of proc object
+ * @param pid number of the process or < 0 if main directory
+ * @param bytes_read number of bytes read to buffer
+ * @return true if succeeded otherwise false.
+ */
+boolean_t file_readProc(char *buf, int buf_size, char *name, int pid, int *bytes_read);
+
+
 #endif

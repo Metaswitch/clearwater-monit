@@ -55,8 +55,11 @@
 #include <stdio.h>
 
 #include "monit.h"
+#include "event.h"
 #include "process.h"
 #include "process_sysdep.h"
+#include "Box.h"
+#include "Color.h"
 
 // libmonit
 #include "system/Time.h"
@@ -141,35 +144,20 @@ static float _cpuUsage(ProcessTree_T *now, ProcessTree_T *prev, double delta) {
 }
 
 
-/* ------------------------------------------------------------------ Public */
-
-
-/**
- * Initialize the proc information code
- * @return true if succeeded otherwise false.
- */
-boolean_t init_process_info(void) {
-        memset(&systeminfo, 0, sizeof(SystemInfo_T));
-        gettimeofday(&systeminfo.collected, NULL);
-        if (uname(&systeminfo.uname) < 0) {
-                LogError("'%s' resource monitoring initialization error -- uname failed: %s\n", Run.system->name, STRERROR);
-                return false;
-        }
-        systeminfo.total_cpu_user_percent = -1.;
-        systeminfo.total_cpu_syst_percent = -1.;
-        systeminfo.total_cpu_wait_percent = -1.;
-        return (init_process_info_sysdep());
+static boolean_t _match(regex_t *regex) {
+        int found = -1;
+        // Scan the whole process tree and find the oldest matching process whose parent doesn't match the pattern
+        for (int i = 0; i < ptreesize; i++)
+                if (regexec(regex, ptree[i].cmdline, 0, NULL, 0) == 0 && (i == ptree[i].parent || regexec(regex, ptree[ptree[i].parent].cmdline, 0, NULL, 0) != 0) && (found == -1 || ptree[found].uptime < ptree[i].uptime))
+                        found = i;
+        return found >= 0 ? ptree[found].pid : found;
 }
 
 
-/**
- * Get the proc infomation (CPU percentage, MEM in MByte and percent,
- * status), enduser version.
- * @param p A Service object
- * @param pid The process id
- * @return true if succeeded otherwise false.
- */
-boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_t pid) {
+/* ------------------------------------------------------------------ Public */
+
+
+boolean_t Process_update(Service_T s, ProcessTree_T *pt, int treesize, pid_t pid) {
         ASSERT(s);
 
         /* save the previous pid and set actual one */
@@ -196,53 +184,9 @@ boolean_t update_process_data(Service_T s, ProcessTree_T *pt, int treesize, pid_
                         s->inf->priv.process.total_mem_percent = pt[leaf].memory.usage_total >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].memory.usage_total / (double)systeminfo.mem_max);
                         s->inf->priv.process.mem_percent       = pt[leaf].memory.usage >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].memory.usage / (double)systeminfo.mem_max);
                 }
-        } else {
-                Util_resetInfo(s);
-        }
-        return true;
-}
-
-
-/**
- * Updates the system wide statistic
- * @return true if successful, otherwise false
- */
-boolean_t update_system_load() {
-        if (Run.flags & Run_ProcessEngineEnabled) {
-                if (getloadavg_sysdep(systeminfo.loadavg, 3) == -1) {
-                        LogError("'%s' statistic error -- load average gathering failed\n", Run.system->name);
-                        goto error1;
-                }
-
-                if (! used_system_memory_sysdep(&systeminfo)) {
-                        LogError("'%s' statistic error -- memory usage gathering failed\n", Run.system->name);
-                        goto error2;
-                }
-                systeminfo.total_mem_percent  = systeminfo.mem_max > 0ULL ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
-                systeminfo.total_swap_percent = systeminfo.swap_max > 0ULL ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
-
-                if (! used_system_cpu_sysdep(&systeminfo)) {
-                        LogError("'%s' statistic error -- cpu usage gathering failed\n", Run.system->name);
-                        goto error3;
-                }
-
                 return true;
         }
-
-error1:
-        systeminfo.loadavg[0] = 0;
-        systeminfo.loadavg[1] = 0;
-        systeminfo.loadavg[2] = 0;
-error2:
-        systeminfo.total_mem = 0ULL;
-        systeminfo.total_mem_percent = 0.;
-        systeminfo.total_swap = 0ULL;
-        systeminfo.total_swap_percent = 0.;
-error3:
-        systeminfo.total_cpu_user_percent = 0.;
-        systeminfo.total_cpu_syst_percent = 0.;
-        systeminfo.total_cpu_wait_percent = 0.;
-
+        Util_resetInfo(s);
         return false;
 }
 
@@ -251,7 +195,7 @@ error3:
  * Initialize the process tree
  * @return treesize >= 0 if succeeded otherwise < 0
  */
-int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflags) {
+int Process_initTree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflags) {
         ASSERT(pt_r);
         ASSERT(size_r);
 
@@ -273,7 +217,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflag
                 DEBUG("System statistic -- cannot initialize the process tree -- process resource monitoring disabled\n");
                 Run.flags &= ~Run_ProcessEngineEnabled;
                 if (oldpt)
-                        delprocesstree(&oldpt, &oldsize);
+                        Process_deleteTree(&oldpt, &oldsize);
                 return -1;
         } else if (! (Run.flags & Run_ProcessEngineEnabled)) {
                 DEBUG("System statistic -- initialization of the process tree succeeded -- process resource monitoring enabled\n");
@@ -313,7 +257,7 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflag
         FREE(oldpt); // Free the rest of old ptree
         if (root == -1) {
                 DEBUG("System statistic error -- cannot find root process id\n");
-                delprocesstree(pt_r, size_r);
+                Process_deleteTree(pt_r, size_r);
                 return -1;
         }
 
@@ -323,20 +267,10 @@ int initprocesstree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflag
 }
 
 
-time_t getProcessUptime(pid_t pid, ProcessTree_T *pt, int treesize) {
-        if (pt) {
-                int leaf = _findProcess(pid, pt, treesize);
-                return (time_t)((leaf >= 0 && leaf < treesize) ? pt[leaf].uptime : -1);
-        } else {
-                return 0;
-        }
-}
-
-
 /**
  * Delete the process tree
  */
-void delprocesstree(ProcessTree_T **reference, int *size) {
+void Process_deleteTree(ProcessTree_T **reference, int *size) {
         ProcessTree_T *pt = *reference;
         if (pt) {
                 for (int i = 0; i < *size; i++) {
@@ -350,7 +284,51 @@ void delprocesstree(ProcessTree_T **reference, int *size) {
 }
 
 
-void process_testmatch(char *pattern) {
+time_t Process_getUptime(pid_t pid, ProcessTree_T *pt, int treesize) {
+        if (pt) {
+                int leaf = _findProcess(pid, pt, treesize);
+                return (time_t)((leaf >= 0 && leaf < treesize) ? pt[leaf].uptime : -1);
+        } else {
+                return 0;
+        }
+}
+
+
+int Process_running(Service_T s) {
+        ASSERT(s);
+        errno = 0;
+        if (s->matchlist) {
+                // Test the cached PID first
+                if (s->inf->priv.process.pid > 0 && (getpgid(s->inf->priv.process.pid) > -1 || errno == EPERM))
+                        return s->inf->priv.process.pid;
+                // If the cached PID is not running, rescan the process tree
+                Process_initTree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
+                /* The process table read may sporadically fail during read, because we're using glob on some platforms which may fail if the proc filesystem
+                 * which it traverses is changed during glob (process stopped). Note that the glob failure is rare and temporary - it will be OK on next cycle.
+                 * We skip the process matching that cycle however because we don't have process informations - will retry next cycle */
+                if (Run.flags & Run_ProcessEngineEnabled) {
+                        int pid = _match(s->matchlist->regex_comp);
+                        if (pid >= 0)
+                                return pid;
+                } else {
+                        DEBUG("Process information not available -- skipping service %s process existence check for this cycle\n", s->name);
+                        /* Return value is NOOP - it is based on existing errors bitmap so we don't generate false recovery/failures */
+                        return ! (s->error & Event_Nonexist);
+                }
+        } else {
+                pid_t pid = Util_getPid(s->path);
+                if (pid > 0) {
+                        if (getpgid(pid) > -1 || errno == EPERM)
+                                return pid;
+                        DEBUG("'%s' process test failed [pid=%d] -- %s\n", s->name, pid, STRERROR);
+                }
+        }
+        Util_resetInfo(s);
+        return 0;
+}
+
+
+void Process_testMatch(char *pattern) {
         regex_t *regex_comp;
         int reg_return;
 
@@ -363,67 +341,101 @@ void process_testmatch(char *pattern) {
                 printf("Regex %s parsing error: %s\n", pattern, errbuf);
                 exit(1);
         }
-        initprocesstree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
+        Process_initTree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
         if (Run.flags & Run_ProcessEngineEnabled) {
                 int count = 0;
-                printf("List of processes matching pattern \"%s\":\n\n", pattern);
-                printf("  PID  PPID COMMAND\n");
-                printf("------------------------------------------\n");
+                printf("List of processes matching pattern \"%s\":\n", pattern);
+                StringBuffer_T output = StringBuffer_create(256);
+                Box_T t = Box_new(output, 4, (BoxColumn_T []){{"", 1, false}, {"PID", 5, false}, {"PPID", 5, false}, {"Command", 56, true}}, true);
+                // Select the process matching the pattern
+                int pid = _match(regex_comp);
+                // Print all matching processes and highlight the one which is selected
                 for (int i = 0; i < ptreesize; i++) {
                         if (ptree[i].cmdline && ! strstr(ptree[i].cmdline, "procmatch")) {
                                 if (! regexec(regex_comp, ptree[i].cmdline, 0, NULL, 0)) {
-                                        printf("%*d %*d %s\n", 5, ptree[i].pid, 5, ptree[i].ppid, ptree[i].cmdline);
+                                        if (pid == ptree[i].pid) {
+                                                Box_printColumn(t, COLOR_BOLD "*" COLOR_RESET);
+                                                Box_printColumn(t, COLOR_BOLD "%d" COLOR_RESET, ptree[i].pid);
+                                                Box_printColumn(t, COLOR_BOLD "%d" COLOR_RESET, ptree[i].ppid);
+                                                Box_printColumn(t, COLOR_BOLD "%s" COLOR_RESET, ptree[i].cmdline);
+                                        } else {
+                                                Box_printColumn(t, " ");
+                                                Box_printColumn(t, "%d", ptree[i].pid);
+                                                Box_printColumn(t, "%d", ptree[i].ppid);
+                                                Box_printColumn(t, "%s", ptree[i].cmdline);
+                                        }
                                         count++;
                                 }
                         }
                 }
-                printf("------------------------------------------\n");
+                Box_free(&t);
+                if (Run.flags & Run_Batch || ! Color_support())
+                        Color_strip(Box_strip((char *)StringBuffer_toString(output)));
+                printf("%s", StringBuffer_toString(output));
+                StringBuffer_free(&output);
                 printf("Total matches: %d\n", count);
                 if (count > 1)
-                        printf("WARNING: multiple processes matched the pattern, please refine the pattern if possible. The check is TOP-MOST-PARENT with highest uptime based.\n");
+                        printf("\n"
+                               "WARNING:\n"
+                               "Multiple processes matched the pattern. The check will select a matching process\n"
+                               "with the highest uptime, the one preferred by Monit is highlighted.\n");
         }
 }
 
 
-/**
- * Reads an process dependent entry or the proc filesystem
- * @param buf buffer to write to
- * @param buf_size size of buffer "buf"
- * @param name name of proc service
- * @param pid number of the process / or <0 if main directory
- * @param bytes_read number of bytes read to buffer
- * @return true if succeeded otherwise false.
- */
-boolean_t read_proc_file(char *buf, int buf_size, char *name, int pid, int *bytes_read) {
-        ASSERT(buf);
-        ASSERT(name);
-
-        char filename[STRLEN];
-        if (pid < 0)
-                snprintf(filename, sizeof(filename), "/proc/%s", name);
-        else
-                snprintf(filename, sizeof(filename), "/proc/%d/%s", pid, name);
-
-        int fd = open(filename, O_RDONLY);
-        if (fd < 0) {
-                DEBUG("Cannot open proc file %s -- %s\n", filename, STRERROR);
+//FIXME: move to standalone system class
+boolean_t init_system_info(void) {
+        memset(&systeminfo, 0, sizeof(SystemInfo_T));
+        gettimeofday(&systeminfo.collected, NULL);
+        if (uname(&systeminfo.uname) < 0) {
+                LogError("'%s' resource monitoring initialization error -- uname failed: %s\n", Run.system->name, STRERROR);
                 return false;
         }
+        systeminfo.total_cpu_user_percent = -1.;
+        systeminfo.total_cpu_syst_percent = -1.;
+        systeminfo.total_cpu_wait_percent = -1.;
+        return (init_process_info_sysdep());
+}
 
-        boolean_t rv = false;
-        int bytes = (int)read(fd, buf, buf_size - 1);
-        if (bytes >= 0) {
-                if (bytes_read)
-                        *bytes_read = bytes;
-                buf[bytes] = 0;
-                rv = true;
-        } else {
-                DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
+
+//FIXME: move to standalone system class
+boolean_t update_system_info() {
+        if (Run.flags & Run_ProcessEngineEnabled) {
+                if (getloadavg_sysdep(systeminfo.loadavg, 3) == -1) {
+                        LogError("'%s' statistic error -- load average gathering failed\n", Run.system->name);
+                        goto error1;
+                }
+
+                if (! used_system_memory_sysdep(&systeminfo)) {
+                        LogError("'%s' statistic error -- memory usage gathering failed\n", Run.system->name);
+                        goto error2;
+                }
+                systeminfo.total_mem_percent  = systeminfo.mem_max > 0ULL ? (100. * (double)systeminfo.total_mem / (double)systeminfo.mem_max) : 0.;
+                systeminfo.total_swap_percent = systeminfo.swap_max > 0ULL ? (100. * (double)systeminfo.total_swap / (double)systeminfo.swap_max) : 0.;
+
+                if (! used_system_cpu_sysdep(&systeminfo)) {
+                        LogError("'%s' statistic error -- cpu usage gathering failed\n", Run.system->name);
+                        goto error3;
+                }
+
+                return true;
         }
 
-        if (close(fd) < 0)
-                LogError("proc file %s close failed -- %s\n", filename, STRERROR);
+error1:
+        systeminfo.loadavg[0] = 0;
+        systeminfo.loadavg[1] = 0;
+        systeminfo.loadavg[2] = 0;
+error2:
+        systeminfo.total_mem = 0ULL;
+        systeminfo.total_mem_percent = 0.;
+        systeminfo.total_swap = 0ULL;
+        systeminfo.total_swap_percent = 0.;
+error3:
+        systeminfo.total_cpu_user_percent = 0.;
+        systeminfo.total_cpu_syst_percent = 0.;
+        systeminfo.total_cpu_wait_percent = 0.;
 
-        return rv;
+        return false;
 }
+
 

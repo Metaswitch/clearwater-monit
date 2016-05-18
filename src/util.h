@@ -184,14 +184,6 @@ pid_t Util_getPid(char *pidfile);
 
 
 /**
- * Check whether the process is running
- * @param s The service being checked
- * @return The PID of the running running process or 0 if the process is not running.
- */
-int Util_isProcessRunning(Service_T s);
-
-
-/**
  * Returns true if url contains url safe characters otherwise false
  * @param url an url string to test
  * @return true if url is url safe otherwise false

@@ -119,7 +119,7 @@
 
 
 /**
- * Read program output into stringbuffer. Limit the output to 1kB
+ * Read program output into stringbuffer. Limit the output per Run.limits.programOutput
  */
 static void _programOutput(InputStream_T I, StringBuffer_T S) {
         int n;
@@ -1050,8 +1050,8 @@ int validate() {
         Run.handler_flag = Handler_Succeeded;
         Event_queue_process();
 
-        update_system_load();
-        initprocesstree(&ptree, &ptreesize, ProcessEngine_None);
+        update_system_info();
+        Process_initTree(&ptree, &ptreesize, ProcessEngine_None);
         gettimeofday(&systeminfo.collected, NULL);
 
         /* In the case that at least one action is pending, perform quick loop to handle the actions ASAP */
@@ -1091,7 +1091,7 @@ State_Type check_process(Service_T s) {
         ASSERT(s);
         ASSERT(s->inf);
         State_Type rv = State_Succeeded;
-        pid_t pid = Util_isProcessRunning(s);
+        pid_t pid = Process_running(s);
         if (! pid) {
                 for (Nonexist_T l = s->nonexistlist; l; l = l->next)
                         Event_post(s, Event_Nonexist, State_Failed, l->action, "process is not running");
@@ -1107,7 +1107,7 @@ State_Type check_process(Service_T s) {
                 for (ActionRate_T ar = s->actionratelist; ar; ar = ar->next)
                         Event_post(s, Event_Timeout, State_Succeeded, ar->action, "process is running after previous restart timeout (manually recovered?)");
         if (Run.flags & Run_ProcessEngineEnabled) {
-                if (update_process_data(s, ptree, ptreesize, pid)) {
+                if (Process_update(s, ptree, ptreesize, pid)) {
                         if (_checkProcessState(s) == State_Failed)
                                 rv = State_Failed;
                         if (_checkProcessPid(s) == State_Failed)

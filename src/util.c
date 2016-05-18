@@ -294,13 +294,6 @@ static void printevents(unsigned int events) {
 }
 
 
-static boolean_t _processMatch(Match_T match, const char *command) {
-        if (STR_DEF(command))
-                return regexec(match->regex_comp, command, 0, NULL, 0) ? false : true;
-        return false;
-}
-
-
 #ifdef HAVE_LIBPAM
 /**
  * PAM conversation
@@ -1473,44 +1466,6 @@ pid_t Util_getPid(char *pidfile) {
 
         return (pid_t)pid;
 
-}
-
-
-int Util_isProcessRunning(Service_T s) {
-        ASSERT(s);
-        errno = 0;
-        if (s->matchlist) {
-                // Test the cached PID first
-                if (s->inf->priv.process.pid > 0 && (getpgid(s->inf->priv.process.pid) > -1 || errno == EPERM))
-                        return s->inf->priv.process.pid;
-                // If the cached PID is not running, rescan the process tree
-                initprocesstree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
-                /* The process table read may sporadically fail during read, because we're using glob on some platforms which may fail if the proc filesystem
-                 * which it traverses is changed during glob (process stopped). Note that the glob failure is rare and temporary - it will be OK on next cycle.
-                 * We skip the process matching that cycle however because we don't have process informations - will retry next cycle */
-                if (Run.flags & Run_ProcessEngineEnabled) {
-                        int found = -1;
-                        // Scan the whole process tree and find the oldest matching process whose parent doesn't match the pattern
-                        for (int i = 0; i < ptreesize; i++)
-                                if (_processMatch(s->matchlist, ptree[i].cmdline) && (i == ptree[i].parent || ! _processMatch(s->matchlist, ptree[ptree[i].parent].cmdline)) && (found == -1 || ptree[found].uptime < ptree[i].uptime))
-                                        found = i;
-                        if (found >= 0)
-                                return ptree[found].pid;
-                } else {
-                        DEBUG("Process information not available -- skipping service %s process existence check for this cycle\n", s->name);
-                        /* Return value is NOOP - it is based on existing errors bitmap so we don't generate false recovery/failures */
-                        return ! (s->error & Event_Nonexist);
-                }
-        } else {
-                pid_t pid = Util_getPid(s->path);
-                if (pid > 0) {
-                        if (getpgid(pid) > -1 || errno == EPERM)
-                                return pid;
-                        DEBUG("'%s' process test failed [pid=%d] -- %s\n", s->name, pid, STRERROR);
-                }
-        }
-        Util_resetInfo(s);
-        return 0;
 }
 
 

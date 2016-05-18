@@ -277,6 +277,7 @@ static void _formatStatus(const char *name, Event_Type errorType, Output_Type ty
 
 
 static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
+        _formatStatus("data collected", Event_Null, type, res, s, true, "%s", Time_string(s->collected.tv_sec, (char[32]){}));
         if (Util_hasServiceStatus(s)) {
                 switch (s->type) {
                         case Service_System:
@@ -382,7 +383,7 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                         case Service_Program:
                                 if (s->program->started) {
                                         _formatStatus("last exit value", Event_Status, type, res, s, true, "%d", s->program->exitStatus);
-                                        _formatStatus("last output", Event_Status, type, res, s, StringBuffer_length(s->program->output), "%s", StringBuffer_toString(s->program->output));
+                                        _formatStatus("last output", Event_Status, type, res, s, StringBuffer_length(s->program->output), "%s", StringBuffer_toString(s->program->output)); //FIXME: use both columns
                                 }
                                 break;
 
@@ -410,7 +411,6 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                         }
                 }
         }
-        _formatStatus("data collected", Event_Null, type, res, s, true, "%s", Time_string(s->collected.tv_sec, (char[32]){}));
 }
 
 
@@ -2184,7 +2184,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
         } else {
                 set_content_type(res, "text/plain");
 
-                StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, _getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
+                StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, _getUptime(Process_getUptime(getpid(), ptree, ptreesize), (char[256]){}));
 
                 int found = 0;
                 const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
@@ -2241,12 +2241,12 @@ static int _printServiceSummaryByType(Box_T t, Service_Type type) {
 static void print_summary(HttpRequest req, HttpResponse res) {
         set_content_type(res, "text/plain");
 
-        StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, _getUptime(getProcessUptime(getpid(), ptree, ptreesize), (char[256]){}));
+        StringBuffer_append(res->outputbuffer, "The Monit daemon %s uptime: %s\n\n", VERSION, _getUptime(Process_getUptime(getpid(), ptree, ptreesize), (char[256]){}));
 
         int found = 0;
         const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
         const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
-        Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){{"Service Name", 31}, {"Status", 26}, {"Type", 13}}, true);
+        Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){{"Service Name", 31, false}, {"Status", 26, false}, {"Type", 13, false}}, true);
         if (stringGroup) {
                 for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                         if (IS(stringGroup, sg->name)) {

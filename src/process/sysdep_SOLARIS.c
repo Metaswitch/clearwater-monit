@@ -162,7 +162,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
 
         for (int i = 0; i < treesize; i++) {
                 pt[i].pid = atoi(globbuf.gl_pathv[i] + strlen("/proc/"));
-                if (read_proc_file(buf, sizeof(buf), "psinfo", pt[i].pid, NULL)) {
+                if (file_readProc(buf, sizeof(buf), "psinfo", pt[i].pid, NULL)) {
                         pt[i].ppid         = psinfo->pr_ppid;
                         pt[i].cred.uid     = psinfo->pr_uid;
                         pt[i].cred.euid    = psinfo->pr_euid;
@@ -177,7 +177,7 @@ int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags
                                         pt[i].cmdline = Str_dup(psinfo->pr_fname);
                                 }
                         }
-                        if (read_proc_file(buf, sizeof(buf), "status", pt[i].pid, NULL)) {
+                        if (file_readProc(buf, sizeof(buf), "status", pt[i].pid, NULL)) {
                                 memcpy(&pstatus, buf, sizeof(pstatus_t));
                                 pt[i].cpu.time = timestruc_to_tseconds(pstatus.pr_utime) + timestruc_to_tseconds(pstatus.pr_stime);
                                 pt[i].threads = pstatus.pr_nlwp;

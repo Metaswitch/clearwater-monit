@@ -293,3 +293,37 @@ void *file_readQueue(FILE *file, size_t *size) {
         return data;
 }
 
+
+boolean_t file_readProc(char *buf, int buf_size, char *name, int pid, int *bytes_read) {
+        ASSERT(buf);
+        ASSERT(name);
+
+        char filename[STRLEN];
+        if (pid < 0)
+                snprintf(filename, sizeof(filename), "/proc/%s", name);
+        else
+                snprintf(filename, sizeof(filename), "/proc/%d/%s", pid, name);
+
+        int fd = open(filename, O_RDONLY);
+        if (fd < 0) {
+                DEBUG("Cannot open proc file %s -- %s\n", filename, STRERROR);
+                return false;
+        }
+
+        boolean_t rv = false;
+        int bytes = (int)read(fd, buf, buf_size - 1);
+        if (bytes >= 0) {
+                if (bytes_read)
+                        *bytes_read = bytes;
+                buf[bytes] = 0;
+                rv = true;
+        } else {
+                DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
+        }
+
+        if (close(fd) < 0)
+                LogError("proc file %s close failed -- %s\n", filename, STRERROR);
+
+        return rv;
+}
+

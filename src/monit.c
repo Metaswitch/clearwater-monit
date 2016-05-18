@@ -268,9 +268,9 @@ static void do_init() {
                 Run.files.control = file_findControlFile();
 
         /*
-         * Initialize the process information gathering interface
+         * Initialize the system information gathering interface
          */
-        if (init_process_info())
+        if (init_system_info())
                 Run.flags |= Run_ProcessEngineEnabled;
 
         /*
@@ -464,7 +464,7 @@ static void do_action(char **args) {
                         printf("Invalid syntax - usage: procmatch \"<pattern>\"\n");
                         exit(1);
                 }
-                process_testmatch(pattern);
+                Process_testMatch(pattern);
         } else if (IS(action, "quit")) {
                 kill_daemon(SIGTERM);
         } else if (IS(action, "validate")) {
