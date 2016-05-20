@@ -39,7 +39,7 @@
  *  @file
  */
 void check_imap(Socket_T socket) {
-        char buf[STRLEN];
+        char buf[512];
         const char *ok = "* OK";
         const char *bye = "* BYE";
 
@@ -49,7 +49,7 @@ void check_imap(Socket_T socket) {
         if (! Socket_readLine(socket, buf, sizeof(buf)))
                 THROW(IOException, "IMAP: greeting read error -- %s", errno ? STRERROR : "no data");
         Str_chomp(buf);
-        if (strncasecmp(buf, ok, strlen(ok)) != 0)
+        if (! Str_startsWith(buf, ok))
                 THROW(IOException, "IMAP: invalid greeting -- %s", buf);
 
         // Logout and check response
