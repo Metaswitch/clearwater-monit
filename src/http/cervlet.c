@@ -277,7 +277,6 @@ static void _formatStatus(const char *name, Event_Type errorType, Output_Type ty
 
 
 static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
-        _formatStatus("data collected", Event_Null, type, res, s, true, "%s", Time_string(s->collected.tv_sec, (char[32]){}));
         if (Util_hasServiceStatus(s)) {
                 switch (s->type) {
                         case Service_System:
@@ -411,6 +410,7 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                         }
                 }
         }
+        _formatStatus("data collected", Event_Null, type, res, s, true, "%s", Time_string(s->collected.tv_sec, (char[32]){}));
 }
 
 
