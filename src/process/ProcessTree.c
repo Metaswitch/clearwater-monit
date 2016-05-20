@@ -177,7 +177,7 @@ static boolean_t _match(regex_t *regex) {
         int found = -1;
         // Scan the whole process tree and find the oldest matching process whose parent doesn't match the pattern
         for (int i = 0; i < ptreesize; i++)
-                if (regexec(regex, ptree[i].cmdline, 0, NULL, 0) == 0 && (i == ptree[i].parent || regexec(regex, ptree[ptree[i].parent].cmdline, 0, NULL, 0) != 0) && (found == -1 || ptree[found].uptime < ptree[i].uptime))
+                if (ptree[i].cmdline && regexec(regex, ptree[i].cmdline, 0, NULL, 0) == 0 && (i == ptree[i].parent || ! ptree[ptree[i].parent].cmdline || regexec(regex, ptree[ptree[i].parent].cmdline, 0, NULL, 0) != 0) && (found == -1 || ptree[found].uptime < ptree[i].uptime))
                         found = i;
         return found >= 0 ? ptree[found].pid : found;
 }
