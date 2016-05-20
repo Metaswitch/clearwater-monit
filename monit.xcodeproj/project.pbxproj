@@ -33,7 +33,6 @@
 		52F6E82113A74F220023F87A /* net.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77013A74F220023F87A /* net.c */; };
 		52F6E82213A74F220023F87A /* p.y in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77213A74F220023F87A /* p.y */; };
 		52F6E82513A74F220023F87A /* sysdep_DARWIN.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77713A74F220023F87A /* sysdep_DARWIN.c */; };
-		52F6E82D13A74F220023F87A /* process.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E77F13A74F220023F87A /* process.c */; };
 		52F6E82E13A74F220023F87A /* apache_status.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E78213A74F220023F87A /* apache_status.c */; };
 		52F6E82F13A74F220023F87A /* clamav.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E78313A74F220023F87A /* clamav.c */; };
 		52F6E83013A74F220023F87A /* default.c in Sources */ = {isa = PBXBuildFile; fileRef = 52F6E78413A74F220023F87A /* default.c */; };
@@ -81,6 +80,7 @@
 		9378737B1A13907100CF8C5E /* sieve.c in Sources */ = {isa = PBXBuildFile; fileRef = 9378737A1A13907100CF8C5E /* sieve.c */; };
 		93A23ED41C85E6890076FBFE /* Address.c in Sources */ = {isa = PBXBuildFile; fileRef = 93A23ED21C85E6890076FBFE /* Address.c */; };
 		93DE91B01CBAED0400BC8E0C /* client.c in Sources */ = {isa = PBXBuildFile; fileRef = 93DE91AE1CBAED0400BC8E0C /* client.c */; };
+		93F515891CEF651000CC00F4 /* ProcessTree.c in Sources */ = {isa = PBXBuildFile; fileRef = 93F515861CEF651000CC00F4 /* ProcessTree.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -238,8 +238,6 @@
 		52F6E77C13A74F220023F87A /* sysdep_OPENBSD.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = sysdep_OPENBSD.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E77D13A74F220023F87A /* sysdep_SOLARIS.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = sysdep_SOLARIS.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E77E13A74F220023F87A /* sysdep_UNKNOWN.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = sysdep_UNKNOWN.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		52F6E77F13A74F220023F87A /* process.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = process.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
-		52F6E78013A74F220023F87A /* process.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; lineEnding = 0; path = process.h; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.objcpp; };
 		52F6E78213A74F220023F87A /* apache_status.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = apache_status.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E78313A74F220023F87A /* clamav.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = clamav.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		52F6E78413A74F220023F87A /* default.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = default.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -299,6 +297,8 @@
 		93A23ED31C85E6890076FBFE /* Address.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Address.h; sourceTree = "<group>"; };
 		93DE91AE1CBAED0400BC8E0C /* client.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
 		93DE91AF1CBAED0400BC8E0C /* client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = client.h; sourceTree = "<group>"; };
+		93F515861CEF651000CC00F4 /* ProcessTree.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = ProcessTree.c; sourceTree = "<group>"; };
+		93F515871CEF651000CC00F4 /* ProcessTree.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ProcessTree.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -495,8 +495,6 @@
 				52F6E77013A74F220023F87A /* net.c */,
 				52F6E77113A74F220023F87A /* net.h */,
 				52F6E77213A74F220023F87A /* p.y */,
-				52F6E77F13A74F220023F87A /* process.c */,
-				52F6E78013A74F220023F87A /* process.h */,
 				52AE77CA14037DA300D2861D /* sha1.c */,
 				52AE77CB14037DA300D2861D /* sha1.h */,
 				52F6E7A313A74F220023F87A /* signal.c */,
@@ -553,6 +551,8 @@
 		52F6E77313A74F220023F87A /* process */ = {
 			isa = PBXGroup;
 			children = (
+				93F515861CEF651000CC00F4 /* ProcessTree.c */,
+				93F515871CEF651000CC00F4 /* ProcessTree.h */,
 				52F6E77513A74F220023F87A /* process_sysdep.h */,
 				52F6E77613A74F220023F87A /* sysdep_AIX.c */,
 				52F6E77713A74F220023F87A /* sysdep_DARWIN.c */,
@@ -757,7 +757,6 @@
 				52F6E82113A74F220023F87A /* net.c in Sources */,
 				52F6E82213A74F220023F87A /* p.y in Sources */,
 				52F6E82513A74F220023F87A /* sysdep_DARWIN.c in Sources */,
-				52F6E82D13A74F220023F87A /* process.c in Sources */,
 				52F6E82E13A74F220023F87A /* apache_status.c in Sources */,
 				52F6E82F13A74F220023F87A /* clamav.c in Sources */,
 				52F6E83013A74F220023F87A /* default.c in Sources */,
@@ -776,6 +775,7 @@
 				52F6E83A13A74F220023F87A /* lmtp.c in Sources */,
 				52F6E83B13A74F220023F87A /* memcache.c in Sources */,
 				93A23ED41C85E6890076FBFE /* Address.c in Sources */,
+				93F515891CEF651000CC00F4 /* ProcessTree.c in Sources */,
 				9357B19C19F2F5A400329B3F /* redis.c in Sources */,
 				52F6E83C13A74F220023F87A /* mysql.c in Sources */,
 				52F6E83D13A74F220023F87A /* nntp.c in Sources */,
