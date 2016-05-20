@@ -523,38 +523,6 @@ typedef struct myauthentication {
 } *Auth_T;
 
 
-/** Defines process tree - data storage backend */
-typedef struct myprocesstree {
-        boolean_t visited;
-        boolean_t zombie;
-        pid_t pid;
-        pid_t ppid;
-        int threads;
-        int parent;
-        struct {
-                int uid;
-                int euid;
-                int gid;
-        } cred;
-        struct {
-                float usage;
-                float usage_total;
-                double time;                                     /**< 1/10 seconds */
-        } cpu;
-        struct {
-                int count;
-                int total;
-                int *list;
-        } children;
-        struct {
-                uint64_t usage;
-                uint64_t usage_total;
-        } memory;
-        time_t uptime;
-        char *cmdline;
-} ProcessTree_T;
-
-
 /** Defines data for systemwide statistic */
 //FIXME: structurize the data
 typedef struct mysysteminfo {
@@ -1201,8 +1169,6 @@ extern Service_T      servicelist;
 extern Service_T      servicelist_conf;
 extern ServiceGroup_T servicegrouplist;
 extern SystemInfo_T   systeminfo;
-extern ProcessTree_T *ptree;
-extern int            ptreesize;
 
 extern char *actionnames[];
 extern char *modenames[];

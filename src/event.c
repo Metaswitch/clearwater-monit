@@ -60,7 +60,7 @@
 #include "monit.h"
 #include "alert.h"
 #include "event.h"
-#include "process.h"
+#include "ProcessTree.h"
 
 // libmonit
 #include "io/File.h"

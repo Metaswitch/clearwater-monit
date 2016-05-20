@@ -115,7 +115,7 @@
 #include "sha1.h"
 #include "base64.h"
 #include "alert.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "event.h"
 #include "state.h"
 #include "protocol.h"

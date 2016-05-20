@@ -37,7 +37,7 @@
 
 #include "monit.h"
 #include "protocol.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "engine.h"
 
 
@@ -90,7 +90,7 @@ static void _gc_request(Request_T *);
 void gc() {
         Engine_destroyHostsAllow();
         if (Run.flags & Run_ProcessEngineEnabled)
-                Process_deleteTree(&ptree, &ptreesize);
+                ProcessTree_delete();
         if (servicelist)
                 _gc_service_list(&servicelist);
         if (servicegrouplist)

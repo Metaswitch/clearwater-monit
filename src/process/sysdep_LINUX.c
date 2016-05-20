@@ -74,7 +74,7 @@
 #endif
 
 #include "monit.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "process_sysdep.h"
 
 // libmonit

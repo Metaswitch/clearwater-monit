@@ -35,7 +35,6 @@ monit_SOURCES	= src/y.tab.c \
 		  src/md5.c \
 		  src/md5_crypt.c \
 		  src/net.c \
-		  src/process.c \
 		  src/sha1.c \
 		  src/signal.c \
 		  src/socket.c \
@@ -53,6 +52,7 @@ monit_SOURCES	= src/y.tab.c \
 		  src/http/processor.c \
 		  src/notification/Address.c \
 		  src/notification/SMTP.c \
+		  src/process/ProcessTree.c \
 		  src/process/sysdep_@ARCH@.c \
 		  src/protocols/apache_status.c \
 		  src/protocols/clamav.c \

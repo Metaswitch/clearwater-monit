@@ -52,17 +52,24 @@
 #include <string.h>
 #endif
 
+#ifdef HAVE_STDIO_H
 #include <stdio.h>
+#endif
+
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
 
 #include "monit.h"
 #include "event.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "process_sysdep.h"
 #include "Box.h"
 #include "Color.h"
 
 // libmonit
 #include "system/Time.h"
+
 
 /**
  *  General purpose /proc methods.
@@ -71,7 +78,29 @@
  */
 
 
+/* ------------------------------------------------------------- Definitions */
+
+
+static int ptreesize = 0;
+static ProcessTree_T *ptree = NULL;
+
+
 /* ----------------------------------------------------------------- Private */
+
+
+static void _delete(ProcessTree_T **pt, int *size) {
+        ASSERT(pt);
+        ProcessTree_T *_pt = *pt;
+        if (_pt) {
+                for (int i = 0; i < *size; i++) {
+                        FREE(_pt[i].cmdline);
+                        FREE(_pt[i].children.list);
+                }
+                FREE(_pt);
+                *pt = NULL;
+                *size = 0;
+        }
+}
 
 
 /**
@@ -81,9 +110,9 @@
  * @param treesize  size of the processtree
  * @return process index if succeeded otherwise -1
  */
-static int _findProcess(int pid, ProcessTree_T *pt, int treesize) {
-        if (treesize > 0) {
-                for (int i = 0; i < treesize; i++)
+static int _findProcess(int pid, ProcessTree_T *pt, int size) {
+        if (size > 0) {
+                for (int i = 0; i < size; i++)
                         if (pid == pt[i].pid)
                                 return i;
         }
@@ -157,67 +186,30 @@ static boolean_t _match(regex_t *regex) {
 /* ------------------------------------------------------------------ Public */
 
 
-boolean_t Process_update(Service_T s, ProcessTree_T *pt, int treesize, pid_t pid) {
-        ASSERT(s);
-
-        /* save the previous pid and set actual one */
-        s->inf->priv.process._pid = s->inf->priv.process.pid;
-        s->inf->priv.process.pid  = pid;
-
-        int leaf = _findProcess(pid, pt, treesize);
-        if (leaf != -1) {
-                /* save the previous ppid and set actual one */
-                s->inf->priv.process._ppid             = s->inf->priv.process.ppid;
-                s->inf->priv.process.ppid              = pt[leaf].ppid;
-                s->inf->priv.process.uid               = pt[leaf].cred.uid;
-                s->inf->priv.process.euid              = pt[leaf].cred.euid;
-                s->inf->priv.process.gid               = pt[leaf].cred.gid;
-                s->inf->priv.process.uptime            = pt[leaf].uptime;
-                s->inf->priv.process.threads           = pt[leaf].threads;
-                s->inf->priv.process.children          = pt[leaf].children.total;
-                s->inf->priv.process.zombie            = pt[leaf].zombie;
-                s->inf->priv.process.cpu_percent       = pt[leaf].cpu.usage;
-                s->inf->priv.process.total_cpu_percent = pt[leaf].cpu.usage_total > 100. ? 100. : pt[leaf].cpu.usage_total;
-                s->inf->priv.process.mem               = pt[leaf].memory.usage;
-                s->inf->priv.process.total_mem         = pt[leaf].memory.usage_total;
-                if (systeminfo.mem_max > 0) {
-                        s->inf->priv.process.total_mem_percent = pt[leaf].memory.usage_total >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].memory.usage_total / (double)systeminfo.mem_max);
-                        s->inf->priv.process.mem_percent       = pt[leaf].memory.usage >= systeminfo.mem_max ? 100. : (100. * (double)pt[leaf].memory.usage / (double)systeminfo.mem_max);
-                }
-                return true;
-        }
-        Util_resetInfo(s);
-        return false;
-}
-
-
 /**
  * Initialize the process tree
  * @return treesize >= 0 if succeeded otherwise < 0
  */
-int Process_initTree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflags) {
-        ASSERT(pt_r);
-        ASSERT(size_r);
-
-        ProcessTree_T *oldpt = *pt_r;
-        int oldsize = *size_r;
-        if (oldpt) {
-                *pt_r = NULL;
-                *size_r = 0;
+int ProcessTree_init(ProcessEngine_Flags pflags) {
+        ProcessTree_T *oldptree = ptree;
+        int oldptreesize = ptreesize;
+        if (oldptree) {
+                ptree = NULL;
+                ptreesize = 0;
                 // We need only process' cpu.time from the old ptree, so free dynamically allocated parts which we don't need before initializing new ptree (so the memory can be reused, otherwise the memory footprint will hold two ptrees)
-                for (int i = 0; i < oldsize; i++) {
-                        FREE(oldpt[i].cmdline);
-                        FREE(oldpt[i].children.list);
+                for (int i = 0; i < oldptreesize; i++) {
+                        FREE(oldptree[i].cmdline);
+                        FREE(oldptree[i].children.list);
                 }
         }
 
         systeminfo.time_prev = systeminfo.time;
         systeminfo.time = Time_milli() / 100.;
-        if ((*size_r = initprocesstree_sysdep(pt_r, pflags)) <= 0 || ! *pt_r) {
+        if ((ptreesize = initprocesstree_sysdep(&ptree, pflags)) <= 0 || ! ptree) {
                 DEBUG("System statistic -- cannot initialize the process tree -- process resource monitoring disabled\n");
                 Run.flags &= ~Run_ProcessEngineEnabled;
-                if (oldpt)
-                        Process_deleteTree(&oldpt, &oldsize);
+                if (oldptree)
+                        _delete(&oldptree, &oldptreesize);
                 return -1;
         } else if (! (Run.flags & Run_ProcessEngineEnabled)) {
                 DEBUG("System statistic -- initialization of the process tree succeeded -- process resource monitoring enabled\n");
@@ -225,25 +217,25 @@ int Process_initTree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pfla
         }
 
         int root = -1; // Main process. Not all systems have main process with PID 1 (such as Solaris zones and FreeBSD jails), so we try to find process which is parent of itself
-        ProcessTree_T *pt = *pt_r;
+        ProcessTree_T *pt = ptree;
         double time_delta = systeminfo.time - systeminfo.time_prev;
-        for (int i = 0; i < (volatile int)*size_r; i ++) {
-                if (oldpt) {
-                        int oldentry = _findProcess(pt[i].pid, oldpt, oldsize);
+        for (int i = 0; i < (volatile int)ptreesize; i ++) {
+                if (oldptree) {
+                        int oldentry = _findProcess(pt[i].pid, oldptree, oldptreesize);
                         if (oldentry != -1)
-                                pt[i].cpu.usage = _cpuUsage(&pt[i], &oldpt[oldentry], time_delta);
+                                pt[i].cpu.usage = _cpuUsage(&pt[i], &oldptree[oldentry], time_delta);
                 }
                 // Note: on DragonFly, main process is swapper with pid 0 and ppid -1, so take also this case into consideration
                 if ((pt[i].pid == pt[i].ppid) || (pt[i].ppid == -1)) {
                         root = pt[i].parent = i;
                 } else {
                         // Find this process' parent
-                        int parent = _findProcess(pt[i].ppid, pt, *size_r);
+                        int parent = _findProcess(pt[i].ppid, pt, ptreesize);
                         if (parent == -1) {
                                 /* Parent process wasn't found - on Linux this is normal: main process with PID 0 is not listed, similarly in FreeBSD jail.
                                  * We create virtual process entry for missing parent so we can have full tree-like structure with root. */
-                                parent = (*size_r)++;
-                                pt = RESIZE(*pt_r, *size_r * sizeof(ProcessTree_T));
+                                parent = ptreesize++;
+                                pt = RESIZE(ptree, ptreesize * sizeof(ProcessTree_T));
                                 memset(&pt[parent], 0, sizeof(ProcessTree_T));
                                 root = pt[parent].ppid = pt[parent].pid = pt[i].ppid;
                         }
@@ -254,47 +246,71 @@ int Process_initTree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pfla
                         pt[parent].children.count++;
                 }
         }
-        FREE(oldpt); // Free the rest of old ptree
+        FREE(oldptree); // Free the rest of old ptree
         if (root == -1) {
                 DEBUG("System statistic error -- cannot find root process id\n");
-                Process_deleteTree(pt_r, size_r);
+                _delete(&ptree, &ptreesize);
                 return -1;
         }
 
         _fillProcessTree(pt, root);
 
-        return *size_r;
+        return ptreesize;
 }
 
 
 /**
  * Delete the process tree
  */
-void Process_deleteTree(ProcessTree_T **reference, int *size) {
-        ProcessTree_T *pt = *reference;
-        if (pt) {
-                for (int i = 0; i < *size; i++) {
-                        FREE(pt[i].cmdline);
-                        FREE(pt[i].children.list);
+void ProcessTree_delete() {
+        _delete(&ptree, &ptreesize);
+}
+
+
+boolean_t ProcessTree_updateProcess(Service_T s, pid_t pid) {
+        ASSERT(s);
+
+        /* save the previous pid and set actual one */
+        s->inf->priv.process._pid = s->inf->priv.process.pid;
+        s->inf->priv.process.pid  = pid;
+
+        int leaf = _findProcess(pid, ptree, ptreesize);
+        if (leaf != -1) {
+                /* save the previous ppid and set actual one */
+                s->inf->priv.process._ppid             = s->inf->priv.process.ppid;
+                s->inf->priv.process.ppid              = ptree[leaf].ppid;
+                s->inf->priv.process.uid               = ptree[leaf].cred.uid;
+                s->inf->priv.process.euid              = ptree[leaf].cred.euid;
+                s->inf->priv.process.gid               = ptree[leaf].cred.gid;
+                s->inf->priv.process.uptime            = ptree[leaf].uptime;
+                s->inf->priv.process.threads           = ptree[leaf].threads;
+                s->inf->priv.process.children          = ptree[leaf].children.total;
+                s->inf->priv.process.zombie            = ptree[leaf].zombie;
+                s->inf->priv.process.cpu_percent       = ptree[leaf].cpu.usage;
+                s->inf->priv.process.total_cpu_percent = ptree[leaf].cpu.usage_total > 100. ? 100. : ptree[leaf].cpu.usage_total;
+                s->inf->priv.process.mem               = ptree[leaf].memory.usage;
+                s->inf->priv.process.total_mem         = ptree[leaf].memory.usage_total;
+                if (systeminfo.mem_max > 0) {
+                        s->inf->priv.process.total_mem_percent = ptree[leaf].memory.usage_total >= systeminfo.mem_max ? 100. : (100. * (double)ptree[leaf].memory.usage_total / (double)systeminfo.mem_max);
+                        s->inf->priv.process.mem_percent       = ptree[leaf].memory.usage >= systeminfo.mem_max ? 100. : (100. * (double)ptree[leaf].memory.usage / (double)systeminfo.mem_max);
                 }
-                FREE(pt);
-                *reference = NULL;
-                *size = 0;
+                return true;
         }
+        Util_resetInfo(s);
+        return false;
 }
 
 
-time_t Process_getUptime(pid_t pid, ProcessTree_T *pt, int treesize) {
-        if (pt) {
-                int leaf = _findProcess(pid, pt, treesize);
-                return (time_t)((leaf >= 0 && leaf < treesize) ? pt[leaf].uptime : -1);
-        } else {
-                return 0;
+time_t ProcessTree_getProcessUptime(pid_t pid) {
+        if (ptree) {
+                int leaf = _findProcess(pid, ptree, ptreesize);
+                return (time_t)((leaf >= 0 && leaf < ptreesize) ? ptree[leaf].uptime : -1);
         }
+        return 0;
 }
 
 
-int Process_running(Service_T s) {
+pid_t ProcessTree_findProcess(Service_T s) {
         ASSERT(s);
         errno = 0;
         if (s->matchlist) {
@@ -302,7 +318,7 @@ int Process_running(Service_T s) {
                 if (s->inf->priv.process.pid > 0 && (getpgid(s->inf->priv.process.pid) > -1 || errno == EPERM))
                         return s->inf->priv.process.pid;
                 // If the cached PID is not running, rescan the process tree
-                Process_initTree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
+                ProcessTree_init(ProcessEngine_CollectCommandLine);
                 /* The process table read may sporadically fail during read, because we're using glob on some platforms which may fail if the proc filesystem
                  * which it traverses is changed during glob (process stopped). Note that the glob failure is rare and temporary - it will be OK on next cycle.
                  * We skip the process matching that cycle however because we don't have process informations - will retry next cycle */
@@ -328,7 +344,7 @@ int Process_running(Service_T s) {
 }
 
 
-void Process_testMatch(char *pattern) {
+void ProcessTree_testMatch(char *pattern) {
         regex_t *regex_comp;
         int reg_return;
 
@@ -341,7 +357,7 @@ void Process_testMatch(char *pattern) {
                 printf("Regex %s parsing error: %s\n", pattern, errbuf);
                 exit(1);
         }
-        Process_initTree(&ptree, &ptreesize, ProcessEngine_CollectCommandLine);
+        ProcessTree_init(ProcessEngine_CollectCommandLine);
         if (Run.flags & Run_ProcessEngineEnabled) {
                 int count = 0;
                 printf("List of processes matching pattern \"%s\":\n", pattern);

@@ -53,7 +53,7 @@
 #endif
 
 #include "monit.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "net.h"
 #include "socket.h"
 #include "event.h"
@@ -168,10 +168,10 @@ static Process_Status _waitProcessStart(Service_T s, int64_t *timeout) {
         long wait = RETRY_INTERVAL;
         do {
                 Time_usleep(wait);
-                if (Process_running(s))
+                if (ProcessTree_findProcess(s))
                         return Process_Started;
                 *timeout -= wait;
-                wait = wait < 1000000 ? wait * 2 : 1000000; // double the wait during each cycle until 1s is reached (Process_running can be heavy and we don't want to drain power every 100ms on mobile devices)
+                wait = wait < 1000000 ? wait * 2 : 1000000; // double the wait during each cycle until 1s is reached (ProcessTree_findProcess can be heavy and we don't want to drain power every 100ms on mobile devices)
         } while (*timeout > 0 && ! (Run.flags & Run_Stopped));
         return Process_Stopped;
 }
@@ -234,7 +234,7 @@ static boolean_t _doStart(Service_T s) {
         }
         if (rv) {
                 if (s->start) {
-                        if (s->type != Service_Process || ! Process_running(s)) {
+                        if (s->type != Service_Process || ! ProcessTree_findProcess(s)) {
                                 LogInfo("'%s' start: %s\n", s->name, s->start->arg[0]);
                                 char msg[STRLEN];
                                 int64_t timeout = s->start->timeout * USEC_PER_SEC;
@@ -289,7 +289,7 @@ static boolean_t _doStop(Service_T s, boolean_t unmonitor) {
                         char msg[STRLEN];
                         int64_t timeout = s->stop->timeout * USEC_PER_SEC;
                         if (s->type == Service_Process) {
-                                int pid = Process_running(s);
+                                int pid = ProcessTree_findProcess(s);
                                 if (pid) {
                                         exitStatus = _executeStop(s, msg, sizeof(msg), &timeout);
                                         rv = _waitProcessStop(pid, &timeout) == Process_Stopped ? true : false;

@@ -45,12 +45,16 @@
 #include <errno.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 // libmonit
 #include "util/List.h"
 
 #include "monit.h"
 #include "event.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "protocol.h"
 
 
@@ -105,7 +109,7 @@ static void document_head(StringBuffer_T B, int V, const char *myip) {
                             "<startdelay>%d</startdelay>"
                             "<localhostname>%s</localhostname>"
                             "<controlfile>%s</controlfile>",
-                            (long long)Process_getUptime(getpid(), ptree, ptreesize),
+                            (long long)ProcessTree_getProcessUptime(getpid()),
                             Run.polltime,
                             Run.startdelay,
                             Run.system->name ? Run.system->name : "",

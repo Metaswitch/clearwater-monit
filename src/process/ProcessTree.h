@@ -22,68 +22,87 @@
  * for all of the code used other than OpenSSL.
  */
 
-#ifndef MONIT_PROCESS_H
-#define MONIT_PROCESS_H
+#ifndef MONIT_PROCESSTREE_H
+#define MONIT_PROCESSTREE_H
 
 #include "config.h"
 
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
+
+typedef struct ProcessTree_T {
+        boolean_t visited;
+        boolean_t zombie;
+        pid_t pid;
+        pid_t ppid;
+        int threads;
+        int parent;
+        struct {
+                int uid;
+                int euid;
+                int gid;
+        } cred;
+        struct {
+                float usage;
+                float usage_total;
+                double time;
+        } cpu;
+        struct {
+                int count;
+                int total;
+                int *list;
+        } children;
+        struct {
+                uint64_t usage;
+                uint64_t usage_total;
+        } memory;
+        time_t uptime;
+        char *cmdline;
+} ProcessTree_T;
+
+
+/**
+ * Initialize the process tree
+ * @param pflags Process engine flags
+ * @return The process tree size or -1 if failed
+ */
+int ProcessTree_init(ProcessEngine_Flags pflags);
+
+
+/**
+ * Delete the process tree
+ */
+void ProcessTree_delete();
 
 
 /**
  * Update the process infomation.
  * @param s A Service object
- * @param pt Process tree
- * @param treesize Process tree size
  * @param pid Process PID to update
  * @return true if succeeded otherwise false.
  */
-boolean_t Process_update(Service_T s, ProcessTree_T *pt, int treesize, pid_t pid);
-
-
-/**
- * Initialize the process tree
- * @param pt_r Process tree reference
- * @param size_r Process tree size reference
- * @param pflags  Flags
- * @return The process tree size or -1 if failed
- */
-int Process_initTree(ProcessTree_T **pt_r, int *size_r, ProcessEngine_Flags pflags);
-
-
-/**
- * Delete the process tree
- * @param reference Process tree reference
- * @param size Process tree size reference
- */
-void Process_deleteTree(ProcessTree_T **reference, int *size);
+boolean_t ProcessTree_updateProcess(Service_T s, pid_t pid);
 
 
 /**
  * Get process uptime
  * @param pid Process PID
- * @param pt Process tree reference
- * @param treesize Process tree size
  * @return The PID of the running running process or 0 if the process is not running.
  */
-time_t Process_getUptime(pid_t pid, ProcessTree_T *pt, int treesize);
+time_t ProcessTree_getProcessUptime(pid_t pid);
 
 
 /**
- * Check if the process is running
+ * Find the process in the process tree
  * @param s The service being checked
  * @return The PID of the running running process or 0 if the process is not running.
  */
-int Process_running(Service_T s);
+pid_t ProcessTree_findProcess(Service_T s);
 
 
 /**
  * Print a table with all processes matching a given pattern
  * @param pattern The process pattern
  */
-void Process_testMatch(char *pattern);
+void ProcessTree_testMatch(char *pattern);
 
 
 /**

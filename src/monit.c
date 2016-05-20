@@ -72,7 +72,7 @@
 
 #include "monit.h"
 #include "net.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "state.h"
 #include "event.h"
 #include "engine.h"
@@ -131,9 +131,6 @@ Thread_T heartbeatThread;
 Sem_T    heartbeatCond;
 Mutex_T  heartbeatMutex;
 static volatile boolean_t heartbeatRunning = false;
-
-int ptreesize = 0;
-ProcessTree_T *ptree = NULL;
 
 char *actionnames[] = {"ignore", "alert", "restart", "stop", "exec", "unmonitor", "start", "monitor", ""};
 char *modenames[] = {"active", "passive"};
@@ -464,7 +461,7 @@ static void do_action(char **args) {
                         printf("Invalid syntax - usage: procmatch \"<pattern>\"\n");
                         exit(1);
                 }
-                Process_testMatch(pattern);
+                ProcessTree_testMatch(pattern);
         } else if (IS(action, "quit")) {
                 kill_daemon(SIGTERM);
         } else if (IS(action, "validate")) {

@@ -113,12 +113,16 @@
 #include <regex.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
 #include "net.h"
 #include "monit.h"
 #include "protocol.h"
 #include "engine.h"
 #include "alert.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "device.h"
 #include "processor.h"
 
