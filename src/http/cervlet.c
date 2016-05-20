@@ -260,7 +260,7 @@ static void _formatStatus(const char *name, Event_Type errorType, Output_Type ty
                                 } else if (_value[i] == '\n') {
                                         // Indent 2nd+ line
                                         if (_value[i + 1])
-                                        StringBuffer_append(res->outputbuffer, "\n                                    ");
+                                        StringBuffer_append(res->outputbuffer, "\n                               ");
                                         column = 0;
                                         continue;
                                 } else if (column <= 200) {
