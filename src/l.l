@@ -104,40 +104,42 @@ static URL_T create_URL(char *proto);
 
 %}
 
-ws          [ \r\t]+
-wws         [ \r\t;,()]+
-number      [0-9]+
-real        [0-9]+([.][0-9]+)?
-str         [^\000-\041@:{}"';(),%]+
-address     [^\000-\041<>{}\[\]]+
-addrname    [^\000-\037@<>{}\[\]]+
-hostname    {str}(\.{str})*
-greater     ("more"|"greater"|"gt"|">")
-less        ("less"|"lt"|"<")
-equal       ("equal"|"eq"|"=="|"=")
-notequal    ("notequal"|"ne"|"!=")
-loadavg1    load(avg)[ ]*(\([ ]*1[ ]*(m|min)?[ ]*\))?
-loadavg5    load(avg)[ ]*\([ ]*5[ ]*(m|min)?[ ]*\)
-loadavg15   load(avg)[ ]*\([ ]*15[ ]*(m|min)?[ ]*\)
-cpuuser     cpu[ ]*(usage)*[ ]*\([ ]*(us|usr|user)?[ ]*\)
-cpusyst     cpu[ ]*(usage)*[ ]*\([ ]*(sy|sys|system)?[ ]*\)
-cpuwait     cpu[ ]*(usage)*[ ]*\([ ]*(wa|wait)?[ ]*\)
-startarg    start{ws}?(program)?{ws}?([=]{ws})?["]
-stoparg     stop{ws}?(program)?{ws}?([=]{ws})?["]
-restartarg  restart{ws}?(program)?{ws}?([=]{ws})?["]
-execarg     exec(ute)?{ws}?["]
-pathtokarg  path{ws}?["]
-percent     ("percent"|"%")
-byte        ("byte"|"bytes"|"b")("/s")?
-kilobyte    ("kilobyte"|"kilobytes"|"kb")("/s")?
-megabyte    ("megabyte"|"megabytes"|"mb")("/s")?
-gigabyte    ("gigabyte"|"gigabytes"|"gb")("/s")?
-millisecond ("millisecond"|"milliseconds"|"ms")
-second      ("second"|"seconds"|"s")
-minute      ("minute"|"minutes"|"m")
-hour        ("hour"|"hours"|"h")
-day         ("day"|"days")
-month       ("month"|"months")
+ws             [ \r\t]+
+wws            [ \r\t;,()]+
+number         [0-9]+
+real           [0-9]+([.][0-9]+)?
+str            [^\000-\041@:{}"';(),%]+
+address        [^\000-\041<>{}\[\]]+
+addrname       [^\000-\037@<>{}\[\]]+
+hostname       {str}(\.{str})*
+greater        ("more"|"greater"|"gt"|">")
+greaterorequal ("ge"|">=")
+less           ("less"|"lt"|"<")
+lessorequal    ("le"|"<=")
+equal          ("equal"|"eq"|"=="|"=")
+notequal       ("notequal"|"ne"|"!=")
+loadavg1       load(avg)[ ]*(\([ ]*1[ ]*(m|min)?[ ]*\))?
+loadavg5       load(avg)[ ]*\([ ]*5[ ]*(m|min)?[ ]*\)
+loadavg15      load(avg)[ ]*\([ ]*15[ ]*(m|min)?[ ]*\)
+cpuuser        cpu[ ]*(usage)*[ ]*\([ ]*(us|usr|user)?[ ]*\)
+cpusyst        cpu[ ]*(usage)*[ ]*\([ ]*(sy|sys|system)?[ ]*\)
+cpuwait        cpu[ ]*(usage)*[ ]*\([ ]*(wa|wait)?[ ]*\)
+startarg       start{ws}?(program)?{ws}?([=]{ws})?["]
+stoparg        stop{ws}?(program)?{ws}?([=]{ws})?["]
+restartarg     restart{ws}?(program)?{ws}?([=]{ws})?["]
+execarg        exec(ute)?{ws}?["]
+pathtokarg     path{ws}?["]
+percent        ("percent"|"%")
+byte           ("byte"|"bytes"|"b")("/s")?
+kilobyte       ("kilobyte"|"kilobytes"|"kb")("/s")?
+megabyte       ("megabyte"|"megabytes"|"mb")("/s")?
+gigabyte       ("gigabyte"|"gigabytes"|"gb")("/s")?
+millisecond    ("millisecond"|"milliseconds"|"ms")
+second         ("second"|"seconds"|"s")
+minute         ("minute"|"minutes"|"m")
+hour           ("hour"|"hours"|"h")
+day            ("day"|"days")
+month          ("month"|"months")
 
 %x ARGUMENT_COND DEPEND_COND SERVICE_COND URL_COND ADDRESS_COND STRING_COND EVERY_COND HTTP_HEADER_COND INCLUDE
 
@@ -406,7 +408,9 @@ fips              { return FIPS; }
 {cpusyst}         { return CPUSYSTEM; }
 {cpuwait}         { return CPUWAIT; }
 {greater}         { return GREATER; }
+{greaterorequal}  { return GREATEROREQUAL; }
 {less}            { return LESS; }
+{lessorequal}     { return LESSOREQUAL; }
 {equal}           { return EQUAL; }
 {notequal}        { return NOTEQUAL; }
 {millisecond}     { return MILLISECOND; }

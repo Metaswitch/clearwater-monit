@@ -1744,8 +1744,16 @@ boolean_t Util_evalQExpression(Operator_Type operator, long long left, long long
                         if (left > right)
                                 return true;
                         break;
+                case Operator_GreaterOrEqual:
+                        if (left >= right)
+                                return true;
+                        break;
                 case Operator_Less:
                         if (left < right)
+                                return true;
+                        break;
+                case Operator_LessOrEqual:
+                        if (left <= right)
                                 return true;
                         break;
                 case Operator_Equal:
@@ -1771,8 +1779,16 @@ boolean_t Util_evalDoubleQExpression(Operator_Type operator, double left, double
                         if (left > right)
                                 return true;
                         break;
+                case Operator_GreaterOrEqual:
+                        if (left >= right)
+                                return true;
+                        break;
                 case Operator_Less:
                         if (left < right)
+                                return true;
+                        break;
+                case Operator_LessOrEqual:
+                        if (left <= right)
                                 return true;
                         break;
                 case Operator_Equal:

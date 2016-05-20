@@ -345,7 +345,7 @@ static int verifyMaxForward(int);
 %token <number> MAXFORWARD
 %token FIPS
 
-%left GREATER LESS EQUAL NOTEQUAL
+%left GREATER GREATEROREQUAL LESS LESSOREQUAL EQUAL NOTEQUAL
 
 
 %%
@@ -2136,12 +2136,14 @@ timestamp       : IF TIMESTAMP operator NUMBER time rate1 THEN action1 recovery 
                   }
                 ;
 
-operator        : /* EMPTY */ { $<number>$ = Operator_Equal; }
-                | GREATER     { $<number>$ = Operator_Greater; }
-                | LESS        { $<number>$ = Operator_Less; }
-                | EQUAL       { $<number>$ = Operator_Equal; }
-                | NOTEQUAL    { $<number>$ = Operator_NotEqual; }
-                | CHANGED     { $<number>$ = Operator_Changed; }
+operator        : /* EMPTY */    { $<number>$ = Operator_Equal; }
+                | GREATER        { $<number>$ = Operator_Greater; }
+                | GREATEROREQUAL { $<number>$ = Operator_GreaterOrEqual; }
+                | LESS           { $<number>$ = Operator_Less; }
+                | LESSOREQUAL    { $<number>$ = Operator_LessOrEqual; }
+                | EQUAL          { $<number>$ = Operator_Equal; }
+                | NOTEQUAL       { $<number>$ = Operator_NotEqual; }
+                | CHANGED        { $<number>$ = Operator_Changed; }
                 ;
 
 time            : /* EMPTY */ { $<number>$ = Time_Second; }

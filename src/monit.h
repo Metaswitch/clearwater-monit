@@ -208,7 +208,9 @@ typedef enum {
 
 typedef enum {
         Operator_Less = 0,
+        Operator_LessOrEqual,
         Operator_Greater,
+        Operator_GreaterOrEqual,
         Operator_Equal,
         Operator_NotEqual,
         Operator_Changed

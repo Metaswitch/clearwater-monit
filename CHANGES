@@ -39,6 +39,8 @@ New: Added a system uptime test. Example:
     check system $HOST
         if uptime > 180 days then alert
 
+New: Added ">=" and "<=" operators support to comparison tests.
+
 Fixed: Added missing "mode" statement support to system, status and network checks.
 
 Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
