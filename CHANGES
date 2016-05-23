@@ -71,6 +71,9 @@ which skipped file inclusion if it was included already) to allow to include the
 it doesn't create a loop. It is again possible to move common fragments of service configuration to the
 include file, which is reused in the context of different services.
 
+Fixed: Issue #367: When process is restarted, monit showed the process as Running, but no process info such
+as PID was displayed until the service passed regular validation cycle.
+
 Fixed: Issue #370: IMAP protocol test supports greetings up to 512 characters now.
 
 Fixed: Issue #372: Show full "check program" value in GUI, instead of just first part of the program path.

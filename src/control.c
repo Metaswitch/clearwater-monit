@@ -168,8 +168,11 @@ static Process_Status _waitProcessStart(Service_T s, int64_t *timeout) {
         long wait = RETRY_INTERVAL;
         do {
                 Time_usleep(wait);
-                if (ProcessTree_findProcess(s))
+                pid_t pid = ProcessTree_findProcess(s);
+                if (pid) {
+                        ProcessTree_updateProcess(s, pid);
                         return Process_Started;
+                }
                 *timeout -= wait;
                 wait = wait < 1000000 ? wait * 2 : 1000000; // double the wait during each cycle until 1s is reached (ProcessTree_findProcess can be heavy and we don't want to drain power every 100ms on mobile devices)
         } while (*timeout > 0 && ! (Run.flags & Run_Stopped));
