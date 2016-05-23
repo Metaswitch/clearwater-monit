@@ -41,13 +41,13 @@ monit_SOURCES	= src/y.tab.c \
 		  src/state.c \
 		  src/util.c \
 		  src/validate.c \
-		  src/xml.c \
 		  src/device/device_common.c \
 		  src/device/sysdep_@ARCH@.c \
 		  src/http/base64.c \
 		  src/http/cervlet.c \
 		  src/http/client.c \
 		  src/http/engine.c \
+		  src/http/xml.c \
 		  src/http/processor.c \
 		  src/notification/Address.c \
 		  src/notification/MMonit.c \
