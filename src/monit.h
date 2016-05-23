@@ -1238,7 +1238,6 @@ State_Type check_program(Service_T);
 State_Type check_net(Service_T);
 int  check_URL(Service_T s);
 void status_xml(StringBuffer_T, Event_T, int, const char *);
-Handler_Type handle_mmonit(Event_T);
 boolean_t  do_wakeupcall();
 
 #endif

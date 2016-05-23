@@ -44,6 +44,7 @@
 #include "monit.h"
 #include "socket.h"
 #include "event.h"
+#include "MMonit.h"
 
 
 /**
@@ -62,7 +63,7 @@
  * @param D Data to send
  * @return true if the message sending succeeded otherwise false
  */
-static boolean_t data_send(Socket_T socket, Mmonit_T C, const char *D) {
+static boolean_t _send(Socket_T socket, Mmonit_T C, const char *D) {
         char *auth = Util_getBasicAuthHeader(C->url->user, C->url->password);
         int rv = Socket_print(socket,
                               "POST %s HTTP/1.1\r\n"
@@ -95,7 +96,7 @@ static boolean_t data_send(Socket_T socket, Mmonit_T C, const char *D) {
  * @param C An mmonit object
  * @return true if the response is valid otherwise false
  */
-static boolean_t data_check(Socket_T socket, Mmonit_T C) {
+static boolean_t _receive(Socket_T socket, Mmonit_T C) {
         int  status;
         char buf[STRLEN];
         if (! Socket_readLine(socket, buf, sizeof(buf))) {
@@ -115,12 +116,7 @@ static boolean_t data_check(Socket_T socket, Mmonit_T C) {
 /* ------------------------------------------------------------------ Public */
 
 
-/**
- * Post event or status data message to mmonit
- * @param E An event object or NULL for status data
- * @return If failed, return Handler_Mmonit flag or Handler_Succeeded flag if succeeded
- */
-Handler_Type handle_mmonit(Event_T E) {
+Handler_Type MMonit_send(Event_T E) {
         Handler_Type rv = Handler_Mmonit;
         /* The event is sent to mmonit just once - only in the case that the state changed */
         if (! Run.mmonits || (E && ! E->state_changed))
@@ -134,12 +130,12 @@ Handler_Type handle_mmonit(Event_T E) {
                 }
                 char buf[STRLEN];
                 status_xml(sb, E, 2, Socket_getLocalHost(socket, buf, sizeof(buf)));
-                if (! data_send(socket, C, StringBuffer_toString(sb))) {
+                if (! _send(socket, C, StringBuffer_toString(sb))) {
                         LogError("M/Monit: cannot send %s message to %s\n", E ? "event" : "status", C->url->url);
                         goto error;
                 }
                 StringBuffer_clear(sb);
-                if (! data_check(socket, C)) {
+                if (! _receive(socket, C)) {
                         LogError("M/Monit: %s message to %s failed\n", E ? "event" : "status", C->url->url);
                         goto error;
                 }

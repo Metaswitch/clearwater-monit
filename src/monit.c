@@ -77,6 +77,7 @@
 #include "event.h"
 #include "engine.h"
 #include "client.h"
+#include "MMonit.h"
 
 // libmonit
 #include "Bootstrap.h"
@@ -865,7 +866,7 @@ static void *heartbeat(void *args) {
         LOCK(heartbeatMutex)
         {
                 while (! (Run.flags & Run_Stopped) && ! (Run.flags & Run_DoReload)) {
-                        handle_mmonit(NULL);
+                        MMonit_send(NULL);
                         struct timespec wait = {.tv_sec = Time_now() + Run.polltime, .tv_nsec = 0};
                         Sem_timeWait(heartbeatCond, heartbeatMutex, wait);
                 }

@@ -61,6 +61,7 @@
 #include "alert.h"
 #include "event.h"
 #include "ProcessTree.h"
+#include "MMonit.h"
 
 // libmonit
 #include "io/File.h"
@@ -284,7 +285,7 @@ static void _handleAction(Event_T E, Action_T A) {
 
         if (A->id != Action_Ignored) {
                 /* Alert and mmonit event notification are common actions */
-                E->flag |= handle_mmonit(E);
+                E->flag |= MMonit_send(E);
                 E->flag |= handle_alert(E);
                 /* In the case that some subhandler failed, enqueue the event for partial reprocessing */
                 if (E->flag != Handler_Succeeded) {
@@ -640,7 +641,7 @@ void Event_queue_process() {
                                 if (Run.flags & Run_HandlerInit)
                                         Run.handler_queue[Handler_Mmonit]++;
                                 if ((Run.handler_flag & Handler_Mmonit) != Handler_Mmonit) {
-                                        if ( handle_mmonit(e) != Handler_Mmonit ) {
+                                        if ( MMonit_send(e) != Handler_Mmonit ) {
                                                 e->flag &= ~Handler_Mmonit;
                                                 Run.handler_queue[Handler_Mmonit]--;
                                                 handlers_passed++;
