@@ -312,28 +312,29 @@ time_t ProcessTree_getProcessUptime(pid_t pid) {
 
 pid_t ProcessTree_findProcess(Service_T s) {
         ASSERT(s);
-        errno = 0;
-        if (s->matchlist) {
-                // Test the cached PID first
-                if (s->inf->priv.process.pid > 0 && (getpgid(s->inf->priv.process.pid) > -1 || errno == EPERM))
+        // Test the cached PID first
+        if (s->inf->priv.process.pid > 0) {
+                errno = 0;
+                if (getpgid(s->inf->priv.process.pid) > -1 || errno == EPERM)
                         return s->inf->priv.process.pid;
-                // If the cached PID is not running, rescan the process tree
+        }
+        // If the cached PID is not running, scan for the process again
+        if (s->matchlist) {
+                // Update the process tree including command line
                 ProcessTree_init(ProcessEngine_CollectCommandLine);
-                /* The process table read may sporadically fail during read, because we're using glob on some platforms which may fail if the proc filesystem
-                 * which it traverses is changed during glob (process stopped). Note that the glob failure is rare and temporary - it will be OK on next cycle.
-                 * We skip the process matching that cycle however because we don't have process informations - will retry next cycle */
                 if (Run.flags & Run_ProcessEngineEnabled) {
                         int pid = _match(s->matchlist->regex_comp);
                         if (pid >= 0)
                                 return pid;
                 } else {
                         DEBUG("Process information not available -- skipping service %s process existence check for this cycle\n", s->name);
-                        /* Return value is NOOP - it is based on existing errors bitmap so we don't generate false recovery/failures */
+                        // Return value is NOOP - it is based on existing errors bitmap so we don't generate false recovery/failures
                         return ! (s->error & Event_Nonexist);
                 }
         } else {
                 pid_t pid = Util_getPid(s->path);
                 if (pid > 0) {
+                        errno = 0;
                         if (getpgid(pid) > -1 || errno == EPERM)
                                 return pid;
                         DEBUG("'%s' process test failed [pid=%d] -- %s\n", s->name, pid, STRERROR);
