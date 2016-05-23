@@ -385,7 +385,7 @@ statement       : setalert
                 | checkhost opthostlist
                 | checksystem optsystemlist
                 | checkfifo optfifolist
-                | checkprogram optstatuslist
+                | checkprogram optprogramlist
                 | checknet optnetlist
                 ;
 
@@ -562,11 +562,11 @@ optfifo         : start
                 | depend
                 ;
 
-optstatuslist   : /* EMPTY */
-                | optstatuslist optstatus
+optprogramlist  : /* EMPTY */
+                | optprogramlist optprogram
                 ;
 
-optstatus       : start
+optprogram      : start
                 | stop
                 | restart
                 | actionrate
@@ -1211,7 +1211,7 @@ checksystem     : CHECKSYSTEM SERVICENAME {
                                         Util_replaceString(&servicename, "$HOST", hostname);
                                 }
                         }
-                        Run.system = createservice(Service_System, servicename, Str_dup(""), check_system); // The name given in the 'check system' statement overrides system hostname
+                        Run.system = createservice(Service_System, servicename, NULL, check_system); // The name given in the 'check system' statement overrides system hostname
                   }
                 ;
 
@@ -1223,14 +1223,14 @@ checkfifo       : CHECKFIFO SERVICENAME PATHTOK PATH {
 checkprogram    : CHECKPROGRAM SERVICENAME PATHTOK argumentlist programtimeout {
                         command_t c = command; // Current command
                         check_exec(c->arg[0]);
-                        createservice(Service_Program, $<string>2, Str_dup(c->arg[0]), check_program);
+                        createservice(Service_Program, $<string>2, NULL, check_program);
                         current->program->timeout = $<number>5;
                         current->program->output = StringBuffer_create(64);
                  }
                 | CHECKPROGRAM SERVICENAME PATHTOK argumentlist useroptionlist programtimeout {
                         command_t c = command; // Current command
                         check_exec(c->arg[0]);
-                        createservice(Service_Program, $<string>2, Str_dup(c->arg[0]), check_program);
+                        createservice(Service_Program, $<string>2, NULL, check_program);
                         current->program->timeout = $<number>6;
                         current->program->output = StringBuffer_create(64);
                  }
@@ -2878,7 +2878,7 @@ static void postparse() {
                         LogError("'check system' not defined in control file, failed to add automatic configuration (service name %s is used already) -- please add 'check system <name>' manually\n", hostname);
                         cfg_errflag++;
                 }
-                Run.system = createservice(Service_System, Str_dup(hostname), Str_dup(""), check_system);
+                Run.system = createservice(Service_System, Str_dup(hostname), NULL, check_system);
                 addservice(Run.system);
         }
         addeventaction(&(Run.system->action_MONIT_START), Action_Start, Action_Ignored);
@@ -2937,7 +2937,6 @@ static boolean_t _parseOutgoingAddress(const char *ip, Outgoing_T *outgoing) {
  */
 static Service_T createservice(Service_Type type, char *name, char *value, State_Type (*check)(Service_T s)) {
         ASSERT(name);
-        ASSERT(value);
 
         check_name(name);
 
@@ -3002,10 +3001,14 @@ static void addservice(Service_T s) {
                                 cfg_errflag++;
                         }
                         // Create the Command object
-                        s->program->C = Command_new(s->path, NULL);
-                        // Append any arguments
-                        for (int i = 1; i < s->program->args->length; i++)
+                        char program[PATH_MAX];
+                        strncpy(program, s->program->args->arg[0], sizeof(program) - 1);
+                        s->program->C = Command_new(program, NULL);
+                        for (int i = 1; i < s->program->args->length; i++) {
                                 Command_appendArgument(s->program->C, s->program->args->arg[i]);
+                                snprintf(program + strlen(program), sizeof(program) - strlen(program) - 1, " %s", s->program->args->arg[i]);
+                        }
+                        s->path = Str_dup(program);
                         if (s->program->args->has_uid)
                                 Command_setUid(s->program->C, s->program->args->uid);
                         if (s->program->args->has_gid)

@@ -73,6 +73,8 @@ include file, which is reused in the context of different services.
 
 Fixed: Issue #370: IMAP protocol test supports greetings up to 512 characters now.
 
+Fixed: Issue #372: Show full "check program" value in GUI, instead of just first part of the program path.
+
 Fixed: When the pattern based process check finds multiple matching processes, it will select the
 top-most matching parent with highest uptime (oldest). Originally the pattern based process check
 was first-match based only.
