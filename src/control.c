@@ -170,6 +170,7 @@ static Process_Status _waitProcessStart(Service_T s, int64_t *timeout) {
                 Time_usleep(wait);
                 pid_t pid = ProcessTree_findProcess(s);
                 if (pid) {
+                        ProcessTree_init(ProcessEngine_None);
                         ProcessTree_updateProcess(s, pid);
                         return Process_Started;
                 }
