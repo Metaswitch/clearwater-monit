@@ -260,7 +260,7 @@ void Box_printColumn(T t, const char *format, ...) {
                                 StringBuffer_append(t->b, COLOR_RESET);
                 }
         } else {
-                StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthOriginal, s);
+                StringBuffer_append(t->b, t->columns[t->index.column].align == BoxAlign_Right ? "%*s" : "%-*s", t->columns[t->index.column].width + colorLengthOriginal, s);
         }
         FREE(s);
         StringBuffer_append(t->b, " ");

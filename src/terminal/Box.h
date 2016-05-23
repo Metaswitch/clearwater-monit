@@ -36,10 +36,17 @@
  */
 
 
+typedef enum {
+        BoxAlign_Left = 0,
+        BoxAlign_Right
+} __attribute__((__packed__)) BoxAlign_T;
+
+
 typedef struct BoxColumn_T {
         const char *name;
         int width;
         boolean_t wrap;
+        BoxAlign_T align;
 } BoxColumn_T;
 
 

@@ -363,7 +363,7 @@ void ProcessTree_testMatch(char *pattern) {
                 int count = 0;
                 printf("List of processes matching pattern \"%s\":\n", pattern);
                 StringBuffer_T output = StringBuffer_create(256);
-                Box_T t = Box_new(output, 4, (BoxColumn_T []){{"", 1, false}, {"PID", 5, false}, {"PPID", 5, false}, {"Command", 56, true}}, true);
+                Box_T t = Box_new(output, 4, (BoxColumn_T []){{"", 1, false, BoxAlign_Left}, {"PID", 5, false, BoxAlign_Right}, {"PPID", 5, false, BoxAlign_Right}, {"Command", 56, true, BoxAlign_Left}}, true);
                 // Select the process matching the pattern
                 int pid = _match(regex_comp);
                 // Print all matching processes and highlight the one which is selected

@@ -2246,7 +2246,7 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         int found = 0;
         const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
         const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
-        Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){{"Service Name", 31, false}, {"Status", 26, false}, {"Type", 13, false}}, true);
+        Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){{"Service Name", 31, false, BoxAlign_Left}, {"Status", 26, false, BoxAlign_Left}, {"Type", 13, false, BoxAlign_Left}}, true);
         if (stringGroup) {
                 for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                         if (IS(stringGroup, sg->name)) {
