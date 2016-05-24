@@ -129,7 +129,146 @@ static void _printHeader(T t) {
 }
 
 
+static void _cacheColor(BoxColumn_T *column) {
+        boolean_t ansi = false;
+        if (column->value) {
+                for (int i = 0, k = 0; column->value[i]; i++) {
+                        if (column->value[i] == '\033' && column->value[i + 1] == '[') {
+                                // Escape sequence start
+                                column->_color[k++] = '\033';
+                                column->_color[k++] = '[';
+                                i++;
+                                ansi = true;
+                        } else if (ansi) {
+                                column->_color[k++] = column->value[i];
+                                // Escape sequence stop
+                                if (column->value[i] >= 64 && column->value[i] <= 126)
+                                        break;
+                        }
+                }
+        }
+}
+
+
+// Print a row. If wrap is enabled and the text excceeds width, return true (printed text up to column width, repetition possible to print the rest), otherwise false
+static boolean_t _printRow(T t) {
+        boolean_t repeat = false;
+        for (int i = 0; i < t->columnsCount; i++) {
+                StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
+                if (*(t->columns[i]._color))
+                        StringBuffer_append(t->b, "%s", t->columns[i]._color);
+                if (! t->columns[i].value || t->columns[i]._cursor > strlen(t->columns[i].value) - 1) {
+                        // Empty column pading
+                        StringBuffer_append(t->b, "%*s", t->columns[i].width, " ");
+                } else if (strlen(t->columns[i].value + t->columns[i]._cursor) > t->columns[i].width) {
+                        if (t->columns[i].wrap) {
+                                // The value exceeds the column width and should be wrapped
+                                int column = 0;
+                                for (; t->columns[i].value[t->columns[i]._cursor] && (column == 0 || t->columns[i]._cursor % t->columns[i].width > 0); t->columns[i]._cursor++, column++)
+                                        StringBuffer_append(t->b, "%c", t->columns[i].value[t->columns[i]._cursor]);
+                                if (t->columns[i]._cursor < t->columns[i]._valueLength)
+                                        repeat = true;
+                        } else {
+                                // The value exceeds the column width and should be truncated
+                                Str_trunc(t->columns[i].value, t->columns[i].width);
+                                StringBuffer_append(t->b, t->columns[i].align == BoxAlign_Right ? "%*s" : "%-*s", t->columns[i].width, t->columns[i].value);
+                                t->columns[i]._cursor = t->columns[i]._valueLength;
+                        }
+                } else {
+                        // The whole value fits in the column width
+                        StringBuffer_append(t->b, t->columns[i].align == BoxAlign_Right ? "%*s" : "%-*s", t->columns[i].width, t->columns[i].value + t->columns[i]._cursor);
+                        t->columns[i]._cursor = t->columns[i]._valueLength;
+                }
+                StringBuffer_append(t->b, " ");
+                if (*(t->columns[i]._color))
+                        StringBuffer_append(t->b, COLOR_RESET);
+        }
+        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET "\n");
+        t->index.row++;
+        return repeat;
+}
+
+
+static void _resetColumn(BoxColumn_T *column) {
+        FREE(column->value);
+        column->_cursor = column->_colorLength = column->_valueLength = 0;
+        memset(column->_color, 0, sizeof(column->_color));
+}
+
+
+static void _resetRow(T t) {
+        for (int i = 0; i < t->columnsCount; i++)
+                _resetColumn(&(t->columns[i]));
+}
+
+
 /* -------------------------------------------------------- Public Methods */
+
+
+T Box_new(StringBuffer_T b, int columnsCount, BoxColumn_T *columns, boolean_t printHeader) {
+        ASSERT(b);
+        ASSERT(columns);
+        ASSERT(columnsCount > 0);
+        T t;
+        NEW(t);
+        t->b = b;
+        t->columnsCount = columnsCount;
+        t->columns = columns;
+        // Default options
+        t->options.header.color = COLOR_BOLDCYAN; // Note: hardcoded, option setting can be implemented if needed
+        // Options
+        t->options.header.enabled = printHeader;
+        return t;
+}
+
+
+void Box_free(T *t) {
+        ASSERT(t && *t);
+        if ((*t)->index.row > 0)
+                _printBorderBottom(*t);
+        for (int i = 0; i < (*t)->columnsCount; i++)
+                FREE((*t)->columns[i].value);
+        FREE(*t);
+}
+
+
+void Box_setColumn(T t, int index, const char *format, ...) {
+        ASSERT(t);
+        ASSERT(index > 0);
+        ASSERT(index <= t->columnsCount);
+        int _index = index - 1;
+        _resetColumn(&(t->columns[_index]));
+        if (format) {
+                va_list ap;
+                va_start(ap, format);
+                t->columns[_index].value = Str_vcat(format, ap);
+                va_end(ap);
+                if ((t->columns[_index]._colorLength = Color_length(t->columns[_index].value))) {
+                        _cacheColor(&(t->columns[_index]));
+                        Color_strip(t->columns[_index].value); // Strip the escape sequences, so we can safely break the line
+                }
+                t->columns[_index]._valueLength = strlen(t->columns[_index].value);
+        }
+}
+
+
+void Box_printRow(T t) {
+        ASSERT(t);
+        if (t->index.row == 0) {
+                _printBorderTop(t);
+                if (t->options.header.enabled) {
+                        _printHeader(t);
+                        _printBorderMiddle(t);
+                }
+        } else {
+                _printBorderMiddle(t);
+        }
+        boolean_t repeat = false;
+        do {
+                repeat = _printRow(t);
+        } while (repeat);
+        _resetRow(t);
+}
 
 
 char *Box_strip(char *s) {
@@ -154,119 +293,5 @@ char *Box_strip(char *s) {
                 _s[x] = 0;
         }
         return s;
-}
-
-
-T Box_new(StringBuffer_T b, int columnsCount, BoxColumn_T *columns, boolean_t printHeader) {
-        ASSERT(b);
-        ASSERT(columns);
-        ASSERT(columnsCount > 0);
-        T t;
-        NEW(t);
-        t->b = b;
-        t->columnsCount = columnsCount;
-        t->columns = columns;
-        // Default options
-        t->options.header.color = COLOR_BOLDCYAN; // Note: hardcoded, option setting can be implemented if needed
-        // Options
-        t->options.header.enabled = printHeader;
-        return t;
-}
-
-
-void Box_free(T *t) {
-        ASSERT(t && *t);
-        if ((*t)->index.row > 0)
-                _printBorderBottom(*t);
-        FREE(*t);
-}
-
-
-void Box_printColumn(T t, const char *format, ...) {
-        ASSERT(t);
-        ASSERT(format);
-        if (t->index.row == 0 && t->index.column == 0) {
-                _printBorderTop(t);
-                if (t->options.header.enabled) {
-                        _printHeader(t);
-                        _printBorderMiddle(t);
-                }
-        } else if (t->index.column > t->columnsCount - 1) {
-                t->index.column = 0;
-                _printBorderMiddle(t);
-        }
-        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
-        va_list ap;
-        va_start(ap, format);
-        char *s = Str_vcat(format, ap);
-        va_end(ap);
-        int colorLengthOriginal = Color_length(s);
-        if (strlen(s) - colorLengthOriginal > t->columns[t->index.column].width) {
-                if (t->columns[t->index.column].wrap) {
-                        //Note: The content wrap is currently supported only in the last column - adding wrap support for any column will require caching all columns before we can print a full line
-                        ASSERT(t->index.column + 1 == t->columnsCount);
-                        int i;
-                        char color[STRLEN] = {};
-                        if (colorLengthOriginal) {
-                                // Cache the color code
-                                boolean_t ansi = false;
-                                for (int i = 0, j = 0; s[i]; i++) {
-                                        if (s[i] == '\033' && s[i + 1] == '[') {
-                                                // Escape sequence start
-                                                color[j++] = '\033';
-                                                color[j++] = '[';
-                                                i++;
-                                                ansi = true;
-                                        } else if (ansi) {
-                                                color[j++] = s[i];
-                                                // Escape sequence stop
-                                                if (s[i] >= 64 && s[i] <= 126)
-                                                        break;
-                                        }
-                                }
-                                // Strip the escape sequences, so we can break the line
-                                Color_strip(s);
-                        }
-                        for (i = 0; s[i]; i++) {
-                                if (i && i % t->columns[t->index.column].width == 0) {
-                                        // Terminate current line
-                                        if (*color)
-                                                StringBuffer_append(t->b, COLOR_RESET);
-                                        StringBuffer_append(t->b, " " COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET "\n");
-                                        // Seek to the same column position
-                                        for (int j = 0; j < t->index.column; j++) {
-                                                StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
-                                                StringBuffer_append(t->b, "%-*s", t->columns[j].width, " ");
-                                                StringBuffer_append(t->b, " ");
-                                        }
-                                        // Separator
-                                        StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET " ");
-                                }
-                                if (*color && i % t->columns[t->index.column].width == 0)
-                                        StringBuffer_append(t->b, "%s", color);
-                                StringBuffer_append(t->b, "%c", s[i]);
-                        }
-                        // Last line padding
-                        int padding = t->columns[t->index.column].width - i % t->columns[t->index.column].width;
-                        if (padding > 0 && padding < t->columns[t->index.column].width)
-                                StringBuffer_append(t->b, "%-*s", padding, " ");
-                        if (*color)
-                                StringBuffer_append(t->b, COLOR_RESET);
-                } else {
-                        Str_trunc(s, t->columns[t->index.column].width);
-                        int colorLengthCurrent = Color_length(s);
-                        StringBuffer_append(t->b, "%-*s", t->columns[t->index.column].width + colorLengthCurrent, s);
-                        if (colorLengthCurrent < colorLengthOriginal)
-                                StringBuffer_append(t->b, COLOR_RESET);
-                }
-        } else {
-                StringBuffer_append(t->b, t->columns[t->index.column].align == BoxAlign_Right ? "%*s" : "%-*s", t->columns[t->index.column].width + colorLengthOriginal, s);
-        }
-        FREE(s);
-        StringBuffer_append(t->b, " ");
-        if (++t->index.column > t->columnsCount - 1) {
-                StringBuffer_append(t->b, COLOR_DARKGRAY BOX_VERTICAL COLOR_RESET "\n");
-                t->index.row++;
-        }
 }
 

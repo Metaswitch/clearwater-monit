@@ -2220,9 +2220,10 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
 
 
 static void _printServiceSummary(Box_T t, Service_T s) {
-        Box_printColumn(t, "%s", s->name);
-        Box_printColumn(t, "%s", get_service_status(TXT, s, (char[STRLEN]){}, STRLEN));
-        Box_printColumn(t, "%s", servicetypes[s->type]);
+        Box_setColumn(t, 1, "%s", s->name);
+        Box_setColumn(t, 2, "%s", get_service_status(TXT, s, (char[STRLEN]){}, STRLEN));
+        Box_setColumn(t, 3, "%s", servicetypes[s->type]);
+        Box_printRow(t);
 }
 
 
@@ -2246,7 +2247,11 @@ static void print_summary(HttpRequest req, HttpResponse res) {
         int found = 0;
         const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
         const char *stringService = Util_urlDecode((char *)get_parameter(req, "service"));
-        Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){{"Service Name", 31, false, BoxAlign_Left}, {"Status", 26, false, BoxAlign_Left}, {"Type", 13, false, BoxAlign_Left}}, true);
+        Box_T t = Box_new(res->outputbuffer, 3, (BoxColumn_T []){
+                        {.name = "Service Name", .width = 31, .wrap = false, .align = BoxAlign_Left},
+                        {.name = "Status",       .width = 26, .wrap = false, .align = BoxAlign_Left},
+                        {.name = "Type",         .width = 13, .wrap = false, .align = BoxAlign_Left}
+                  }, true);
         if (stringGroup) {
                 for (ServiceGroup_T sg = servicegrouplist; sg; sg = sg->next) {
                         if (IS(stringGroup, sg->name)) {

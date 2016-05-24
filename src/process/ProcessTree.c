@@ -363,7 +363,12 @@ void ProcessTree_testMatch(char *pattern) {
                 int count = 0;
                 printf("List of processes matching pattern \"%s\":\n", pattern);
                 StringBuffer_T output = StringBuffer_create(256);
-                Box_T t = Box_new(output, 4, (BoxColumn_T []){{"", 1, false, BoxAlign_Left}, {"PID", 5, false, BoxAlign_Right}, {"PPID", 5, false, BoxAlign_Right}, {"Command", 56, true, BoxAlign_Left}}, true);
+                Box_T t = Box_new(output, 4, (BoxColumn_T []){
+                                {.name = "",        .width = 1,  .wrap = false, .align = BoxAlign_Left},
+                                {.name = "PID",     .width = 5,  .wrap = false, .align = BoxAlign_Right},
+                                {.name = "PPID",    .width = 5,  .wrap = false, .align = BoxAlign_Right},
+                                {.name = "Command", .width = 56, .wrap = true,  .align = BoxAlign_Left}
+                          }, true);
                 // Select the process matching the pattern
                 int pid = _match(regex_comp);
                 // Print all matching processes and highlight the one which is selected
@@ -371,16 +376,16 @@ void ProcessTree_testMatch(char *pattern) {
                         if (ptree[i].cmdline && ! strstr(ptree[i].cmdline, "procmatch")) {
                                 if (! regexec(regex_comp, ptree[i].cmdline, 0, NULL, 0)) {
                                         if (pid == ptree[i].pid) {
-                                                Box_printColumn(t, COLOR_BOLD "*" COLOR_RESET);
-                                                Box_printColumn(t, COLOR_BOLD "%d" COLOR_RESET, ptree[i].pid);
-                                                Box_printColumn(t, COLOR_BOLD "%d" COLOR_RESET, ptree[i].ppid);
-                                                Box_printColumn(t, COLOR_BOLD "%s" COLOR_RESET, ptree[i].cmdline);
+                                                Box_setColumn(t, 1, COLOR_BOLD "*" COLOR_RESET);
+                                                Box_setColumn(t, 2, COLOR_BOLD "%d" COLOR_RESET, ptree[i].pid);
+                                                Box_setColumn(t, 3, COLOR_BOLD "%d" COLOR_RESET, ptree[i].ppid);
+                                                Box_setColumn(t, 4, COLOR_BOLD "%s" COLOR_RESET, ptree[i].cmdline);
                                         } else {
-                                                Box_printColumn(t, " ");
-                                                Box_printColumn(t, "%d", ptree[i].pid);
-                                                Box_printColumn(t, "%d", ptree[i].ppid);
-                                                Box_printColumn(t, "%s", ptree[i].cmdline);
+                                                Box_setColumn(t, 2, "%d", ptree[i].pid);
+                                                Box_setColumn(t, 3, "%d", ptree[i].ppid);
+                                                Box_setColumn(t, 4, "%s", ptree[i].cmdline);
                                         }
+                                        Box_printRow(t);
                                         count++;
                                 }
                         }

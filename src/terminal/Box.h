@@ -44,22 +44,21 @@ typedef enum {
 
 typedef struct BoxColumn_T {
         const char *name;
+        char *value;
+        // Options
         int width;
         boolean_t wrap;
         BoxAlign_T align;
+        // Internal
+        int _cursor;
+        int _valueLength;
+        int _colorLength;
+        char _color[8];
 } BoxColumn_T;
 
 
 #define T Box_T
 typedef struct T *T;
-
-
-/**
- * Strip the UTF-8 table control characters in the string.
- * @param s The string to strip
- * @return A pointer to s
- */
-char *Box_strip(char *s);
 
 
 /**
@@ -74,18 +73,34 @@ T Box_new(StringBuffer_T b, int columnsCount, BoxColumn_T *columns, boolean_t pr
 
 
 /**
- * Destroy a Box object and free allocated resources
+ * Close and destroy a Box object and free allocated resources
  * @param t a Box object reference
  */
 void Box_free(T *t);
 
 
 /**
- * Print a table column
+ * Set a table column value
  * @param t The terminal table object
- * @param format A string with optional var args
+ * @param index Column index
+ * @param format A format string with optional var args
  */
-void Box_printColumn(T t, const char *format, ...) __attribute__((format (printf, 2, 3)));
+void Box_setColumn(T t, int index, const char *format, ...) __attribute__((format (printf, 3, 4)));
+
+
+/**
+ * Print a table row
+ * @param t The terminal table object
+ */
+void Box_printRow(T t);
+
+
+/**
+ * Strip the UTF-8 table control characters in the string.
+ * @param s The string to strip
+ * @return A pointer to s
+ */
+char *Box_strip(char *s);
 
 
 #undef T
