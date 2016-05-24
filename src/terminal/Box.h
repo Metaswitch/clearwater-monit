@@ -50,9 +50,9 @@ typedef struct BoxColumn_T {
         boolean_t wrap;
         BoxAlign_T align;
         // Internal
-        int _cursor;
-        int _valueLength;
         int _colorLength;
+        unsigned long _valueLength;
+        unsigned long _cursor;
         char _color[8];
 } BoxColumn_T;
 
