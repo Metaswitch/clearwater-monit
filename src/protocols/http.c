@@ -61,7 +61,7 @@ static boolean_t _hasHeader(List_T list, const char *name) {
         if (list) {
                 for (list_t h = list->head; h; h = h->next) {
                         char *header = h->e;
-                        if ((strncmp(header, name, strlen(name)) == 0))
+                        if (Str_startsWith(header, name))
                                 if (header[strlen(name)] == ':') // Ensure that name is not just a prefix
                                         return true;
                 }

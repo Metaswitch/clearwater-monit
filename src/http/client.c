@@ -151,7 +151,7 @@ static void _send(Socket_T S, const char *request, StringBuffer_T data) {
                 StringBuffer_toString(data));
         FREE(_auth);
         if (rv < 0)
-                THROW(IOException, "Action failed: cannot send the command to the monit daemon -- %s", STRERROR);
+                THROW(IOException, "monit: cannot send the command to the monit daemon -- %s", STRERROR);
 }
 
 
@@ -170,7 +170,7 @@ static void _receive(Socket_T S) {
 static boolean_t _client(const char *request, StringBuffer_T data) {
         boolean_t status = false;
         if (! exist_daemon()) {
-                LogError("Action failed: the monit daemon is not running\n");
+                LogError("monit: the monit daemon is not running\n");
                 return status;
         }
         Socket_T S = NULL;
@@ -185,7 +185,7 @@ static boolean_t _client(const char *request, StringBuffer_T data) {
         } else if (Run.httpd.flags & Httpd_Unix) {
                 S = Socket_createUnix(Run.httpd.socket.unix.path, Socket_Tcp, Run.limits.networkTimeout);
         } else {
-                LogError("Action failed: the monit HTTP interface is not enabled, please add the 'set httpd' statement and use an 'allow' option to allow monit to connect to it\n");
+                LogError("monit: the monit HTTP interface is not enabled, please add the 'set httpd' statement and use the 'allow' option to allow monit to connect\n");
         }
         if (S) {
                 TRY
