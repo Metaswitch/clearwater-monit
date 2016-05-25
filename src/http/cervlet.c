@@ -393,20 +393,20 @@ static void _printStatus(Output_Type type, HttpResponse res, Service_T s) {
                         if (i->is_available == Connection_Failed)
                                 _formatStatus("ping response time", Event_Icmp, type, res, s, true, "connection failed");
                         else
-                                _formatStatus("ping response time", Event_Connection, type, res, s, i->is_available != Connection_Init && i->response >= 0., "%s", Str_milliToTime(i->response, (char[23]){}));
+                                _formatStatus("ping response time", Event_Null, type, res, s, i->is_available != Connection_Init && i->response >= 0., "%s", Str_milliToTime(i->response, (char[23]){}));
                 }
                 for (Port_T p = s->portlist; p; p = p->next) {
                         if (p->is_available == Connection_Failed) {
                                 _formatStatus("port response time", Event_Connection, type, res, s, true, "FAILED to [%s]:%d%s type %s/%s %sprotocol %s", p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
                         } else {
-                                _formatStatus("port response time", Event_Connection, type, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
+                                _formatStatus("port response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s:%d%s type %s/%s %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->hostname, p->target.net.port, Util_portRequestDescription(p), Util_portTypeDescription(p), Util_portIpDescription(p), p->target.net.ssl.flags ? "using SSL/TLS " : "", p->protocol->name);
                         }
                 }
                 for (Port_T p = s->socketlist; p; p = p->next) {
                         if (p->is_available == Connection_Failed) {
                                 _formatStatus("unix socket response time", Event_Connection, type, res, s, true, "FAILED to %s type %s protocol %s", p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
                         } else {
-                                _formatStatus("unix socket response time", Event_Connection, type, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
+                                _formatStatus("unix socket response time", Event_Null, type, res, s, p->is_available != Connection_Init, "%s to %s type %s protocol %s", Str_milliToTime(p->response, (char[23]){}), p->target.unix.pathname, Util_portTypeDescription(p), p->protocol->name);
                         }
                 }
         }
