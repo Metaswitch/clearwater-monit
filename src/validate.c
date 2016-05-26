@@ -1131,6 +1131,7 @@ State_Type check_process(Service_T s) {
                 }
         }
         for (Port_T pp = s->portlist; pp; pp = pp->next) {
+                //FIXME: instead of pause, try to test, but ignore any errors in the start timeout timeframe ... will allow to display the port response time as soon as available, instead of waiting for 30+ seconds
                 /* pause port tests in the start timeout timeframe while the process is starting (it may take some time to the process before it starts accepting connections) */
                 if (! s->start || s->inf->priv.process.uptime > s->start->timeout) {
                         if (_checkConnection(s, pp) == State_Failed)
@@ -1141,6 +1142,7 @@ State_Type check_process(Service_T s) {
                 }
         }
         for (Port_T pp = s->socketlist; pp; pp = pp->next) {
+                //FIXME: instead of pause, try to test, but ignore any errors in the start timeout timeframe ... will allow to display the port response time as soon as available, instead of waiting for 30+ seconds
                 /* pause socket tests in the start timeout timeframe while the process is starting (it may take some time to the process before it starts accepting connections) */
                 if (! s->start || s->inf->priv.process.uptime > s->start->timeout) {
                         if (_checkConnection(s, pp) == State_Failed)
