@@ -247,7 +247,10 @@ Print a short status summary.
 
 =item report [up | down | initialising | unmonitored | total]
 
-Report services state
+Report services state. The output can easily be parsed by scripts. 
+Without options, prints a short overview of the state of all 
+services managed by Monit. The option, I<up> prints the number of
+all services in this state, I<down> likewise and so on.
 
 =item reload
 
@@ -1462,8 +1465,9 @@ Syntax:
 
   MODE <ACTIVE | PASSIVE>
 
-In I<active> mode (the default), Monit will pro-actively monitor a
-service and in case of problems raise alerts and restart the service.
+In I<active> mode, Monit will pro-actively monitor a service and in
+case of problems raise alerts and restart the service. Active is the
+default mode.
 
 The I<passive> mode is similar to the I<active> mode, except if the
 service fails, monit will B<not> try to fix a problem by restarting
@@ -1478,20 +1482,24 @@ Syntax:
 
   ONREBOOT <START | NOSTART | LASTSTATE>
 
-In I<start> mode (B<DEFAULT>), Monit will always start the service automatically
-on reboot, even if it was stopped before it.
+In I<start> mode, Monit will always start the service automatically on
+reboot, even if it was stopped before restart. This is the default mode
+and used if I<onreboot> is not specified.
 
-In I<nostart> mode, the service is I<never> started automatically after reboot.
-This mode is intended for a high-availability solutions with active/passive clusters.
-For example: the service group HA is started on machine M1, the machine M2 is backup,
-heartbeat is in place between both machines. The service group HA (such as an mobile
-IP alias + application server). must be started on one node only. When M1 dies,
-M2 takes HA group over, but if M1 reboots, it is important that it won't try to start
-the HA group too (even though it was active on M1 before it crashed), as HA is running
-on M2 now.
+In I<nostart> mode, the service is I<never> started automatically after
+reboot. This mode is intended for a high-availability solutions with
+active/passive clusters. For example, a service group HA, consisting of
+e.g. a mobile IP alias and an application server, is started on host
+H1, host H2 is backup and heartbeat is in place between both hosts.
+The service group I<HA> must be started on one node only. If H1 dies,
+H2 takes over the HA group. If H1 reboots, it is important that it
+won't try to start the HA group also. Even though the group was active
+on H1 before it crashed, as HA is running on H2 now.
 
-In I<laststate> mode, a service monitoring state is persistent across reboot, i.e. if
-the service was started before reboot, it'll be started after reboot too and vice versa.
+In I<laststate> mode, a service's monitoring state is persistent across
+reboot. For instance, if a service was started before reboot, it willl
+be started after reboot. If it was stopped before reboot, it will
+not be started after and so on.
 
 
 =head1 SERVICE RESTART LIMIT
@@ -3531,8 +3539,8 @@ executed by monit, including I<check program>:
 
 =item MONIT_SERVICE
 
-The name of the service (from monitrc) for which is the program
-executed.
+The name of the service (from monitrc) for which the program
+is executed.
 
 =back
 

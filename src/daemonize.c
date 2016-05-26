@@ -120,7 +120,7 @@ boolean_t kill_daemon(int sig) {
         pid_t pid;
         if ((pid = exist_daemon()) > 0) {
                 if (kill(pid, sig) < 0) {
-                        LogError("Cannot signal the Monit daemon process -- %s\n", STRERROR);
+                        LogError("Cannot signal the monit daemon process -- %s\n", STRERROR);
                         return false;
                 }
         } else {
