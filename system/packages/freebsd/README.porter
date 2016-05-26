@@ -36,7 +36,7 @@
     OS:         Any
 
   Attach the following files:
-        monit.patch
+        monit.patch (set maintainer-approval+ if you're maintainer)
         portlint.txt
         make_check-plist.txt
         make_stage-qa.txt
