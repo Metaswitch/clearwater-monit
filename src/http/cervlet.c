@@ -2184,7 +2184,7 @@ static void print_status(HttpRequest req, HttpResponse res, int version) {
         } else {
                 set_content_type(res, "text/plain");
 
-                StringBuffer_append(res->outputbuffer, "Monit uptime: %s\n", _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
+                StringBuffer_append(res->outputbuffer, "Monit %s uptime: %s\n\n", VERSION, _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
 
                 int found = 0;
                 const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
