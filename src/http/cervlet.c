@@ -2242,7 +2242,7 @@ static int _printServiceSummaryByType(Box_T t, Service_Type type) {
 static void print_summary(HttpRequest req, HttpResponse res) {
         set_content_type(res, "text/plain");
 
-        StringBuffer_append(res->outputbuffer, "Monit uptime: %s\n", _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
+        StringBuffer_append(res->outputbuffer, "Monit %s uptime: %s\n", VERSION, _getUptime(ProcessTree_getProcessUptime(getpid()), (char[256]){}));
 
         int found = 0;
         const char *stringGroup = Util_urlDecode((char *)get_parameter(req, "group"));
