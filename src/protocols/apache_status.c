@@ -29,6 +29,7 @@
 #endif
 
 #include "protocol.h"
+#include "base64.h"
 
 // libmonit
 #include "exceptions/IOException.h"
@@ -108,12 +109,29 @@ static void parse_scoreboard(Socket_T socket, char *scoreboard, Port_T p) {
 }
 
 
+static void _parseResponseHeaders(Socket_T socket) {
+        int status;
+        char buf[STRLEN];
+        if (! Socket_readLine(socket, buf, sizeof(buf)))
+                THROW(IOException, "APACHE-STATUS: error receiving data -- %s", STRERROR);
+        Str_chomp(buf);
+        if (! sscanf(buf, "%*s %d", &status))
+                THROW(IOException, "APACHE-STATUS: error -- cannot parse HTTP status in response: %s", buf);
+        if (status != 200)
+                THROW(IOException, "APACHE-STATUS: error -- server returned status %d", status);
+        while (Socket_readLine(socket, buf, sizeof(buf))) {
+                if ((buf[0] == '\r' && buf[1] == '\n') || (buf[0] == '\n'))
+                        break;
+        }
+}
+
+
 /* ------------------------------------------------------------------ Public */
 
 
 void check_apache_status(Socket_T socket) {
         ASSERT(socket);
-        char host[STRLEN];
+        char buf[4096];
         Port_T p = Socket_getPort(socket);
         ASSERT(p);
         if (Socket_print(socket,
@@ -121,16 +139,24 @@ void check_apache_status(Socket_T socket) {
                 "Host: %s\r\n"
                 "Accept: */*\r\n"
                 "User-Agent: Monit/%s\r\n"
-                "Connection: close\r\n\r\n",
+                "Connection: close\r\n",
                 p->parameters.apachestatus.path ? p->parameters.apachestatus.path : "/server-status",
-                Util_getHTTPHostHeader(socket, host, STRLEN), VERSION) < 0)
+                Util_getHTTPHostHeader(socket, buf, sizeof(buf)), VERSION) < 0)
         {
                 THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
         }
-        char buffer[4096] = {0};
-        while (Socket_readLine(socket, buffer, sizeof(buffer))) {
-                if (Str_startsWith(buffer, "Scoreboard: ")) {
-                        char *scoreboard = buffer + 12; // skip header
+        if (p->parameters.apachestatus.username && p->parameters.apachestatus.password) {
+                snprintf(buf, sizeof(buf), "%s:%s", p->parameters.apachestatus.username, p->parameters.apachestatus.password);
+                char *b64 = encode_base64(strlen(buf), (unsigned char *)buf);
+                if (Socket_print(socket, "Authorization: Basic %s\r\n", b64) < 0)
+                        THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
+        }
+        if (Socket_print(socket, "\r\n") < 0)
+                THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
+        _parseResponseHeaders(socket);
+        while (Socket_readLine(socket, buf, sizeof(buf))) {
+                if (Str_startsWith(buf, "Scoreboard: ")) {
+                        char *scoreboard = buf + 12; // skip header
                         parse_scoreboard(socket, scoreboard, p);
                         return;
                 }

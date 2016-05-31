@@ -4,6 +4,18 @@
 
 Version 5.18.1
 
+New: Issue #380: apache-status protocol test: Added support for 'username' and 'password' options for
+Basic authentication. Example:
+ if failed port 80 protocol apache-status username myuser password 123456
+        loglimit > 10% or
+        dnslimit > 50% or
+        waitlimit < 20%
+ then alert
+
+Fixed: apache-status protocol test: If the server returned an error (for example because authetication
+is required and no credentials were set), provide the error code rather then confusing error message
+"no scoreboard found".
+
 Fixed: Issue #379: A linux system with lots of interrupts may disable process and system resource
 checks.
 

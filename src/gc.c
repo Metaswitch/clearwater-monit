@@ -383,6 +383,8 @@ static void _gcportlist(Port_T *p) {
                 FREE((*p)->parameters.websocket.request);
         } else if ((*p)->protocol->check == check_apache_status) {
                 FREE((*p)->parameters.apachestatus.path);
+                FREE((*p)->parameters.apachestatus.username);
+                FREE((*p)->parameters.apachestatus.password);
         }
         FREE(*p);
 }

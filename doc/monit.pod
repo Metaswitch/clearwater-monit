@@ -3002,9 +3002,13 @@ its default address of http://www.example.com/server-status.
 
 Syntax:
 
- PROTOCOL APACHE-STATUS [PATH <path>] [<property> <operator> <number>]+
+ PROTOCOL APACHE-STATUS [PATH <path>] [USERNAME <string>] [PASSWORD <string>] [<property> <operator> <number>]+
 
 I<path> is an optional path to apache status ("/server-status" by default)
+
+I<username > is an optional username for Basic authentication
+
+I<password> is an optional password for Basic authentication
 
 I<property> is acronym for child status:
 

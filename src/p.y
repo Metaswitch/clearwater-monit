@@ -1714,48 +1714,54 @@ apache_stat_list: apache_stat
                 | apache_stat_list apache_stat
                 ;
 
-apache_stat     : PATHTOK PATH {
-                    portset.parameters.apachestatus.path = $<string>2;
+apache_stat     : username {
+                        portset.parameters.apachestatus.username = $<string>1;
+                  }
+                | password {
+                        portset.parameters.apachestatus.password = $<string>1;
+                  }
+                | PATHTOK PATH {
+                        portset.parameters.apachestatus.path = $<string>2;
                   }
                 | LOGLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.loglimitOP = $<number>2;
-                    portset.parameters.apachestatus.loglimit = $<number>3;
+                        portset.parameters.apachestatus.loglimitOP = $<number>2;
+                        portset.parameters.apachestatus.loglimit = $<number>3;
                   }
                 | CLOSELIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.closelimitOP = $<number>2;
-                    portset.parameters.apachestatus.closelimit = $<number>3;
+                        portset.parameters.apachestatus.closelimitOP = $<number>2;
+                        portset.parameters.apachestatus.closelimit = $<number>3;
                   }
                 | DNSLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.dnslimitOP = $<number>2;
-                    portset.parameters.apachestatus.dnslimit = $<number>3;
+                        portset.parameters.apachestatus.dnslimitOP = $<number>2;
+                        portset.parameters.apachestatus.dnslimit = $<number>3;
                   }
                 | KEEPALIVELIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.keepalivelimitOP = $<number>2;
-                    portset.parameters.apachestatus.keepalivelimit = $<number>3;
+                        portset.parameters.apachestatus.keepalivelimitOP = $<number>2;
+                        portset.parameters.apachestatus.keepalivelimit = $<number>3;
                   }
                 | REPLYLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.replylimitOP = $<number>2;
-                    portset.parameters.apachestatus.replylimit = $<number>3;
+                        portset.parameters.apachestatus.replylimitOP = $<number>2;
+                        portset.parameters.apachestatus.replylimit = $<number>3;
                   }
                 | REQUESTLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.requestlimitOP = $<number>2;
-                    portset.parameters.apachestatus.requestlimit = $<number>3;
+                        portset.parameters.apachestatus.requestlimitOP = $<number>2;
+                        portset.parameters.apachestatus.requestlimit = $<number>3;
                   }
                 | STARTLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.startlimitOP = $<number>2;
-                    portset.parameters.apachestatus.startlimit = $<number>3;
+                        portset.parameters.apachestatus.startlimitOP = $<number>2;
+                        portset.parameters.apachestatus.startlimit = $<number>3;
                   }
                 | WAITLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.waitlimitOP = $<number>2;
-                    portset.parameters.apachestatus.waitlimit = $<number>3;
+                        portset.parameters.apachestatus.waitlimitOP = $<number>2;
+                        portset.parameters.apachestatus.waitlimit = $<number>3;
                   }
                 | GRACEFULLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.gracefullimitOP = $<number>2;
-                    portset.parameters.apachestatus.gracefullimit = $<number>3;
+                        portset.parameters.apachestatus.gracefullimitOP = $<number>2;
+                        portset.parameters.apachestatus.gracefullimit = $<number>3;
                   }
                 | CLEANUPLIMIT operator NUMBER PERCENT {
-                    portset.parameters.apachestatus.cleanuplimitOP = $<number>2;
-                    portset.parameters.apachestatus.cleanuplimit = $<number>3;
+                        portset.parameters.apachestatus.cleanuplimitOP = $<number>2;
+                        portset.parameters.apachestatus.cleanuplimit = $<number>3;
                   }
                 ;
 

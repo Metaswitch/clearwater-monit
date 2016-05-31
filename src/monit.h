@@ -593,6 +593,8 @@ typedef struct myport {
         /** Protocol specific parameters */
         union {
                 struct {
+                        char *username;
+                        char *password;
                         char *path;                                              /**< status path */
                         short loglimit;                  /**< Max percentage of logging processes */
                         short closelimit;             /**< Max percentage of closinging processes */
