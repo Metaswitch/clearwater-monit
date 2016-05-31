@@ -1660,7 +1660,13 @@ httplist        : /* EMPTY */
                 | httplist http
                 ;
 
-http            : request
+http            : username {
+                        portset.parameters.http.username = $<string>1;
+                  }
+                | password {
+                        portset.parameters.http.password = $<string>1;
+                  }
+                | request
                 | responsesum
                 | status
                 | hostheader

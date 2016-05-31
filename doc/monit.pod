@@ -247,8 +247,8 @@ Print a short status summary.
 
 =item report [up | down | initialising | unmonitored | total]
 
-Report services state. The output can easily be parsed by scripts. 
-Without options, prints a short overview of the state of all 
+Report services state. The output can easily be parsed by scripts.
+Without options, prints a short overview of the state of all
 services managed by Monit. The option, I<up> prints the number of
 all services in this state, I<down> likewise and so on.
 
@@ -620,7 +620,7 @@ I<VERIFY> enable SSL server certificate verification. This will verify
 and report an error if the server certificate is not trusted, not valid
 or has expired. By default certificate verification is disabled, though
 we recommend enabling it, otherwise there is no guarantee that Monit
-speaks with the server you think it speaks with. 
+speaks with the server you think it speaks with.
 
 I<SELFSIGNED> self-signed certificates are rejected by default. Use
 this option to allow self-signed certificates.
@@ -1239,7 +1239,7 @@ Monit supports AUTH PLAIN and AUTH LOGIN for SMTP authentication.
 You can set a username and a password using the USERNAME and
 PASSWORD options.
 
-You can set SSL/TLS L<options|"SSL OPTIONS"> for the connection and 
+You can set SSL/TLS L<options|"SSL OPTIONS"> for the connection and
 also check a SSL certificate checksum.
 
 The default connection timeout is 5 seconds. You can rise this
@@ -1351,7 +1351,7 @@ There are three variants:
 
  EVERY [cron]
 
-=item 3. Negative Cron-style (do-not-check)   
+=item 3. Negative Cron-style (do-not-check)
 
  NOT EVERY [cron]
 
@@ -2898,11 +2898,17 @@ UNIX sockets and UDP sockets.
 Syntax:
 
  PROTO(COL) HTTP
+     [USERNAME "string"]
+     [PASSWORD "string"]
      [REQUEST "string"]
      [STATUS operator number]
      [CHECKSUM checksum]
      [HTTP HEADERS list of headers]
      [CONTENT < "=" | "!=" > STRING]
+
+I<USERNAME> is an optional username for Basic authentication
+
+I<PASSWORD> is an optional password for Basic authentication
 
 I<REQUEST> option can set an URL string specifying a document on the
 HTTP server. If the request statement isn't specified, the default "/"
@@ -3004,11 +3010,11 @@ Syntax:
 
  PROTOCOL APACHE-STATUS [PATH <path>] [USERNAME <string>] [PASSWORD <string>] [<property> <operator> <number>]+
 
-I<path> is an optional path to apache status ("/server-status" by default)
+I<PATH> is an optional path to apache status ("/server-status" by default)
 
-I<username > is an optional username for Basic authentication
+I<USERNAME> is an optional username for Basic authentication
 
-I<password> is an optional password for Basic authentication
+I<PASSWORD> is an optional password for Basic authentication
 
 I<property> is acronym for child status:
 
@@ -3144,7 +3150,7 @@ I<USERNAME> SMTP username.
 
 I<PASSWORD> SMTP password (special characters can be used, but for
 non-alphanumerics the password has to be quoted).
- 
+
 Credentials are I<optional> and when used will perform authentication
 during testing so you can test that authentication also works. We
 recommend using I<smtps> if authentication is to be used to encrypt the

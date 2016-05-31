@@ -624,6 +624,8 @@ typedef struct myport {
                         Hash_Type hashtype;           /**< Type of hash for a checksum (optional) */
                         Operator_Type operator;                         /**< HTTP status operator */
                         int status;                                              /**< HTTP status */
+                        char *username;
+                        char *password;
                         char *request;                                          /**< HTTP request */
                         char *checksum;                         /**< Document checksum (optional) */
                         List_T headers;      /**< List of headers to send with request (optional) */

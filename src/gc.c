@@ -354,6 +354,8 @@ static void _gcportlist(Port_T *p) {
         FREE((*p)->hostname);
         FREE((*p)->outgoing.ip);
         if ((*p)->protocol->check == check_http) {
+                FREE((*p)->parameters.http.username);
+                FREE((*p)->parameters.http.password);
                 FREE((*p)->parameters.http.request);
                 FREE((*p)->parameters.http.checksum);
                 if ((*p)->parameters.http.headers) {

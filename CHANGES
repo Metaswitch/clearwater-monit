@@ -8,9 +8,11 @@ New: Issue #380: apache-status protocol test: Added support for 'username' and '
 Basic authentication. Example:
  if failed port 80 protocol apache-status username myuser password 123456
         loglimit > 10% or
-        dnslimit > 50% or
-        waitlimit < 20%
+        dnslimit > 50%
  then alert
+
+New: Add support for Basic authentication to the HTTP protocol test. Example:
+ if failed port 80 protocol http username myuser password 123456 then alert
 
 Fixed: apache-status protocol test: If the server returned an error (for example because authetication
 is required and no credentials were set), provide the error code rather then confusing error message

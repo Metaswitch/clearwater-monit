@@ -220,7 +220,7 @@ static char *get_auth_header(Port_T P) {
                 if (U)
                         return Util_getBasicAuthHeader(U->user, U->password);
         }
-        return NULL;
+        return Util_getBasicAuthHeader(P->parameters.http.username, P->parameters.http.password);
 }
 
 
