@@ -3208,20 +3208,19 @@ static void addhttpheader(Port_T port, const char *header) {
  * Add a new resource object to the current service resource list
  */
 static void addresource(Resource_T rr) {
-        Resource_T r;
-
         ASSERT(rr);
-
-        NEW(r);
-        if (! (Run.flags & Run_ProcessEngineEnabled))
-                yyerror("Cannot activate service check. The process status engine was disabled. On certain systems you must run monit as root to utilize this feature)\n");
-        r->resource_id = rr->resource_id;
-        r->limit       = rr->limit;
-        r->action      = rr->action;
-        r->operator    = rr->operator;
-        r->next        = current->resourcelist;
-
-        current->resourcelist = r;
+        if (Run.flags & Run_ProcessEngineEnabled) {
+                Resource_T r;
+                NEW(r);
+                r->resource_id = rr->resource_id;
+                r->limit       = rr->limit;
+                r->action      = rr->action;
+                r->operator    = rr->operator;
+                r->next        = current->resourcelist;
+                current->resourcelist = r;
+        } else {
+                yywarning("Cannot activate service check. The process status engine was disabled. On certain systems you must run monit as root to utilize this feature)\n");
+        }
         reset_resourceset();
 }
 

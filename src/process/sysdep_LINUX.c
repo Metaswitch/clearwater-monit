@@ -120,7 +120,7 @@ static time_t get_starttime() {
 
 boolean_t init_process_info_sysdep(void) {
         char *ptr;
-        char  buf[4096];
+        char  buf[8192];
 
         if ((hz = sysconf(_SC_CLK_TCK)) <= 0.) {
                 DEBUG("system statistic error -- cannot get hz: %s\n", STRERROR);

@@ -1,6 +1,15 @@
-                     CHANGES version 5.18
+                     CHANGES version 5.18.1
 
            This file summarizes changes made since 5.0
+
+Version 5.18.1
+
+Fixed: Issue #379: A linux system with lots of interrupts may disable process and system resource
+checks.
+
+Fixed: If the resource check is disabled (for example because the user doesn't have privileges to
+read the data), emit just warning on startup.
+
 
 Version 5.18
 
