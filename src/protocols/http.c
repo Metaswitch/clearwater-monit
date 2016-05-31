@@ -214,31 +214,13 @@ static void check_request(Socket_T socket, Port_T P) {
 }
 
 
-static char *get_auth_header(Port_T P, char *auth, int l) {
-        char *b64;
-        char buf[STRLEN];
-        char *username = NULL;
-        char *password = NULL;
-
+static char *get_auth_header(Port_T P) {
         if (P->url_request) {
                 URL_T U = P->url_request->url;
-                if (U) {
-                        username = U->user;
-                        password = U->password;
-                }
+                if (U)
+                        return Util_getBasicAuthHeader(U->user, U->password);
         }
-
-        if (! (username && password))
-                return auth;
-
-        snprintf(buf, STRLEN, "%s:%s", username, password);
-        if (! (b64 = encode_base64(strlen(buf), (unsigned char *)buf)) )
-                return auth;
-
-        snprintf(auth, l, "Authorization: Basic %s\r\n", b64);
-        FREE(b64);
-
-        return auth;
+        return NULL;
 }
 
 
@@ -253,6 +235,7 @@ void check_http(Socket_T socket) {
         ASSERT(P);
 
         StringBuffer_T sb = StringBuffer_create(168);
+        char *auth = get_auth_header(P);
         StringBuffer_append(sb,
                             "%s %s HTTP/1.1\r\n"
                             "Accept: */*\r\n"
@@ -260,7 +243,8 @@ void check_http(Socket_T socket) {
                             "%s",
                             ((P->url_request && P->url_request->regex) || P->parameters.http.checksum) ? "GET" : "HEAD",
                             P->parameters.http.request ? P->parameters.http.request : "/",
-                            get_auth_header(P, (char[STRLEN]){0}, STRLEN));
+                            auth ? auth : "");
+        FREE(auth);
         if (! _hasHeader(P->parameters.http.headers, "Host"))
                 StringBuffer_append(sb, "Host: %s\r\n", Util_getHTTPHostHeader(socket, (char[STRLEN]){}, STRLEN));
         if (! _hasHeader(P->parameters.http.headers, "User-Agent"))
