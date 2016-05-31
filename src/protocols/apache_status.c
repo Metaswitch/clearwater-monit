@@ -120,7 +120,7 @@ static void _parseResponseHeaders(Socket_T socket) {
         if (status != 200)
                 THROW(IOException, "APACHE-STATUS: error -- server returned status %d", status);
         while (Socket_readLine(socket, buf, sizeof(buf))) {
-                if ((buf[0] == '\r' && buf[1] == '\n') || (buf[0] == '\n'))
+                if (! strncmp(buf, "\r\n", sizeof(buf)))
                         break;
         }
 }
