@@ -148,8 +148,12 @@ void check_apache_status(Socket_T socket) {
         if (p->parameters.apachestatus.username && p->parameters.apachestatus.password) {
                 snprintf(buf, sizeof(buf), "%s:%s", p->parameters.apachestatus.username, p->parameters.apachestatus.password);
                 char *b64 = encode_base64(strlen(buf), (unsigned char *)buf);
-                if (Socket_print(socket, "Authorization: Basic %s\r\n", b64) < 0)
-                        THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
+                if (b64) {
+                        int rv = Socket_print(socket, "Authorization: Basic %s\r\n", b64);
+                        FREE(b64);
+                        if (rv < 0)
+                                THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
+                }
         }
         if (Socket_print(socket, "\r\n") < 0)
                 THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
