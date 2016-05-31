@@ -134,28 +134,21 @@ void check_apache_status(Socket_T socket) {
         char buf[4096];
         Port_T p = Socket_getPort(socket);
         ASSERT(p);
-        if (Socket_print(socket,
+        char *auth = Util_getBasicAuthHeader(p->parameters.apachestatus.username, p->parameters.apachestatus.password);
+        int rv = Socket_print(socket,
                 "GET %s?auto HTTP/1.1\r\n"
                 "Host: %s\r\n"
                 "Accept: */*\r\n"
                 "User-Agent: Monit/%s\r\n"
-                "Connection: close\r\n",
+                "Connection: close\r\n"
+                "%s"
+                "\r\n",
                 p->parameters.apachestatus.path ? p->parameters.apachestatus.path : "/server-status",
-                Util_getHTTPHostHeader(socket, buf, sizeof(buf)), VERSION) < 0)
-        {
-                THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
-        }
-        if (p->parameters.apachestatus.username && p->parameters.apachestatus.password) {
-                snprintf(buf, sizeof(buf), "%s:%s", p->parameters.apachestatus.username, p->parameters.apachestatus.password);
-                char *b64 = encode_base64(strlen(buf), (unsigned char *)buf);
-                if (b64) {
-                        int rv = Socket_print(socket, "Authorization: Basic %s\r\n", b64);
-                        FREE(b64);
-                        if (rv < 0)
-                                THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
-                }
-        }
-        if (Socket_print(socket, "\r\n") < 0)
+                Util_getHTTPHostHeader(socket, buf, sizeof(buf)),
+                VERSION,
+                auth ? auth : "");
+        FREE(auth);
+        if (rv < 0)
                 THROW(IOException, "APACHE-STATUS: error sending data -- %s", STRERROR);
         _parseResponseHeaders(socket);
         while (Socket_readLine(socket, buf, sizeof(buf))) {
