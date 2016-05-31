@@ -119,9 +119,6 @@ static time_t get_starttime() {
 
 
 boolean_t init_process_info_sysdep(void) {
-        char *ptr;
-        char  buf[8192];
-
         if ((hz = sysconf(_SC_CLK_TCK)) <= 0.) {
                 DEBUG("system statistic error -- cannot get hz: %s\n", STRERROR);
                 return false;
@@ -132,21 +129,6 @@ boolean_t init_process_info_sysdep(void) {
                 return false;
         }
 
-        if (! file_readProc(buf, sizeof(buf), "meminfo", -1, NULL)) {
-                DEBUG("system statistic error -- cannot read /proc/meminfo\n");
-                return false;
-        }
-        if (! (ptr = strstr(buf, "MemTotal:"))) {
-                DEBUG("system statistic error -- cannot get real memory amount\n");
-                return false;
-        }
-        long mem_max;
-        if (sscanf(ptr + 9, "%ld", &mem_max) != 1) {
-                DEBUG("system statistic error -- cannot get real memory amount\n");
-                return false;
-        }
-        systeminfo.mem_max = (uint64_t)mem_max * 1024;
-
         if ((systeminfo.cpus = sysconf(_SC_NPROCESSORS_CONF)) < 0) {
                 DEBUG("system statistic error -- cannot get cpu count: %s\n", STRERROR);
                 return false;
@@ -155,20 +137,39 @@ boolean_t init_process_info_sysdep(void) {
                 systeminfo.cpus = 1;
         }
 
-        if (! file_readProc(buf, sizeof(buf), "stat", -1, NULL)) {
-                DEBUG("system statistic error -- cannot read /proc/stat\n");
-                return false;
+        FILE *f = fopen("/proc/meminfo", "r");
+        if (f) {
+                char line[2048];
+                long mem_max = 0L;
+                while (fgets(line, sizeof(line), f)) {
+                        if (sscanf(line, "MemTotal: %lu\n", &mem_max) == 1) {
+                                systeminfo.mem_max = (uint64_t)mem_max * 1024;
+                                break;
+                        }
+                }
+                fclose(f);
+                if (! systeminfo.mem_max)
+                        DEBUG("system statistic error -- cannot get real memory amount\n");
+        } else {
+                DEBUG("system statistic error -- cannot open /proc/meminfo\n");
         }
-        if (! (ptr = strstr(buf, "btime "))) {
-                DEBUG("system statistic error -- cannot get system boot time\n");
-                return false;
+
+        f = fopen("/proc/stat", "r");
+        if (f) {
+                char line[2048];
+                unsigned long booted = 0UL;
+                while (fgets(line, sizeof(line), f)) {
+                        if (sscanf(line, "btime %lu\n", &booted) == 1) {
+                                systeminfo.booted = booted;
+                                break;
+                        }
+                }
+                fclose(f);
+                if (! systeminfo.booted)
+                        DEBUG("system statistic error -- cannot get system boot time\n");
+        } else {
+                DEBUG("system statistic error -- cannot open /proc/stat\n");
         }
-        unsigned long booted;
-        if (sscanf(ptr + 6, "%lu", &booted) != 1) {
-                DEBUG("system statistic error -- cannot read system boot time\n");
-                return false;
-        }
-        systeminfo.booted = booted;
 
         return true;
 }
