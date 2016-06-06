@@ -24,6 +24,9 @@ checks.
 Fixed: If the resource check is disabled (for example because the user doesn't have privileges to
 read the data), emit just warning on startup.
 
+Fixed: Solaris: Subtract ZFS ARC size from the system memory usage, so monit can display memory used
+by applications (ZFS ARC will return memory to the system when needed).
+
 
 Version 5.18
 

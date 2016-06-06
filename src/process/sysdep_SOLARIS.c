@@ -253,8 +253,15 @@ boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
                         return false;
                 }
                 knamed = kstat_data_lookup(kstat, "freemem");
-                if (knamed)
-                        si->total_mem = systeminfo.mem_max - (uint64_t)knamed->value.ul * (uint64_t)page_size;
+                if (knamed) {
+                        uint64_t freemem = (uint64_t)knamed->value.ul * (uint64_t)page_size, arcsize = 0ULL;
+                        kstat = kstat_lookup(kctl, "zfs", 0, "arcstats");
+                        if (kstat_read(kctl, kstat, 0) != -1) {
+                                knamed = kstat_data_lookup(kstat, "size");
+                                arcsize = (uint64_t)knamed->value.ul;
+                        }
+                        si->total_mem = systeminfo.mem_max - freemem - arcsize;
+                }
         }
         kstat_close(kctl);
 
