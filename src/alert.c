@@ -267,6 +267,14 @@ static boolean_t _send(List_T list) {
 }
 
 
+boolean_t _hasRecipient(Mail_T list, const char *recipient) {
+        for (Mail_T l = list; l; l = l->next)
+                if (IS(recipient, l->to))
+                        return true;
+        return false;
+}
+
+
 /* ------------------------------------------------------------------ Public */
 
 
@@ -279,20 +287,18 @@ Handler_Type handle_alert(Event_T E) {
         ASSERT(E);
 
         Handler_Type rv = Handler_Succeeded;
-        if (E->source->maillist || Run.maillist) {
+        Service_T s = E->source;
+        if (s->maillist || Run.maillist) {
                 char host[256];
                 _getFQDNhostname(host);
                 List_T list = List_new();
                 // Build a mail-list with local recipients that has registered interest for this event
-                for (Mail_T m = E->source->maillist; m; m = m->next)
+                for (Mail_T m = s->maillist; m; m = m->next)
                         _appendMail(list, m, E, host);
                 // Build a mail-list with global recipients that has registered interest for this event. Recipients which are defined in the service localy overrides the same recipient events which are registered globaly.
-                for (Mail_T m = Run.maillist; m; m = m->next) {
-                        for (Mail_T n = E->source->maillist; n; n = n->next)
-                                if (IS(m->to, n->to))
-                                        continue; // Handled by local alert definition already
-                        _appendMail(list, m, E, host);
-                }
+                for (Mail_T m = Run.maillist; m; m = m->next)
+                        if (! _hasRecipient(s->maillist, m->to))
+                                _appendMail(list, m, E, host);
                 if (List_length(list))
                         if (_send(list))
                                 rv = Handler_Alert;

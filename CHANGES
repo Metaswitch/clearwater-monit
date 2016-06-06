@@ -21,6 +21,9 @@ is required and no credentials were set), provide the error code rather then con
 Fixed: Issue #379: A linux system with lots of interrupts may disable process and system resource
 checks.
 
+Fixed: Issue #388: The service-local alert settings didn't override global "set alert" for the same
+recipient properly.
+
 Fixed: If the resource check is disabled (for example because the user doesn't have privileges to
 read the data), emit just warning on startup.
 
