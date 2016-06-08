@@ -30,6 +30,9 @@ read the data), emit just warning on startup.
 Fixed: Solaris: Subtract ZFS ARC size from the system memory usage, so monit can display memory used
 by applications (ZFS ARC will return memory to the system when needed).
 
+Fixed: Some linux versions logged "Skipping redundant host 'localhost'" warning in the case that the
+/etc/hosts contained localhost entry for both "127.0.0.1" (IPv4 loopback) and "::1" (IPv6 loopback).
+
 
 Version 5.18
 

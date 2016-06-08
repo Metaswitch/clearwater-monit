@@ -363,13 +363,12 @@ void Engine_cleanup() {
 boolean_t Engine_addHostAllow(char *pattern) {
         ASSERT(pattern);
         struct addrinfo *res, hints = {
-                .ai_family = AF_INET, /* we support just IPv4 currently */
                 .ai_protocol = IPPROTO_TCP
         };
         int rv = false;
         if (! getaddrinfo(pattern, NULL, &hints, &res)) {
                 for (struct addrinfo *_res = res; _res; _res = _res->ai_next) {
-                        if (_res->ai_family == AF_INET) {
+                        if (_res->ai_family == AF_INET) { // we support just IPv4 currently
                                 struct sockaddr_in *sin = (struct sockaddr_in *)_res->ai_addr;
                                 HostsAllow_T h;
                                 NEW(h);
