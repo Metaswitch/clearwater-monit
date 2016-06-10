@@ -72,6 +72,7 @@
 
 // Translate system hostname to FQDN, fallback to plain system hostname if failed
 static char *_getFQDNhostname(char host[256]) {
+        *host = 0;
         struct addrinfo *result = NULL, hints = {
                 .ai_family = AF_UNSPEC,
                 .ai_flags = AI_CANONNAME,
@@ -87,8 +88,10 @@ static char *_getFQDNhostname(char host[256]) {
                 }
                 freeaddrinfo(result);
         } else {
-                // Fallback
                 LogError("Cannot translate '%s' to FQDN name -- %s\n", Run.system->name, status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
+        }
+        if (! *host) {
+                // Fallback
                 strncpy(host, Run.system->name, 255);
         }
         return host;
