@@ -6,7 +6,7 @@ include build-infra/cw-deb.mk
 
 .PHONY: deb-build-monit
 deb-build-monit:
-	echo -e "${DEB_COMPONENT} (${DEB_VERSION}) unstable; urgency=low\n" >debian/changelog
+	echo -e "${DEB_COMPONENT} (${DEB_MAJOR_VERSION}-${DEB_MINOR_VERSION}) unstable; urgency=low\n" >debian/changelog
 	echo -e "  * build from revision $$(git rev-parse HEAD)\n" >>debian/changelog
 	echo -e " -- $(CW_SIGNER_REAL) <$(CW_SIGNER)>  $$(date -R)\n" >>debian/changelog
 	debuild --no-lintian -b -uc -us
