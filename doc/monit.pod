@@ -2522,11 +2522,11 @@ Download speed test syntax (per second):
 
 Total upload data test syntax:
 
- IF TOTAL UPLOAD operator value unit IN LAST number time-unit THEN action
+ IF TOTAL UPLOADED operator value unit IN LAST number time-unit THEN action
 
 Total download data test syntax:
 
- IF TOTAL DOWNLOAD operator value unit IN LAST number time-unit THEN action
+ IF TOTAL DOWNLOADED operator value unit IN LAST number time-unit THEN action
 
 I<operator> is a choice of "<",">","!=","==" in c notation, "gt",
 "lt", "eq", "ne" in shell sh notation and "greater", "less",
@@ -2548,8 +2548,8 @@ Examples:
 
  check network eth0 with interface eth0
        if upload > 500 kB/s then alert
-       if total download > 1 GB in last 2 hours then alert
-       if total download > 10 GB in last day then alert
+       if total downloaded > 1 GB in last 2 hours then alert
+       if total downloaded > 10 GB in last day then alert
 
 
 =head2 NETWORK PACKETS TEST
@@ -2570,11 +2570,11 @@ Current download bandwidth rate test syntax:
 
 Total upload test syntax:
 
- IF TOTAL UPLOAD operator value PACKETS IN LAST number time-unit THEN action
+ IF TOTAL UPLOADED operator value PACKETS IN LAST number time-unit THEN action
 
 Total download test syntax:
 
- IF TOTAL DOWNLOAD operator value PACKETS IN LAST number time-unit THEN action
+ IF TOTAL DOWNLOADED operator value PACKETS IN LAST number time-unit THEN action
 
 I<operator> is a choice of "<",">","!=","==" in c notation, "gt",
 "lt", "eq", "ne" in shell sh notation and "greater", "less",
@@ -2592,7 +2592,7 @@ Examples:
 
  check network eth0 with interface eth0
        if upload > 1000 packets/s then alert
-       if total upload > 900000 packets in last hour then alert
+       if total uploaded > 900000 packets in last hour then alert
 
 
 =head2 NETWORK PING TEST

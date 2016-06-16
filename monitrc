@@ -272,7 +272,7 @@ set httpd port 2812 and
 #    if changed link then alert
 #    if saturation > 90% then alert
 #    if download > 10 MB/s then alert
-#    if total upload > 1 GB in last hour then alert
+#    if total uploaded > 1 GB in last hour then alert
 #
 #
 ## Check custom program status output.
