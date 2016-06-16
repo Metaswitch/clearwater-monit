@@ -28,6 +28,8 @@ Fixed: Issue #393: The $HOST in mail alert may be incorrect if FQDN hostname can
 
 Fixed: Issue #396: Disable CLI colors if the output is not tty.
 
+Fixed: Issue #400: Clarify network tests documentation.
+
 Fixed: If the resource check is disabled (for example because the user doesn't have privileges to
 read the data), emit just warning on startup.
 
