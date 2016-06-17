@@ -2510,8 +2510,6 @@ You can check a network link upload and download bandwidth usage, current
 transfer speed and total data transferred in the last 24 hours. This test may
 only be used within a I<check network> service entry in the Monit control file.
 
-I<Warning: this test requires monit poll time to be at maximum 30 seconds>
-
 Upload speed test syntax (per second):
 
  IF UPLOAD operator value unit/S THEN action
@@ -2557,8 +2555,6 @@ Examples:
 You can check the network link upload and download packets count, current
 transfer rate and total data transferred in last 24 hours. This test may
 only be used within a check network service entry in the Monit control file.
-
-Warning: this test requires monit poll time to be at maximum 30 seconds.
 
 Current upload bandwidth rate test syntax:
 
