@@ -725,6 +725,10 @@ static int _checkPattern(Match_T pattern, const char *line) {
  */
 static State_Type _checkMatch(Service_T s) {
         ASSERT(s);
+        /* TODO: https://bitbucket.org/tildeslash/monit/issues/401 Refactor and use mmap instead of naive std file io.
+         mmap can make code simpler, more efficient and support multi-line matching as there is no line-buffer, but the
+         whole file is in the buffer.
+         */
         State_Type rv = State_Succeeded;
         if (s->matchlist) {
                 FILE *file = fopen(s->path, "r");
