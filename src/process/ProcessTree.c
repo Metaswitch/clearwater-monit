@@ -399,8 +399,8 @@ void ProcessTree_testMatch(char *pattern) {
                 if (count > 1)
                         printf("\n"
                                "WARNING:\n"
-                               "Multiple processes match the pattern. The check will select a matching process\n"
-                               "with the highest uptime, the one preferred by Monit is highlighted.\n");
+                               "Multiple processes match the pattern. Monit will select the process with the\n"
+                               "highest uptime, the one highlighted.\n");
         }
 }
 

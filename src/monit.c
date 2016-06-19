@@ -804,7 +804,7 @@ static void help() {
                " -I            Do not run in background (needed for run from init)\n"
                " --id          Print Monit's unique ID\n"
                " --resetid     Reset Monit's unique ID. Use with caution\n"
-               " -B            Batch command line mode (nontabular output with no colors)\n"
+               " -B            Batch command line mode (do not output tables or colors)\n"
                " -t            Run syntax check for the control file\n"
                " -v            Verbose mode, work noisy (diagnostic output)\n"
                " -vv           Very verbose mode, same as -v plus log stacktrace on error\n"
