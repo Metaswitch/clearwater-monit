@@ -2091,7 +2091,7 @@ statements are evaluated.
 For example:
 
   check file syslog with path /var/log/syslog
-        ignore content = "^monit"
+        ignore content = "monit"
         if content = "^mrcoffee" then alert
 
 
