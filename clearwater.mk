@@ -19,6 +19,9 @@ deb-build-monit: configure
 .PHONY: deb
 deb: deb-build-monit deb-move
 
-.PHONY: rpm
-rpm: configure rpm-only
+.PHONY: makeall
+makeall:
+	make all
 
+.PHONY: rpm
+rpm: configure makeall rpm-only
