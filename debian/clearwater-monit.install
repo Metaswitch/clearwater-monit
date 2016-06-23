@@ -1,2 +1,3 @@
 debian/monitrc etc/monit/
+monit /usr/bin/
 clearwater-monit.root/* /
