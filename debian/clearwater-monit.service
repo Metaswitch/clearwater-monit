@@ -1,0 +1,14 @@
+# systemd control file for clearwater-monit
+
+[Unit]
+Description=Clearwater-monit service manager
+
+[Service]
+ExecStartPre=/usr/share/clearwater/bin/issue_alarm.py "systemd" "4500.6"
+ExecStart=/usr/bin/monit -I -c /etc/monit/monitrc ; 
+Restart=on-failure
+RestartSec=5s
+LimitCORE=infinity
+
+[Install]
+WantedBy=multi-user.target

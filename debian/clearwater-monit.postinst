@@ -4,69 +4,7 @@ set -e
 
 case "$1" in
   configure)
-    # Setup logfile permissions:
-    touch /var/log/monit.log
-    chmod 640 /var/log/monit.log
-    chown root:adm /var/log/monit.log
-
-    # Add monit to /etc/aliases:
-    if [ -f /etc/aliases ] || [ -L /etc/aliases ]
-    then
-      if ! grep -qi '^monit[[:space:]]*:' /etc/aliases
-      then
-        echo "monit: root" >> /etc/aliases
-        test -x /usr/bin/newaliases && newaliases || :
-      fi
-    fi
-
-    # Ensure monit is stopped before starting it under upstart control (work-around
-    # for package script race conditions when upgrading monit -> clearwater-monit).
-    if (ps -C monit > /dev/null); then
-      # Stop monit directly to avoid a race where service scripts can be removed 
-      # before the stop operation is initiated.
-      monit quit || true
-
-      # Ensure that monit is really gone before attempting to start via upstart. A
-      # race was observed here that also needed to be handled.
-      printf "Waiting for Monit to stop\n"
-      cnt=0
-      while (ps -C monit > /dev/null); do
-        sleep 1
-        printf "."
-        cnt=`expr $cnt + 1`
-        if [ $cnt -gt 120 ]; then
-	  printf "*** ERROR: unable to stop Monit\n"
-	  exit 1
-        fi
-      done
-
-      # Finally allow upstart to take control of monit safely (it will not take 
-      # ownership of a process not started under its control).
-      service clearwater-monit start || true
-    fi
-
-    # Remove all monit configuration files that are left behind when apt uninstalls
-    # the old monit during an upgrade to clearwater-monit.
-    if [ -f /etc/default/monit ]
-    then
-       rm /etc/default/monit
-    fi
-
-    if [ -f /etc/init.d/monit ]
-    then
-       rm /etc/init.d/monit
-       update-rc.d monit remove
-    fi
-
-    if [ -f /etc/logrotate.d/monit ]
-    then 
-      rm /etc/logrotate.d/monit
-    fi
-
-    if [ -f /etc/pam.d/monit ]
-    then
-      rm /etc/pam.d/monit
-    fi
+    /usr/share/clearwater/clearwater-monit/install/clearwater-monit.postinst
     ;;
   abort-upgrade|abort-remove|abort-deconfigure)
     ;;
