@@ -25,7 +25,7 @@ script
 
     exec /usr/bin/monit -I -c /etc/monit/monitrc $MONIT_OPTS    
 
-    exec /usr/share/clearwater/bin/issue_alarm.py "upstart" "4500.6"
+    exec /usr/share/clearwater/bin/issue-alarm "upstart" "4500.6"
 end script
 
 pre-stop exec /usr/bin/monit -c /etc/monit/monitrc quit
