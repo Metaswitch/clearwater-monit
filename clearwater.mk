@@ -7,7 +7,7 @@ include build-infra/cw-rpm.mk
 
 .PHONY: configure
 configure:
-	./bootstrap && ./configure
+	./bootstrap && ./configure --sysconfdir=/etc/monit
 
 .PHONY: deb-build-monit
 deb-build-monit: configure
