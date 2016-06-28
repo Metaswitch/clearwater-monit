@@ -89,9 +89,9 @@ char *Util_digest2Bytes(unsigned char *digest, int mdlen, MD_T result);
  * @param stream The stream from where the digests are computed
  * @param sha_resblock The buffer to write the SHA1 result to or NULL to skip the SHA1
  * @param md5_resblock The buffer to write the MD5 result to or NULL to skip the MD5
- * @return FALSE if failed, otherwise TRUE
+ * @return false if failed, otherwise true
  */
-int Util_getStreamDigests(FILE *stream, void *sha_resblock, void *md5_resblock);
+boolean_t Util_getStreamDigests(FILE *stream, void *sha_resblock, void *md5_resblock);
 
 
 /**
@@ -104,12 +104,12 @@ void Util_printHash(char *file);
 /**
  * Store the checksum of given file in supplied buffer
  * @param file The file for which to compute the checksum
- * @param hashtype The hash type (HASH_MD5 or HASH_SHA1)
+ * @param hashtype The hash type (Hash_Md5 or Hash_Sha1)
  * @param buf The buffer where the result will be stored
  * @param bufsize The size of the buffer
- * @return FALSE if failed, otherwise TRUE
+ * @return false if failed, otherwise true
  */
-int Util_getChecksum(char *file, int hashtype, char *buf, int bufsize);
+boolean_t Util_getChecksum(char *file, Hash_Type hashtype, char *buf, int bufsize);
 
 
 /**
@@ -132,10 +132,10 @@ Service_T Util_getService(const char *name);
 
 /**
  * @param name A service name as stated in the config file
- * @return TRUE if the service name exist in the
- * servicelist, otherwise FALSE
+ * @return true if the service name exist in the
+ * servicelist, otherwise false
  */
-int Util_existService(const char *name);
+boolean_t Util_existService(const char *name);
 
 
 /**
@@ -177,38 +177,10 @@ char *Util_monitId(char *idfile);
 /**
  * Open and read the pid from the given pidfile.
  * @param pidfile A pidfile with full path
- * @return the pid (TRUE) or FALSE if the pid could
+ * @return the pid or 0 if the pid could
  * not be read from the file
  */
 pid_t Util_getPid(char *pidfile);
-
-
-/**
- * Check whether the process is running
- * @param s The service being checked
- * @param refresh TRUE to refresh the global ptree (useful for procmatch if process was mangled by monit in the same cycle such as by restart action) or FALSE to use cached ptree
- * @return The PID of the running running process or 0 if the process is not running.
- */
-int Util_isProcessRunning(Service_T s, int refresh);
-
-
-/**
- * Compute an uptime for a process based on the ctime
- * from the pidfile.
- * @param pidfile A process pidfile
- * @return an uptime
- */
-time_t Util_getProcessUptime(char *pidfile);
-
-
-/**
- * Compute an uptime string based on the delta time in seconds. The
- * caller must free the returned string.
- * @param delta seconds.
- * @param sep string separator
- * @return an uptime string
- */
-char *Util_getUptime(time_t delta, char *sep);
 
 
 /**
@@ -216,7 +188,7 @@ char *Util_getUptime(time_t delta, char *sep);
  * @param url an url string to test
  * @return true if url is url safe otherwise false
  */
-int Util_isurlsafe(const char *url);
+boolean_t Util_isurlsafe(const char *url);
 
 /**
  * Escape an url string converting unsafe characters to a hex (%xx)
@@ -244,13 +216,6 @@ char *Util_urlDecode(char *url);
  * @return the escaped string
  */
 char *Util_encodeServiceName(char *name);
-
-
-/**
- * @return a Basic Authentication Authorization string (RFC 2617),
- * with credentials from the Run object, NULL if credentials are not defined.
- */
-char *Util_getBasicAuthHeaderMonit();
 
 
 /**
@@ -289,10 +254,10 @@ Auth_T Util_getUserCredentials(char *uname);
  * given username.
  * @param uname Username
  * @param outside The password to test
- * @return TRUE if the passwords match for the given uname otherwise
- * FALSE
+ * @return true if the passwords match for the given uname otherwise
+ * false
  */
-int Util_checkCredentials(char *uname, char *outside);
+boolean_t Util_checkCredentials(char *uname, char *outside);
 
 
 /**
@@ -305,9 +270,9 @@ void Util_resetInfo(Service_T s);
 /**
  * Are service status data available?
  * @param s The service to test
- * @return TRUE if available otherwise FALSE
+ * @return true if available otherwise false
  */
-int Util_hasServiceStatus(Service_T s);
+boolean_t Util_hasServiceStatus(Service_T s);
 
 
 /**
@@ -329,7 +294,17 @@ char *Util_getHTTPHostHeader(Socket_T s, char *hostBuf, int len);
  * @param rightExpression rval
  * @return the boolean value of the expression
  */
-int Util_evalQExpression(Operator_Type operator, long long left, long long right);
+boolean_t Util_evalQExpression(Operator_Type operator, long long left, long long right);
+
+
+/**
+ * Evaluate a qualification expression.
+ * @param operator The qualification operator
+ * @param left Expression lval
+ * @param rightExpression rval
+ * @return the boolean value of the expression
+ */
+boolean_t Util_evalDoubleQExpression(Operator_Type operator, double left, double right);
 
 
 /*
@@ -385,15 +360,31 @@ StringBuffer_T Util_printRule(StringBuffer_T buf, EventAction_T action, const ch
 
 
 /**
+ * Print port IP version description
+ * @param p A port structure
+ * @return the socket IP version description
+ */
+const char *Util_portIpDescription(Port_T p);
+
+
+/**
  * Print port type description
  * @param p A port structure
  * @return the socket type description
  */
-char *Util_portTypeDescription(Port_T p);
+const char *Util_portTypeDescription(Port_T p);
 
 
 /**
- * Print full port description <INET|UNIX>\[<host>:<port>[request]\][via TCP|TCPSSL|UDP]
+ * Print port request description
+ * @param p A port structure
+ * @return the request description
+ */
+const char *Util_portRequestDescription(Port_T p);
+
+
+/**
+ * Print full port description \[<host>\]:<port>[request][ via TCP|TCPSSL|UDP]
  * @param p A port structure
  * @param buf Buffer
  * @param bufsize Buffer size
@@ -403,12 +394,11 @@ char *Util_portDescription(Port_T p, char *buf, int bufsize);
 
 
 /**
- *  Returns the FQDN hostname or fallback to gethostname() output
- *  @param buf the character array for hostname
- *  @param len the length of buf
- *  @return zero on success
+ * Return string presentation of TIME_* unit
+ *  @param time The TIME_* unit (see monit.h)
+ *  @return string
  */
-int Util_getfqdnhostname(char *buf, unsigned len);
+const char *Util_timestr(int time);
 
 
 #endif

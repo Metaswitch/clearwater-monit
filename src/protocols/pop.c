@@ -30,49 +30,35 @@
 
 #include "protocol.h"
 
+// libmonit
+#include "exceptions/IOException.h"
+
+
 /**
- *  Check the server for greeting code +OK, then send QUIT and check
- *  for code +OK. If alive return TRUE, else, return FALSE.
+ *  Check the server for greeting code +OK, then send QUIT and check for code +OK
  *
  *  @file
  */
-int check_pop(Socket_T socket) {
+void check_pop(Socket_T socket) {
+        ASSERT(socket);
 
-  char buf[STRLEN];
-  const char *ok = "+OK";
+        char buf[STRLEN];
+        const char *ok = "+OK";
 
-  ASSERT(socket);
+        // Read and check POP greeting
+        if (! Socket_readLine(socket, buf, sizeof(buf)))
+                THROW(IOException, "POP: greeting read error -- %s", errno ? STRERROR : "no data");
+        Str_chomp(buf);
+        if (strncasecmp(buf, ok, strlen(ok)) != 0)
+                THROW(IOException, "POP: invalid greeting -- %s", buf);
 
-  if(!socket_readln(socket, buf, sizeof(buf))) {
-    socket_setError(socket, "POP: error receiving data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  Str_chomp(buf);
-
-  if(strncasecmp(buf, ok, strlen(ok)) != 0) {
-    socket_setError(socket, "POP error: %s", buf);
-    return FALSE;
-  }
-
-  if(socket_print(socket, "QUIT\r\n") < 0) {
-    socket_setError(socket, "POP: error sending data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  if(!socket_readln(socket, buf, sizeof(buf))) {
-    socket_setError(socket, "POP: error receiving data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  Str_chomp(buf);
-
-  if(strncasecmp(buf, ok, strlen(ok)) != 0) {
-    socket_setError(socket, "POP error: %s", buf);
-    return FALSE;
-  }
-
-  return TRUE;
-
+        // QUIT and check response
+        if (Socket_print(socket, "QUIT\r\n") < 0)
+                THROW(IOException, "POP: QUIT command error -- %s", STRERROR);
+        if (! Socket_readLine(socket, buf, sizeof(buf)))
+                THROW(IOException, "POP: QUIT response read error -- %s", errno ? STRERROR : "no data");
+        Str_chomp(buf);
+        if (strncasecmp(buf, ok, strlen(ok)) != 0)
+                THROW(IOException, "POP: invalid QUIT response -- %s", buf);
 }
 

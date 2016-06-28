@@ -30,51 +30,35 @@
 
 #include "protocol.h"
 
+// libmonit
+#include "exceptions/IOException.h"
+
 /**
- *  Check the server for greeting code '* OK' and then send LOGOUT and
- *  check for code '* BYE'. If alive return TRUE, else, return FALSE.
+ *  Check the server for greeting code '* OK' and then send LOGOUT and check for code '* BYE'
  *
  *  @file
  */
-int check_imap(Socket_T socket) {
+void check_imap(Socket_T socket) {
+        char buf[512];
+        const char *ok = "* OK";
+        const char *bye = "* BYE";
 
-  char buf[STRLEN];
-  const char *ok = "* OK";
-  const char *bye = "* BYE";
+        ASSERT(socket);
 
+        // Read and check IMAP greeting
+        if (! Socket_readLine(socket, buf, sizeof(buf)))
+                THROW(IOException, "IMAP: greeting read error -- %s", errno ? STRERROR : "no data");
+        Str_chomp(buf);
+        if (! Str_startsWith(buf, ok))
+                THROW(IOException, "IMAP: invalid greeting -- %s", buf);
 
-  ASSERT(socket);
-
-  if(!socket_readln(socket, buf, sizeof(buf))) {
-    socket_setError(socket, "IMAP: error receiving data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  Str_chomp(buf);
-
-  if(strncasecmp(buf, ok, strlen(ok)) != 0) {
-    socket_setError(socket, "IMAP error: %s", buf);
-    return FALSE;
-  }
-
-  if(socket_print(socket, "001 LOGOUT\r\n") < 0) {
-    socket_setError(socket, "IMAP: error sending data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  if(!socket_readln(socket, buf, sizeof(buf))) {
-    socket_setError(socket, "IMAP: error receiving data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  Str_chomp(buf);
-
-  if(strncasecmp(buf, bye, strlen(bye)) != 0) {
-    socket_setError(socket, "IMAP error: %s", buf);
-    return FALSE;
-  }
-
-  return TRUE;
-
+        // Logout and check response
+        if (Socket_print(socket, "001 LOGOUT\r\n") < 0)
+                THROW(IOException, "IMAP: logout command error -- %s", STRERROR);
+        if (! Socket_readLine(socket, buf, sizeof(buf)))
+                THROW(IOException, "IMAP: logout response read error -- %s", errno ? STRERROR : "no data");
+        Str_chomp(buf);
+        if (strncasecmp(buf, bye, strlen(bye)) != 0)
+                THROW(IOException, "IMAP: invalid logout response: %s", buf);
 }
 

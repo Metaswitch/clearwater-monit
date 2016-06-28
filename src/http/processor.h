@@ -55,54 +55,43 @@
 /* Request timeout in seconds */
 #define REQUEST_TIMEOUT    30
 
-#define TRUE               1
-#define FALSE              0
-
 struct entry {
-  char *name;
-  char *value;
-  /* For internal use */
-  struct entry *next;
+        char *name;
+        char *value;
+        /* For internal use */
+        struct entry *next;
 };
+
+
 typedef struct entry *HttpHeader;
+
 typedef struct entry *HttpParameter;
 
+
 typedef struct request {
-  char *url;
-  Socket_T S;
-  char *method;
-  char *protocol;
-  char *pathinfo;
-  char *remote_user;
-  HttpHeader headers;
-  ssl_connection *ssl;
-  HttpParameter params;
+        char *url;
+        Socket_T S;
+        char *method;
+        char *protocol;
+        char *pathinfo;
+        char *remote_user;
+        HttpHeader headers;
+        HttpParameter params;
+        Ssl_T ssl;
 } *HttpRequest;
 
+
 typedef struct response {
-  int status;
-  Socket_T S;
-  const char *protocol;
-  int is_committed;
-  HttpHeader headers;
-  ssl_connection *ssl;
-  const char *status_msg;
-  StringBuffer_T outputbuffer;
+        int status;
+        Socket_T S;
+        const char *protocol;
+        boolean_t is_committed;
+        HttpHeader headers;
+        const char *status_msg;
+        StringBuffer_T outputbuffer;
+        Ssl_T ssl;
 } *HttpResponse;
 
-
-struct  ServiceImpl {
-  void(*doGet)(HttpRequest, HttpResponse);
-  void(*doPost)(HttpRequest, HttpResponse);
-};
-
-/*
- * An object for implementors of the service functions; doGet and
- * doPost. Implementing modules i.e. CERVLETS, must implement the
- * doGet and doPost functions and the engine will call the add_Impl
- * function to setup the callback to these functions.
- */
-struct ServiceImpl Impl;
 
 /* Public prototypes */
 void *http_processor(Socket_T);
@@ -112,8 +101,10 @@ const char *get_status_string(int status_code);
 void add_Impl(void(*doGet)(HttpRequest, HttpResponse), void(*doPost)(HttpRequest, HttpResponse));
 void set_content_type(HttpResponse res, const char *mime);
 const char *get_header(HttpRequest req, const char *header_name);
-void send_error(HttpResponse, int status, const char *message);
+void escapeHTML(StringBuffer_T sb, const char *s);
+void send_error(HttpRequest, HttpResponse, int status, const char *message, ...);
 const char *get_parameter(HttpRequest req, const char *parameter_name);
 void set_header(HttpResponse res, const char *name, const char *value);
+void Processor_setHttpPostLimit();
 
 #endif

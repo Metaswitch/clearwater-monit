@@ -29,7 +29,7 @@ int main(void) {
 
         printf("============> Start InputStream Tests\n\n");
 
-        printf("=> Test0: create/destroy the file input stream\n");
+        printf("=> Test0: create/destroy the stream\n");
         {
                 in = InputStream_new(File_open(DATA, "r"));
                 assert(!InputStream_isClosed(in));
@@ -43,7 +43,7 @@ int main(void) {
         {
                 assert((fd = File_open(DATA, "r")) >= 0);
                 in = InputStream_new(fd);
-                printf("\tCurrent timeout: %ldms\n", InputStream_getTimeout(in));
+                printf("\tCurrent timeout: %lldms\n", (long long)InputStream_getTimeout(in));
                 InputStream_setTimeout(in, TIMEOUT);
                 assert(InputStream_getTimeout(in) == TIMEOUT);
                 printf("\tTimeout set to:  %dms\n", TIMEOUT);

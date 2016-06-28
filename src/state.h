@@ -44,9 +44,9 @@
 
 /**
  * Open the state file
- * @return TRUE if succeeded, otherwise FALSE
+ * @return true if succeeded, otherwise false
  */
-int State_open();
+boolean_t State_open();
 
 
 /**
@@ -80,7 +80,7 @@ void State_save();
  * service A is not found in the current service list (the list is
  * always generated from monitrc) and therefore A is simply discarded.
  */
-void State_update();
+void State_restore();
 
 
 #endif

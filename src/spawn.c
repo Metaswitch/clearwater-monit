@@ -68,6 +68,14 @@
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_PWD_H
+#include <pwd.h>
+#endif
+
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
+
 #include "event.h"
 #include "alert.h"
 #include "monit.h"
@@ -92,11 +100,13 @@
 
 /* Do not exceed 8 bits here */
 enum ExitStatus_E {
-        setgid_ERROR   = 0x1,
-        setuid_ERROR   = 0x2,
-        redirect_ERROR = 0x4,
-        fork_ERROR     = 0x8
-};
+        setgid_ERROR     = 0x1,
+        setuid_ERROR     = 0x2,
+        initgroups_ERROR = 0x4,
+        redirect_ERROR   = 0x8,
+        fork_ERROR       = 0x10,
+        getpwuid_ERROR   = 0x20
+} __attribute__((__packed__));
 
 
 /* ----------------------------------------------------------------- Private */
@@ -111,12 +121,19 @@ static void set_monit_environment(Service_T S, command_t C, Event_T E, const cha
         setenv("MONIT_SERVICE", S->name, 1);
         setenv("MONIT_HOST", Run.system->name, 1);
         setenv("MONIT_EVENT", E ? Event_get_description(E) : C == S->start ? "Started" : C == S->stop ? "Stopped" : "No Event", 1);
-        setenv("MONIT_DESCRIPTION", E ? Event_get_message(E) : C == S->start ? "Started" : C == S->stop ? "Stopped" : "No Event", 1);
-        if (S->type == TYPE_PROCESS) {
-                putenv(Str_cat("MONIT_PROCESS_PID=%d", Util_isProcessRunning(S, FALSE)));
-                putenv(Str_cat("MONIT_PROCESS_MEMORY=%ld", S->inf->priv.process.mem_kbyte));
-                putenv(Str_cat("MONIT_PROCESS_CHILDREN=%d", S->inf->priv.process.children));
-                putenv(Str_cat("MONIT_PROCESS_CPU_PERCENT=%d", S->inf->priv.process.cpu_percent));
+        setenv("MONIT_DESCRIPTION", E ? E->message : C == S->start ? "Started" : C == S->stop ? "Stopped" : "No Event", 1);
+        switch (S->type) {
+                case Service_Process:
+                        putenv(Str_cat("MONIT_PROCESS_PID=%d", S->inf->priv.process.pid));
+                        putenv(Str_cat("MONIT_PROCESS_MEMORY=%llu", (unsigned long long)((double)S->inf->priv.process.mem / 1024.)));
+                        putenv(Str_cat("MONIT_PROCESS_CHILDREN=%d", S->inf->priv.process.children));
+                        putenv(Str_cat("MONIT_PROCESS_CPU_PERCENT=%.1f", S->inf->priv.process.cpu_percent));
+                        break;
+                case Service_Program:
+                        putenv(Str_cat("MONIT_PROGRAM_STATUS=%d", S->program->exitStatus));
+                        break;
+                default:
+                        break;
         }
 }
 
@@ -127,7 +144,7 @@ static void set_monit_environment(Service_T S, command_t C, Event_T E, const cha
 /**
  * Execute the given command. If the execution fails, the wait_start()
  * thread in control.c should notice this and send an alert message.
- * @param P A Service object
+ * @param S A Service object
  * @param C A Command object
  * @param E An optional event object. May be NULL.
  */
@@ -142,7 +159,7 @@ void spawn(Service_T S, command_t C, Event_T E) {
         ASSERT(S);
         ASSERT(C);
 
-        if(access(C->arg[0], X_OK) != 0) {
+        if (access(C->arg[0], X_OK) != 0) {
                 LogError("Error: Could not execute %s\n", C->arg[0]);
                 return;
         }
@@ -156,38 +173,38 @@ void spawn(Service_T S, command_t C, Event_T E) {
 
         Time_string(Time_now(), date);
         pid = fork();
-        if(pid < 0) {
+        if (pid < 0) {
                 LogError("Cannot fork a new process -- %s\n", STRERROR);
-                exit(1);
+                pthread_sigmask(SIG_SETMASK, &save, NULL);
+                return;
         }
 
-        if(pid == 0) {
-
-                /*
-                 * Reset to the original umask so programs will inherit the
-                 * same file creation mask monit was started with
-                 */
-                umask(Run.umask);
-
-                /*
-                 * Switch uid/gid if requested
-                 */
-                if(C->has_gid) {
-                        if(0 != setgid(C->gid)) {
+        if (pid == 0) {
+                if (C->has_gid) {
+                        if (setgid(C->gid) != 0) {
                                 stat_loc |= setgid_ERROR;
                         }
                 }
-                if(C->has_uid) {
-                        if(0 != setuid(C->uid)) {
-                                stat_loc |= setuid_ERROR;
+                if (C->has_uid) {
+                        struct passwd *user = getpwuid(C->uid);
+                        if (user) {
+                                if (initgroups(user->pw_name, getgid()) == 0) {
+                                        if (setuid(C->uid) != 0) {
+                                                stat_loc |= setuid_ERROR;
+                                        }
+                                } else {
+                                        stat_loc |= initgroups_ERROR;
+                                }
+                        } else {
+                                stat_loc |= getpwuid_ERROR;
                         }
                 }
 
                 set_monit_environment(S, C, E, date);
 
-                if(! Run.isdaemon) {
-                        for(int i = 0; i < 3; i++)
-                                if(close(i) == -1 || open("/dev/null", O_RDWR) != i)
+                if (! (Run.flags & Run_Daemon)) {
+                        for (int i = 0; i < 3; i++)
+                                if (close(i) == -1 || open("/dev/null", O_RDWR) != i)
                                         stat_loc |= redirect_ERROR;
                 }
 
@@ -196,12 +213,12 @@ void spawn(Service_T S, command_t C, Event_T E) {
                 setsid();
 
                 pid = fork();
-                if(pid < 0) {
+                if (pid < 0) {
                         stat_loc |= fork_ERROR;
                         _exit(stat_loc);
                 }
 
-                if(pid == 0) {
+                if (pid == 0) {
                         /*
                          * Reset all signals, so the spawned process is *not* created
                          * with any inherited SIG_BLOCKs
@@ -223,7 +240,7 @@ void spawn(Service_T S, command_t C, Event_T E) {
         }
 
         /* Wait for first child - aka second parent, to exit */
-        if(waitpid(pid, &stat_loc, 0) != pid) {
+        if (waitpid(pid, &stat_loc, 0) != pid) {
                 LogError("Waitpid error\n");
         }
 
@@ -232,10 +249,14 @@ void spawn(Service_T S, command_t C, Event_T E) {
                 LogError("Failed to change gid to '%d' for '%s'\n", C->gid, C->arg[0]);
         if (exit_status & setuid_ERROR)
                 LogError("Failed to change uid to '%d' for '%s'\n", C->uid, C->arg[0]);
+        if (exit_status & initgroups_ERROR)
+                LogError("initgroups for UID %d failed when executing '%s'\n", C->uid, C->arg[0]);
         if (exit_status & fork_ERROR)
                 LogError("Cannot fork a new process for '%s'\n", C->arg[0]);
         if (exit_status & redirect_ERROR)
                 LogError("Cannot redirect IO to /dev/null for '%s'\n", C->arg[0]);
+        if (exit_status & getpwuid_ERROR)
+                LogError("UID %d not found on the system when executing '%s'\n", C->uid, C->arg[0]);
 
         /*
          * Restore the signal mask
@@ -248,3 +269,4 @@ void spawn(Service_T S, command_t C, Event_T E) {
          */
 
 }
+

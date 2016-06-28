@@ -192,7 +192,12 @@ struct Exception_Frame {
 	Exception_Frame *prev;
         char message[EXCEPTION_MESSAGE_LENGTH + 1];
 };
-enum {Exception_entered=0, Exception_thrown, Exception_handled, Exception_finalized};
+enum {
+        Exception_entered = 0,
+        Exception_thrown,
+        Exception_handled,
+        Exception_finalized
+} __attribute__((__packed__));
 extern TD_T Exception_stack;
 void Exception_init(void);
 void Exception_throw(const T *e, const char *func, const char *file, int line, const char *cause, ...) CLANG_ANALYZER_NORETURN;

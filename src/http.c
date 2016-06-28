@@ -60,13 +60,17 @@
 #include "net.h"
 #include "engine.h"
 
+// libmonit
+#include "exceptions/AssertException.h"
+
+
 /* Private prototypes */
 static void *thread_wrapper(void *arg);
 
 /* The HTTP Thread */
-static pthread_t thread;
+static Thread_T thread;
 
-static volatile int running = FALSE;
+static volatile boolean_t running = false;
 
 
 /**
@@ -81,75 +85,51 @@ static volatile int running = FALSE;
 
 
 /**
- * @return TRUE if the monit http can start and is specified in the
- * controlfile to start, otherwise return FALSE. Print an error
+ * @return true if the monit http can start and is specified in the
+ * controlfile to start, otherwise return false. Print an error
  * message if monit httpd _should_ start but can't.
  */
-int can_http() {
+boolean_t can_http() {
+        if ((Run.httpd.flags & Httpd_Net || Run.httpd.flags & Httpd_Unix) && (Run.flags & Run_Daemon)) {
+                if (! Engine_hasHostsAllow() && ! Run.httpd.credentials && ! ((Run.httpd.flags & Httpd_Ssl) && (Run.httpd.flags & Httpd_Net) && Run.httpd.socket.net.ssl.clientpem)) {
+                        LogError("%s: monit httpd not started since no connect allowed\n", prog);
+                        return false;
 
-  if(Run.dohttpd && Run.isdaemon) {
-
-    if(! has_hosts_allow() && ! Run.credentials) {
-
-      LogError("%s: monit httpd not started since no connect allowed\n",
-          prog);
-
-      return FALSE;
-
-    }
-
-    return TRUE;
-
-  }
-
-  return FALSE;
-
+                }
+                return true;
+        }
+        return false;
 }
 
 
 /**
  * Start and stop the monit http server
- * @param action START_HTTP or STOP_HTTP
+ * @param action Httpd_Action
  */
-void monit_http(int action) {
-
-  int status;
-
-  switch(action) {
-
-  case STOP_HTTP:
-    if(!running) break;
-    LogInfo("Shutting down %s HTTP server\n", prog);
-    stop_httpd();
-    if( (status = pthread_join(thread, NULL)) != 0) {
-      LogError("%s: Failed to stop the http server. Thread error -- %s.\n",
-          prog, strerror(status));
-    } else {
-      LogInfo("%s HTTP server stopped\n", prog);
-      running = FALSE;
-    }
-    break;
-
-  case START_HTTP:
-    LogInfo("Starting %s HTTP server at [%s:%d]\n",
-        prog, Run.bind_addr?Run.bind_addr:"*", Run.httpdport);
-    if( (status = pthread_create(&thread, NULL, thread_wrapper, NULL)) != 0) {
-      LogError("%s: Failed to create the http server. Thread error -- %s.\n",
-          prog, strerror(status));
-    } else {
-      LogInfo("%s HTTP server started\n", prog);
-      running = TRUE;
-    }
-    break;
-
-  default:
-    LogError("%s: Unknown http server action\n", prog);
-    break;
-
-  }
-
-  return;
-
+void monit_http(Httpd_Action action) {
+        switch (action) {
+                case Httpd_Stop:
+                        if (! running)
+                                break;
+                        LogDebug("Shutting down Monit HTTP server\n");
+                        Engine_stop();
+                        Thread_join(thread);
+                        LogDebug("Monit HTTP server stopped\n");
+                        running = false;
+                        break;
+                case Httpd_Start:
+                        if (Run.httpd.flags & Httpd_Net)
+                                LogDebug("Starting Monit HTTP server at [%s]:%d\n", Run.httpd.socket.net.address ? Run.httpd.socket.net.address : "*", Run.httpd.socket.net.port);
+                        else if (Run.httpd.flags & Httpd_Unix)
+                                LogDebug("Starting Monit HTTP server at %s\n", Run.httpd.socket.unix.path);
+                        Thread_create(thread, thread_wrapper, NULL);
+                        LogDebug("Monit HTTP server started\n");
+                        running = true;
+                        break;
+                default:
+                        LogError("Monit: Unknown http server action\n");
+                        break;
+        }
 }
 
 
@@ -157,16 +137,11 @@ void monit_http(int action) {
 
 
 static void *thread_wrapper(void *arg) {
-
-  sigset_t ns;
-
-  /* Block collective signals in the http thread. The http server is
-   * taken down gracefully by signaling the main monit thread */
-  set_signal_block(&ns, NULL);
-  start_httpd(Run.httpdport, 1024, Run.bind_addr);
-
-  return NULL;
-
+        set_signal_block();
+        Engine_start();
+#ifdef HAVE_OPENSSL
+        Ssl_threadCleanup();
+#endif
+        return NULL;
 }
-
 

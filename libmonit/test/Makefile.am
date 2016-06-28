@@ -13,6 +13,7 @@ noinst_PROGRAMS = StrTest \
                   FileTest \
                   ExceptionTest \
                   NetTest \
+                  LinkTest \
                   TimeTest \
                   CommandTest
 
@@ -27,6 +28,7 @@ OutputStreamTest_SOURCES = OutputStreamTest.c
 FileTest_SOURCES = FileTest.c
 ExceptionTest_SOURCES = ExceptionTest.c
 NetTest_SOURCES = NetTest.c
+LinkTest_SOURCES = LinkTest.c
 TimeTest_SOURCES = TimeTest.c
 
 DISTCLEANFILES = *~ 

@@ -6,6 +6,7 @@ StrTest && \
 TimeTest && \
 SystemTest && \
 ListTest && \
+LinkTest && \
 StringBufferTest && \
 DirTest && \
 InputStreamTest && \

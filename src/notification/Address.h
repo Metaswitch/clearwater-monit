@@ -22,24 +22,42 @@
  * for all of the code used other than OpenSSL.
  */
 
-#ifndef MONIT_PROCESS_H
-#define MONIT_PROCESS_H
 
-#include "config.h"
+#ifndef MONIT_ADDRESS_H
+#define MONIT_ADDRESS_H
 
-#ifdef HAVE_UNISTD_H
-#include <unistd.h>
-#endif
 
-#define PROCESS_ZOMBIE        1
+#define T Address_T
+typedef struct T {
+        char *name;
+        char *address;
+} *T;
 
-int update_process_data(Service_T s, ProcessTree_T *, int treesize, pid_t pid);
-int init_process_info(void);
-int update_system_load();
-int  findprocess(int, ProcessTree_T *, int);
-int  initprocesstree(ProcessTree_T **, int *, ProcessTree_T **, int *);
-void delprocesstree(ProcessTree_T **, int *);
-void process_testmatch(char *);
 
+/**
+ * Create a new Address object
+ * @return Address object
+ */
+T Address_new();
+
+
+/**
+ * Destroy the Address object
+ * @param A A reference to the Address object
+ * @exception AssertException if reference is NULL
+ */
+void Address_free(T *A);
+
+
+/**
+ * Copy address object.
+ * @param A An Address object to copy
+ * @return An Address object copy
+ * @exception AssertException if reference is NULL
+ */
+T Address_copy(T A);
+
+
+#undef T
 #endif
 

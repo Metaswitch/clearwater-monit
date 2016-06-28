@@ -1,16 +1,18 @@
 Name: monit
 Summary: Process monitor and restart utility
-Version: 5.8.1
+Version: 5.18.1
 Release: 1
 URL: http://mmonit.com/monit/
 Source: http://mmonit.com/monit/dist/%{name}-%{version}.tar.gz
 Group: Utilities/Console
 BuildRoot: %{_tmppath}/%{name}-buildroot
 License: AGPL
-BuildRequires: flex
-BuildRequires: bison
-BuildRequires: openssl-devel
-BuildRequires: pam-devel
+
+%{!?_with_ssl: %{!?_without_ssl: %define _with_ssl --with-ssl}}
+%{?_with_ssl:BuildRequires: openssl-devel}
+
+%{!?_with_pam: %{!?_without_pam: %define _with_pam --with-pam}}
+%{?_with_pam:BuildRequires: pam-devel}
 
 %description
 Monit is a utility for managing and monitoring processes,
@@ -22,7 +24,11 @@ actions in error situations.
 %setup
 
 %build
-%configure
+%configure \
+        %{?_with_ssl} \
+        %{?_without_ssl} \
+        %{?_with_pam} \
+        %{?_without_pam}
 make %{?_smp_mflags}
 
 %install
@@ -54,13 +60,61 @@ fi
 
 %files
 %defattr(-,root,root)
-%doc COPYING README
-%config /etc/monitrc
+%doc COPYING README CHANGES
+%config(noreplace) /etc/monitrc
 %config /etc/init.d/%{name}
 %{_bindir}/%{name}
 %{_mandir}/man1/%{name}.1.gz
 
 %changelog
+* Tue May 31 2016 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.18.1
+
+* Fri Apr 01 2016 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.18
+
+* Fri Mar 04 2016 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.17.1
+
+* Thu Feb 04 2016 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.17
+
+* Thu Nov 05 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.16
+
+* Mon Oct 12 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.15
+- Added rpmbuild options for building without PAM (--without pam)
+- Added rpmbuild options for building without SSL (--without ssl)
+- Dropped build dependency on flex and bison
+
+* Mon Jun 08 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.14
+
+* Mon Mar 23 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.13
+
+* Tue Mar 10 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.12.2
+
+* Fri Mar 6 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.12.1
+
+* Tue Feb 24 2015 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.12
+
+* Wed Dec 17 2014 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.11
+
+* Mon Oct 06 2014 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.10
+
+* Sat Aug 23 2014 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.9
+
+* Fri Aug 22 2014 Martin Pala <martinp@tildeslash.com>
+- Upgraded to monit-5.8.2
+
 * Sun Mar 30 2014 Martin Pala <martinp@tildeslash.com>
 - Upgraded to monit-5.8.1
 

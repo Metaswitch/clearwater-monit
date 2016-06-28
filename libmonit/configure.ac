@@ -24,15 +24,17 @@ AC_PROG_LIBTOOL
 # Build options
 # ---------------------------------------------------------------------------
 
+UNIT_TEST="test"
 AC_ARG_ENABLE(optimized,
 	AS_HELP_STRING([--enable-optimized], 
-        	[Build software optimized]),
+        	[Build software optimized. Unit Tests are not enabled with this option]),
     [
-        CFLAGS=`echo $CFLAGS|sed 's/-O.* //'`
         if test "x$enableval" = "xyes" ; then
-   	    	CFLAGS=`echo $CFLAGS|sed 's/-g//'`
-		CFLAGS="$CFLAGS -O3"
+   	    	CFLAGS=`echo $CFLAGS|sed 's/-g[[^ ]]*//g'`
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
+		CFLAGS="$CFLAGS -O3 -DNDEBUG"
 		OPTIMIZED=1
+                UNIT_TEST=""
 	else
 		OPTIMIZED=0
         fi
@@ -41,12 +43,15 @@ AC_ARG_ENABLE(optimized,
 	OPTIMIZED=0
     ]
 )
+AC_SUBST(UNIT_TEST)
 
 AC_ARG_ENABLE(profiling,
         AS_HELP_STRING([--enable-profiling],
                 [Build with debug and profiling options]),
     [
         if test "x$enableval" = "xyes" ; then
+   	    	CFLAGS=`echo $CFLAGS|sed 's/-g.//g'`
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
                 CFLAGS="$CFLAGS -g -pg"
                 profile="true"
         fi
@@ -83,6 +88,7 @@ AC_ARG_ENABLE([openssl],
 # ---------------------------------------------------------------------------
 
 AC_CHECK_LIB([pthread], [pthread_create], [], [AC_MSG_ERROR([POSIX thread library is required])])
+AC_CHECK_LIB([m], [round], [], [AC_MSG_ERROR([Math library is required])])
 
 # ---------------------------------------------------------------------------
 # Header files 
@@ -93,7 +99,56 @@ AC_CHECK_HEADERS([ctype.h errno.h fcntl.h limits.h pthread.h setjmp.h \
                   signal.h stdarg.h stdio.h string.h string.h strings.h \
                   sys/socket.h sys/time.h sys/types.h unistd.h execinfo.h \
                   sys/sendfile.h sys/dirent.h poll.h sys/poll.h sys/event.h \
-                  stropts.h sys/ioctl.h sys/filio.h])
+                  stropts.h sys/ioctl.h sys/filio.h kstat.h ifaddrs.h \
+                  net/if_media.h netinet/in.h sys/sysctl.h net/if_dl.h \
+                  sys/protosw.h mach/boolean.h uvm/uvm_param.h])
+AC_CHECK_HEADERS([net/if.h net/route.h], [], [],
+        [
+         #ifdef HAVE_SYS_TYPES_H
+         #include <sys/types.h>
+         #endif
+         #if HAVE_SYS_SOCKET_H
+         #include <sys/socket.h>
+         #endif
+         #if HAVE_NETINET_IN_SYSTM_H
+         #include <netinet/in.h>
+         #endif
+         #if HAVE_NETINET_IN_SYSTM_H
+         #include <netinet/in_systm.h>
+         #endif
+         #if HAVE_NETINET_IP_H
+         #include <netinet/ip.h>
+         #endif
+        ])
+AC_CHECK_HEADERS([ \
+        libperfstat.h \
+        ],
+        [],
+        [],
+        [
+         #ifdef HAVE_SYS_PROTOSW_H
+         #include <sys/protosw.h>
+         #endif
+        ])
+
+# ------------------------------------------------------------------------
+# Types
+# ------------------------------------------------------------------------
+
+AC_CHECK_TYPES([boolean_t], [], [],
+        [
+         #ifdef HAVE_SYS_TYPES_H
+         #include <sys/types.h>
+         #endif
+         #ifdef HAVE_MACH_BOOLEAN_H
+         #include <mach/boolean.h>
+         #endif
+         #ifdef HAVE_UVM_UVM_PARAM_H
+         #include <uvm/uvm_param.h>
+         #endif
+        ])
+AC_CHECK_TYPES([uchar_t])
+AC_CHECK_TYPES([uint32_t])
 
 # ------------------------------------------------------------------------
 # Functions 
@@ -120,6 +175,7 @@ AC_CACHE_CHECK([vsnprintf is c99 conformant],
                         [AC_MSG_FAILURE([vsnprintf does not conform to c99])],
                         [AC_MSG_ERROR(cross-compiling: please set 'libmonit_cv_vsnprintf_c99_conformant=[yes|no]')])])
 
+AC_CHECK_FUNCS([timegm])
 
 # ------------------------------------------------------------------------
 # Architecture/OS
@@ -142,13 +198,17 @@ elif test "$architecture" = "OpenBSD"
 then
    CFLAGS="$CFLAGS -D _REENTRANT"
    AC_DEFINE([OPENBSD], 1, [Define to 1 if the system is OpenBSD])
+elif test "$architecture" = "DragonFly"
+then
+   CFLAGS="$CFLAGS -D _REENTRANT"
+   AC_DEFINE([DRAGONFLY], 1, [Define to 1 if the system is DragonFly])
 elif test "$architecture" = "Darwin"
 then
    CFLAGS="$CFLAGS -DREENTRANT"
    AC_DEFINE([DARWIN], 1, [Define to 1 if the system is OSX])
 elif test "$architecture" = "SunOS"
 then
-   LIBS="$LIBS -lsocket -lnsl"
+   LIBS="$LIBS -lsocket -lnsl -lkstat"
    CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS -D__EXTENSIONS__ -m64"
    LDFLAGS="$LDFLAGS -m64"
    if test `uname -m` != "i86pc"
@@ -167,8 +227,10 @@ then
    AC_DEFINE([NETBSD], 1, [Define to 1 if the system is NETBSD])
 elif test "$architecture" = "AIX"
 then
+   CFLAGS=`echo $CFLAGS|sed 's/-g//'`
    CFLAGS="$CFLAGS -D_THREAD_SAFE -D_REENTRANT"
    AC_DEFINE([AIX], 1, [Define to 1 if the system is AIX])
+   LIBS="$LIBS -lcfg -lodm -lperfstat"
 else
    AC_MSG_ERROR([Architecture not supported: ${architecture}])
 fi
@@ -196,7 +258,6 @@ if test "x$GCC" = "xyes"; then
         CFLAGS="-Wno-address $CFLAGS"
         AC_COMPILE_IFELSE([AC_LANG_PROGRAM([], [return 0;])], [], [CFLAGS="$svd_CFLAGS"])
 fi
-
 
 # ------------------------------------------------------------------------
 # Atomic support
@@ -249,11 +310,6 @@ AC_MSG_RESULT($ac_cv_ipv6)
 if test $ac_cv_ipv6 = yes ; then
 	AC_DEFINE([IPV6], 1, [Define to 1 if the system supports IPv6])
 fi
-
-# ---------------------------------------------------------------------------
-# Functions 
-# ---------------------------------------------------------------------------
-
 
 # ---------------------------------------------------------------------------
 # Outputs

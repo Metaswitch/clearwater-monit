@@ -19,7 +19,7 @@
  * including the two.
  *
  * You must obey the GNU Affero General Public License in all respects
- * for all of the code used other than OpenSSL.  
+ * for all of the code used other than OpenSSL.
  */
 
 
@@ -37,6 +37,7 @@
 #include <ctype.h>
 #include <regex.h>
 #include <limits.h>
+#include <math.h>
 
 
 #include "NumberFormatException.h"
@@ -78,7 +79,7 @@ char *Str_ltrim(char *s) {
                 for (j = 0; s[j]; j++) ;
                 for (i = 0; isspace(s[i]); i++) ;
                 memmove(s, s + i, j - i);
-                s[j-i] = 0;
+                s[j - i] = 0;
         }
         return s;
 }
@@ -101,10 +102,10 @@ char *Str_unquote(char *s) {
                         for (; *t; t++, u++)
                                 *u = *t;
                         t = u;
-                } else 
+                } else
                         while (*t) t++;
                 // Right unquote
-                do 
+                do
                         *(t--) = 0;
                 while (t > s && (*t == 34 || *t == 39 || isspace(*t)));
         }
@@ -125,26 +126,6 @@ char *Str_toUpper(char *s) {
                 for (int i = 0; s[i]; i++)
                         s[i] = toupper(s[i]);
         return s;
-}
-
-
-char *Str_ton(long n, char s[43]) {
-        assert(s);
-        s[42] = 0;
-        char *t = s + 42;
-        unsigned long m;
-        if (n == LONG_MIN)
-                m = LONG_MAX + 1UL;
-        else if (n < 0)
-                m = -n;
-        else
-                m = n;
-        do
-                *--t = m % 10 + '0';
-        while ((m /= 10) > 0);
-        if (n < 0)
-                *--t = '-';
-        return t;
 }
 
 
@@ -189,8 +170,8 @@ double Str_parseDouble(const char *s) {
 
 char *Str_replaceChar(char *s, char o, char n) {
         if (s) {
-                for (char *t = s; *t; t++) 
-                        if (*t == o) 
+                for (char *t = s; *t; t++)
+                        if (*t == o)
                                 *t = n;
         }
         return s;
@@ -199,8 +180,8 @@ char *Str_replaceChar(char *s, char o, char n) {
 
 int Str_startsWith(const char *a, const char *b) {
 	if (a && b) {
-	        do 
-	                if (*a++ != *b++) return false;
+	        do
+	                if (toupper(*a++) != toupper(*b++)) return false;
                 while (*b);
                 return true;
         }
@@ -211,8 +192,8 @@ int Str_startsWith(const char *a, const char *b) {
 int Str_endsWith(const char *a, const char *b) {
         if (a && b) {
                 size_t i = 0, j = 0;
-                for(i = strlen(a), j = strlen(b); (i && j); i--, j--)
-                        if(toupper(a[i]) != toupper(b[j])) return false;
+                for (i = strlen(a), j = strlen(b); (i && j); i--, j--)
+                        if (toupper(a[i]) != toupper(b[j])) return false;
                 return (i >= j);
         }
         return false;
@@ -243,7 +224,7 @@ int Str_has(const char *charset, const char *s) {
                 for (int x = 0; s[x]; x++) {
                         for (int y = 0; charset[y]; y++) {
                                 if (s[x] == charset[y])
-                                        return true; 
+                                        return true;
                         }
                 }
         }
@@ -251,8 +232,27 @@ int Str_has(const char *charset, const char *s) {
 }
 
 
+char *Str_unescape(const char *charset, char *s) {
+        if (charset && STR_DEF(s)) {
+                int x, y;
+                for (x = 0, y = 0; s[y]; x++, y++) {
+                        if ((s[x] = s[y]) == '\\')
+                                for (int i = 0; charset[i]; i++) {
+                                        if (charset[i] == s[y + 1]) {
+                                                s[x] = charset[i];
+                                                y++;
+                                                break;
+                                        }
+                                }
+                }
+                s[x] = 0;
+        }
+        return s;
+}
+
+
 int Str_isEqual(const char *a, const char *b) {
-        if (a && b) { 
+        if (a && b) {
                 while (*a && *b)
                         if (toupper(*a++) != toupper(*b++)) return false;
                 return (*a == *b);
@@ -272,7 +272,7 @@ int Str_isByteEqual(const char *a, const char *b) {
 
 
 char *Str_copy(char *dest, const char *src, int n) {
-	if (src && dest && (n > 0)) { 
+	if (src && dest && (n > 0)) {
         	char *t = dest;
 	        while (*src && n--)
         		*t++ = *src++;
@@ -284,7 +284,7 @@ char *Str_copy(char *dest, const char *src, int n) {
 
 
 // We don't use strdup so we can report MemoryException on OOM
-char *Str_dup(const char *s) { 
+char *Str_dup(const char *s) {
         char *t = NULL;
         if (s) {
                 size_t n = strlen(s) + 1;
@@ -354,10 +354,10 @@ char *Str_trunc(char *s, int n) {
         assert(n >= 0);
         if (s) {
                 size_t sl = strlen(s);
-                if (sl > (n + 4)) {
-                        int e = n+3;
-                        for (; n < e; n++)
-                                s[n] = '.';
+                if (sl > n) {
+                        if (n - 3 >= 0)
+                                for (int e = n - 3; e < n; e++)
+                                        s[e] = '.';
                         s[n] = 0;
                 }
         }
@@ -418,5 +418,53 @@ unsigned int Str_hash(const void *x) {
 
 int Str_cmp(const void *x, const void *y) {
         return strcmp((const char *)x, (const char *)y);
+}
+
+
+int Str_compareConstantTime(const void *x, const void *y) {
+        // Copy input to zero initialized buffers of fixed size, to prevent string length timing attack (handle NULL input as well). If some string exceeds hardcoded buffer size, error is returned.
+        char _x[MAX_CONSTANT_TIME_STRING_LENGTH + 1] = {};
+        char _y[MAX_CONSTANT_TIME_STRING_LENGTH + 1] = {};
+        if (snprintf(_x, sizeof(_x), "%s", x ? (const char *)x : "") > MAX_CONSTANT_TIME_STRING_LENGTH || snprintf(_y, sizeof(_y), "%s", y ? (const char *)y : "") > MAX_CONSTANT_TIME_STRING_LENGTH)
+                return 1;
+        int rv = 0;
+        for (size_t i = 0; i < sizeof(_x); i++)
+                rv |= _x[i] ^ _y[i];
+        return rv;
+}
+
+
+char *Str_bytesToSize(double bytes, char s[10]) {
+        assert(s);
+        assert(bytes < 1e+24);
+        static const char *kNotation[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", NULL};
+        *s = 0;
+        for (int i = 0; kNotation[i]; i++) {
+                if (bytes > 1024) {
+                        bytes /= 1024;
+                } else {
+                        snprintf(s, 10, (round(bytes) == bytes) ? "%.0lf %s" : "%.1lf %s", bytes, kNotation[i]);
+                        break;
+                }
+        }
+        return s;
+}
+
+
+char *Str_milliToTime(double milli, char s[23]) {
+        assert(s);
+        struct conversion {
+                double base;
+                char *suffix;
+        } conversion[]= {
+                {1000., "ms"}, // millisecond
+                {60.,   "s"},  // second
+                {60.,   "m"}   // minute
+        };
+        int index = 0;
+        while (fabs(milli) >= conversion[index].base && index < sizeof(conversion) / sizeof(conversion[0]) - 1)
+                milli /= conversion[index++].base;
+        snprintf(s, 23, (round(milli) == milli) ? "%.0lf %s" : "%.3lf %s", milli, conversion[index].suffix);
+        return s;
 }
 

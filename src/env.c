@@ -79,7 +79,7 @@
 /**
  * Initialize the program environment
  *
- * @see https://bitbucket.org/tildeslash/monit/commits/cd545838378517f84bdb0989cadf461a19d8ba11 
+ * @see https://bitbucket.org/tildeslash/monit/commits/cd545838378517f84bdb0989cadf461a19d8ba11
  */
 void init_env() {
         // Close all descriptors except stdio
@@ -88,22 +88,26 @@ void init_env() {
         // Ensure that std descriptors (0, 1 and 2) are open
         for (int i = 0; i < 3; i++) {
                 struct stat st;
-                if (fstat(i, &st) == -1 && open("/dev/null", O_RDWR) != i)
-                        THROW(AssertException, "Cannot open /dev/null -- %s\n", STRERROR);
+                if (fstat(i, &st) == -1) {
+                        int rv = open("/dev/null", O_RDWR);
+                        if (rv == -1)
+                                THROW(AssertException, "Cannot open /dev/null -- %s", STRERROR);
+                        else if (rv != i)
+                                THROW(AssertException, "Standard filedescriptor open failed -- expected fd %d, got %d", i, rv);
+                }
         }
         // Get password struct with user info
-        struct passwd *pw = getpwuid(geteuid());
-        if (! pw)
-                THROW(AssertException, "%s: You don't exist. Go away.\n", prog);
-        Run.Env.home = Str_dup(pw->pw_dir);
-        Run.Env.user = Str_dup(pw->pw_name);
+        char buf[4096];
+        struct passwd pw, *result = NULL;
+        if (getpwuid_r(geteuid(), &pw, buf, sizeof(buf), &result) != 0 || ! result)
+                THROW(AssertException, "getpwuid_r failed -- %s", STRERROR);
+        Run.Env.home = Str_dup(pw.pw_dir);
+        Run.Env.user = Str_dup(pw.pw_name);
         // Get CWD
         char t[PATH_MAX];
         if (! Dir_cwd(t, PATH_MAX))
-                THROW(AssertException, "%s: Cannot read current directory -- %s\n", prog, STRERROR);
+                THROW(AssertException, "Monit: Cannot read current directory -- %s", STRERROR);
         Run.Env.cwd = Str_dup(t);
-        // Save and clear file creation mask
-        Run.umask = umask(0);
 }
 
 

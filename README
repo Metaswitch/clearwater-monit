@@ -59,7 +59,7 @@ QUICK START
 
 After you have built Monit you can simply start the monit program from the
 build directory to test it. Monit will use the monitrc control file located
-in this directory for it's configuration. The file is setup to start
+in this directory for its configuration. The file is setup to start
 Monit's http server so you have something interesting to look at; After you
 have started monit, point your browser to http://127.0.0.1:2812/ and log in
 with the username admin and password monit.
@@ -70,7 +70,7 @@ monit with the -Iv options. In diagnostic mode, monit will print debug
 information to the console. Use ctrl+c to stop monit in diagnostic mode. To
 see all options for the program, use monit -h.
 
-Copy monitrc in the build directory to $HOME/.monitrc or if you plan to run
+Copy monitrc in the build directory to ~/.monitrc or if you plan to run
 Monit as root, to /etc/monitc. Use this file as a starting point to write
 your own configuration file for Monit.
 

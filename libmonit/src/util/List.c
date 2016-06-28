@@ -97,7 +97,6 @@ void List_push(T L, void *e) {
                 L->tail = p;
         L->head = p;
         L->length++;
-        L->timestamp++;
 }
 
 
@@ -107,7 +106,6 @@ void *List_pop(T L) {
                 list_t p = L->head;
                 L->head = L->head->next;
                 L->length--;
-                L->timestamp++;
                 p->next = L->freelist;
                 L->freelist = p;
                 return p->e;
@@ -126,7 +124,6 @@ void List_append(T L, void *e) {
                 L->tail->next = p;
         L->tail = p;
         L->length++;
-        L->timestamp++;
 }
 
 
@@ -144,7 +141,6 @@ void *List_remove(T L, void *e) {
                                         L->tail = p;
                                 p = q;
                                 L->length--;
-                                L->timestamp++;
                                 p->next = L->freelist;
                                 L->freelist = p;
                                 return p->e;
@@ -193,17 +189,6 @@ void List_clear(T L) {
         }
         L->tail = L->head = NULL;
         L->length = 0;
-}
-
-
-void List_map(T L, void (*apply)(void *e, void *ap), void *ap) {
-        assert(L);
-        assert(apply);
-        int stamp = L->timestamp;
-        for (list_t p = L->head; p; p = p->next) {
-                apply(p->e, ap);
-                assert(L->timestamp == stamp);
-        }
 }
 
 
