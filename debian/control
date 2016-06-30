@@ -12,7 +12,7 @@ Homepage: http://projectclearwater.org/
 
 Package: clearwater-monit
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base (>= 3.2-13)
+Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base (>= 3.2-13), clearwater-infrastructure
 Suggests: exim4 | postfix | mail-transport-agent
 Conflicts: monit
 Replaces: monit
