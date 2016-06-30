@@ -1,5 +1,5 @@
 PKG_COMPONENT := clearwater-monit
-PKG_MAJOR_VERSION := 5.8.1
+PKG_MAJOR_VERSION := 5.8.1${DEB_VERSION_QUALIFIER}
 PKG_NAMES := clearwater-monit
 
 include build-infra/cw-deb.mk
@@ -7,7 +7,7 @@ include build-infra/cw-rpm.mk
 
 .PHONY: configure
 configure:
-	./bootstrap && ./configure
+	./bootstrap && ./configure --sysconfdir=/etc/monit
 
 .PHONY: deb-build-monit
 deb-build-monit: configure
