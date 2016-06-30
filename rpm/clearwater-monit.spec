@@ -1,6 +1,7 @@
 Name: clearwater-monit
 Summary: Process monitor and restart utility
-BuildRequires: flex bison openssl-devel pam-devel libtool rpm-build clearwater-infrastructure
+BuildRequires: flex bison openssl-devel pam-devel libtool rpm-build
+Requires: clearwater-infrastructure
 
 %include %{rootdir}/build-infra/cw-rpm.spec.inc
 
