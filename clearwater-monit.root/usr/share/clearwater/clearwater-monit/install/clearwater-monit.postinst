@@ -4,7 +4,6 @@
 touch /var/log/monit.log
 chmod 640 /var/log/monit.log
 chown root:adm /var/log/monit.log
-chmod 600 /etc/monit/monitrc
 
 # Add monit to /etc/aliases:
 if [ -f /etc/aliases ] || [ -L /etc/aliases ]

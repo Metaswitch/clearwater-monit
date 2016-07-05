@@ -1,6 +1,7 @@
 Name: clearwater-monit
 Summary: Process monitor and restart utility
-BuildRequires: flex bison openssl-devel pam-devel
+BuildRequires: flex bison openssl-devel pam-devel libtool rpm-build
+Requires: clearwater-infrastructure
 
 %include %{rootdir}/build-infra/cw-rpm.spec.inc
 
@@ -24,6 +25,7 @@ build_files_list > clearwater-monit.files
 if [ "$1" == 1 ] ; then
   /usr/share/clearwater/clearwater-monit/install/clearwater-monit.postinst
 fi
+chmod 600 /etc/monit/monitrc
 systemctl enable clearwater-monit
 systemctl start clearwater-monit
 
