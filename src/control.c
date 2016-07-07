@@ -255,7 +255,7 @@ static boolean_t _doStart(Service_T s) {
                         Event_post(s, Event_Exec, State_Succeeded, s->action_EXEC, "monitoring enabled");
                 }
         } else {
-                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "failed to start -- could not start required services: '%s'", StringBuffer_toString(sb));
+                Event_post(s, Event_Exec, State_Failed, s->action_EXEC, "Not started yet - the dependent process '%s' isn't running yet", StringBuffer_toString(sb));
                 s->doaction = Action_Start; // Retry the start next cycle
         }
         Util_monitorSet(s);
@@ -470,18 +470,22 @@ boolean_t control_service(const char *S, Action_Type A) {
                 case Action_Restart:
                         LogInfo("'%s' trying to restart\n", s->name);
                         // Restart this service only if all children that depend on it were stopped
-                        if (_doDepend(s, Action_Stop, false)) {
-                                if (s->restart) {
-                                        if ((rv = _doRestart(s)))
-                                                _doDepend(s, Action_Start, false); // Start children only if we successfully restarted
-                                } else {
-                                        if (_doStop(s, false)) {
-                                                if ((rv = _doStart(s))) // Only start if we successfully stopped
-                                                        _doDepend(s, Action_Start, false); // Start children only if we successfully started
-                                        } else {
-                                                /* enable monitoring of this service again to allow the restart retry in the next cycle up to timeout limit */
-                                                Util_monitorSet(s);
+                        _doDepend(s, Action_Unmonitor, false);
+                        _doDepend(s, Action_Stop, false);
+                        if (s->restart) {
+                                if ((rv = _doRestart(s))) {
+                                        _doDepend(s, Action_Start, false); // Start children only if we successfully restarted
+                                        _doDepend(s, Action_Monitor, false);
+                                }
+                        } else {
+                                if (_doStop(s, false)) {
+                                        if ((rv = _doStart(s))) { // Only start if we successfully stopped
+                                                _doDepend(s, Action_Start, false); // Start children only if we successfully started
+                                                _doDepend(s, Action_Monitor, false);
                                         }
+                                } else {
+                                        /* enable monitoring of this service again to allow the restart retry in the next cycle up to timeout limit */
+                                        Util_monitorSet(s);
                                 }
                         }
                         break;

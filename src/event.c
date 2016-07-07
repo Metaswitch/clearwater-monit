@@ -308,6 +308,11 @@ static void _handleAction(Event_T E, Action_T A) {
                                 E->source->nstart++;
                         if (E->source->mode == Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
                                 return;
+                        if ((A->id == Action_Start) || (A->id == Action_Stop) || (A->id == Action_Restart)) {
+                                // About to restart this service, so reset all its values.
+                                E->state = State_Init;
+                                memset(&(E->state_map), State_Init, sizeof(E->state_map));
+                        }
                         control_service(E->source->name, A->id);
                 }
         }
