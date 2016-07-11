@@ -57,7 +57,7 @@ void Bootstrap(void) {
 }
 
 
-void Bootstrap_setAbortHandler(void(*abortHandler)(const char *error, va_list a)) {
+void Bootstrap_setAbortHandler(void(*abortHandler)(const char *error, va_list ap)) {
         _AbortHandler = abortHandler;
 }
 

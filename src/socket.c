@@ -24,6 +24,14 @@
 
 #include "config.h"
 
+#ifdef HAVE_POLL_H
+#include <poll.h>
+#endif
+
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#endif
+
 #ifdef HAVE_SYS_TYPES_H
 #include <sys/types.h>
 #endif
@@ -48,27 +56,33 @@
 #include <netinet/in.h>
 #endif
 
-#ifdef HAVE_ARPA_INET_H
-#include <arpa/inet.h>
+#ifdef HAVE_SYS_UN_H
+#include <sys/un.h>
 #endif
 
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
+#ifdef HAVE_ARPA_INET_H
+#include <arpa/inet.h>
 #endif
 
 #ifdef HAVE_NETINET_TCP_H
 #include <netinet/tcp.h>
 #endif
 
+#ifdef HAVE_NETDB_H
+#include <netdb.h>
+#endif
+
 #include "net.h"
-#include "ssl.h"
 #include "monit.h"
 #include "socket.h"
+#include "SslServer.h"
 
 // libmonit
 #include "exceptions/assert.h"
+#include "exceptions/IOException.h"
 #include "util/Str.h"
 #include "system/Net.h"
+#include "system/Time.h"
 
 
 
@@ -82,23 +96,32 @@
 /* ------------------------------------------------------------- Definitions */
 
 
-#define TYPE_LOCAL   0
-#define TYPE_ACCEPT  1
-// One TCP frame data size
-#define RBUFFER_SIZE 1500
+typedef enum {
+        Connection_Client = 0,
+        Connection_Server
+} __attribute__((__packed__)) Connection_Type;
 
-struct Socket_T {
-        int port;
-        int type;
+
+// One TCP frame data size
+#define RBUFFER_SIZE 1460
+
+
+#define T Socket_T
+struct T {
+        Socket_Type type;
+        Socket_Family family;
+        Connection_Type connection_type;
         int socket;
-        char *host;
-        Port_T Port;
-        int timeout;
-        int connection_type;
-        ssl_connection *ssl;
-        ssl_server_connection *sslserver;
+        int port;
+        int timeout; // milliseconds
         int length;
         int offset;
+        char *host;
+        Port_T Port;
+#ifdef HAVE_OPENSSL
+        Ssl_T ssl;
+        SslServer_T sslserver;
+#endif
         unsigned char buffer[RBUFFER_SIZE + 1];
 };
 
@@ -110,152 +133,301 @@ struct Socket_T {
  * Fill the internal buffer. If an error occurs or if the read
  * operation timed out -1 is returned.
  * @param S A Socket object
- * @param timeout The number of seconds to wait for data to be read
- * @return TRUE (the length of data read) or -1 if an error occured
+ * @param timeout The number of milliseconds to wait for data to be read
+ * @return the length of data read or -1 if an error occured
  */
-static int fill(Socket_T S, int timeout) {
-        int n;
+static int _fill(T S, int timeout) {
         S->offset = 0;
         S->length = 0;
-        /* Optimizing, assuming a request/response pattern and that a udp_write
-         was issued before we are called, we don't have to wait for data */
-        if (S->type == SOCK_DGRAM)
-                timeout = 0;
-        /* Read as much as we can, but only block on the first read */
-        while (RBUFFER_SIZE > S->length) {
-                if (S->ssl) {
-                        n = recv_ssl_socket(S->ssl, S->buffer + S->length, RBUFFER_SIZE-S->length, timeout);
+        if (S->type == Socket_Udp)
+                timeout = 500;
+        int n;
+#ifdef HAVE_OPENSSL
+        if (S->ssl)
+                n = Ssl_read(S->ssl, S->buffer + S->length, RBUFFER_SIZE - S->length, timeout);
+        else
+#endif
+                n = (int)Net_read(S->socket, S->buffer + S->length,  RBUFFER_SIZE - S->length, timeout);
+        if (n > 0)
+                S->length += n;
+        else if (n < 0)
+                return -1;
+        else if (! (errno == EAGAIN || errno == EWOULDBLOCK)) // Peer closed connection
+                return -1;
+        return n;
+}
+
+
+int _getPort(const struct sockaddr *addr, socklen_t addrlen) {
+        if (addr->sa_family == AF_INET)
+                return ntohs(((struct sockaddr_in *)addr)->sin_port);
+#ifdef HAVE_IPV6
+        else if (addr->sa_family == AF_INET6)
+                return ntohs(((struct sockaddr_in6 *)addr)->sin6_port);
+#endif
+        else
+                return -1;
+}
+
+
+static char *_addressToString(const struct sockaddr *addr, socklen_t addrlen, char *buf, int buflen) {
+        int oerrno = errno;
+        if (addr->sa_family == AF_UNIX) {
+                snprintf(buf, buflen, "%s", ((struct sockaddr_un *)addr)->sun_path);
+        } else {
+                char ip[46], port[6];
+                int status = getnameinfo(addr, addrlen, ip, sizeof(ip), port, sizeof(port), NI_NUMERICHOST | NI_NUMERICSERV);
+                if (status) {
+                        LogError("Cannot get address string -- %s\n", status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
+                        *buf = 0;
                 } else {
-                        n = (int)sock_read(S->socket, S->buffer + S->length,  RBUFFER_SIZE-S->length, timeout);
+                        snprintf(buf, buflen, "[%s]:%s", ip, port);
                 }
-                timeout = 0;
-                if (n > 0) {
-                        S->length += n;
-                        continue;
-                }  else if (n < 0) {
-                        if (errno == EAGAIN || errno == EWOULDBLOCK || S->type == SOCK_DGRAM) break;
-                        return -1;
-                } else
-                        break;
         }
-        return S->length;
+        errno = oerrno;
+        return buf;
+}
+
+
+static boolean_t _doConnect(int s, const struct sockaddr *addr, socklen_t addrlen, int timeout, char *error, int errorlen) {
+        int rv = connect(s, addr, addrlen);
+        if (! rv) {
+                return true;
+        } else if (errno != EINPROGRESS) {
+                snprintf(error, errorlen, "%s", STRERROR);
+                return false;
+        }
+        struct pollfd fds[1];
+        fds[0].fd = s;
+        fds[0].events = POLLIN | POLLOUT;
+        rv = poll(fds, 1, timeout);
+        if (rv == 0) {
+                snprintf(error, errorlen, "Connection timed out");
+                return false;
+        } else if (rv == -1) {
+                snprintf(error, errorlen, "Poll failed: %s", STRERROR);
+                return false;
+        }
+        if (fds[0].events & POLLIN || fds[0].events & POLLOUT) {
+                socklen_t rvlen = sizeof(rv);
+                if (getsockopt(s, SOL_SOCKET, SO_ERROR, &rv, &rvlen) < 0) {
+                        snprintf(error, errorlen, "Read of error details failed: %s", STRERROR);
+                        return false;
+                } else if (rv) {
+                        snprintf(error, errorlen, "%s", strerror(rv));
+                        return false;
+                }
+        } else {
+                snprintf(error, errorlen, "Not ready for I/O");
+                return false;
+        }
+        return true;
+}
+
+
+T _createIpSocket(const char *host, const struct sockaddr *addr, socklen_t addrlen, const struct sockaddr *localaddr, socklen_t localaddrlen, int family, int type, int protocol, SslOptions_T ssl, int timeout) {
+        ASSERT(host);
+        char error[STRLEN];
+        int s = socket(family, type, protocol);
+        if (s >= 0) {
+                if (localaddr) {
+                        if (bind(s, localaddr, localaddrlen) < 0) {
+                                snprintf(error, sizeof(error), "Cannot bind to outgoing address -- %s", STRERROR);
+                                goto error;
+                        }
+                }
+                if (Net_setNonBlocking(s)) {
+                        if (fcntl(s, F_SETFD, FD_CLOEXEC) != -1) {
+                                if (_doConnect(s, addr, addrlen, timeout, error, sizeof(error))) {
+                                        T S;
+                                        NEW(S);
+                                        S->socket = s;
+                                        S->type = type;
+                                        S->family = family == AF_INET ? Socket_Ip4 : Socket_Ip6;
+                                        S->timeout = timeout;
+                                        S->host = Str_dup(host);
+                                        S->port = _getPort(addr, addrlen);
+                                        S->connection_type = Connection_Client;
+                                        if (ssl.flags == SSL_Enabled) {
+                                                TRY
+                                                {
+                                                        Socket_enableSsl(S, ssl, host);
+                                                }
+                                                ELSE
+                                                {
+                                                        Socket_free(&S);
+                                                        RETHROW;
+                                                }
+                                                END_TRY;
+                                        }
+                                        return S;
+                                }
+                        } else {
+                                snprintf(error, sizeof(error), "Cannot set socket close on exec -- %s", STRERROR);
+                        }
+                } else {
+                        snprintf(error, sizeof(error), "Cannot set nonblocking socket -- %s", STRERROR);
+                }
+error:
+                Net_close(s);
+        } else {
+                snprintf(error, sizeof(error), "Cannot create socket to %s -- %s", _addressToString(addr, addrlen, (char[STRLEN]){}, STRLEN), STRERROR);
+        }
+        THROW(IOException, "%s", error);
+        return NULL;
+}
+
+
+struct addrinfo *_resolve(const char *hostname, int port, Socket_Type type, Socket_Family family) {
+        ASSERT(hostname);
+        struct addrinfo *result, hints = {
+#ifdef AI_ADDRCONFIG
+                .ai_flags = AI_ADDRCONFIG,
+#endif
+                .ai_socktype = type,
+                .ai_protocol = type == Socket_Udp ? IPPROTO_UDP : IPPROTO_TCP
+        };
+        switch (family) {
+                case Socket_Ip:
+                        hints.ai_family = AF_UNSPEC;
+                        break;
+                case Socket_Ip4:
+                        hints.ai_family = AF_INET;
+                        break;
+#ifdef HAVE_IPV6
+                case Socket_Ip6:
+                        hints.ai_family = AF_INET6;
+                        break;
+#endif
+                default:
+                        LogError("Invalid socket family %d\n", family);
+                        return NULL;
+        }
+        char _port[6];
+        snprintf(_port, sizeof(_port), "%d", port);
+        int status = getaddrinfo(hostname, _port, &hints, &result);
+        if (status != 0) {
+                LogError("Cannot translate '%s' to IP address -- %s\n", hostname, status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
+                return NULL;
+        }
+        return result;
+}
+
+
+static T _createUnixSocket(const char *pathname, Socket_Type type, int timeout) {
+        struct sockaddr_un unixsocket;
+        ASSERT(pathname);
+        int s = socket(PF_UNIX, type, 0);
+        if (s >= 0) {
+                unixsocket.sun_family = AF_UNIX;
+                snprintf(unixsocket.sun_path, sizeof(unixsocket.sun_path), "%s", pathname);
+                if (Net_setNonBlocking(s)) {
+                        char error[STRLEN];
+                        if (_doConnect(s, (struct sockaddr *)&unixsocket, sizeof(unixsocket), timeout, error, sizeof(error))) {
+                                T S;
+                                NEW(S);
+                                S->connection_type = Connection_Client;
+                                S->family = Socket_Unix;
+                                S->type = type;
+                                S->socket = s;
+                                S->timeout = timeout;
+                                S->host = Str_dup(LOCALHOST);
+                                return S;
+                        }
+                        LogError("Unix socket %s error -- %s\n", pathname, error);
+                } else {
+                        LogError("Cannot set nonblocking unix socket %s -- %s\n", pathname, STRERROR);
+                }
+                Net_close(s);
+        } else {
+                LogError("Cannot create unix socket %s -- %s\n", pathname, STRERROR);
+        }
+        return NULL;
 }
 
 
 /* ------------------------------------------------------------------ Public */
 
 
-Socket_T socket_new(const char *host, int port, int type, int use_ssl, int timeout) {
-        Ssl_T ssl = {.use_ssl = use_ssl, .version = SSL_VERSION_AUTO};
-        return socket_create_t(host, port, type, ssl, timeout);
+T Socket_new(const char *host, int port, Socket_Type type, Socket_Family family, Ssl_Flags flags, int timeout) {
+        return Socket_create(host, port, type, family, (SslOptions_T){.flags = flags, .version = SSL_Auto}, timeout);
 }
 
 
-Socket_T socket_create(void *port) {
-        int socket;
-        Socket_T S = NULL;
-        Port_T p = port;
-        ASSERT(port);
-        switch (p->family) {
-                case AF_UNIX:
-                        socket = create_unix_socket(p->pathname, p->type, p->timeout);
-                        break;
-                case AF_INET:
-                        socket = create_socket(p->hostname, p->port, p->type, p->timeout);
-                        break;
-                default:
-                        LogError("Invalid Port Protocol family\n");
-                        return NULL;
-        }
-        if (socket < 0) {
-                LogError("socket_create: Could not create socket -- %s\n", STRERROR);
-        } else {
-                NEW(S);
-                S->socket = socket;
-                S->type = p->type;
-                S->port = p->port;
-                S->timeout = p->timeout;
-                S->connection_type = TYPE_LOCAL;
-                if (p->family == AF_UNIX) {
-                        S->host = Str_dup(LOCALHOST);
-                } else {
-                        S->host = Str_dup(p->hostname);
-                }
-                if (p->SSL.use_ssl && !socket_switch2ssl(S, p->SSL)) {
-                        socket_free(&S);
-                        return NULL;
-                }
-                S->Port = port;
-        }
-        return S;
-}
-
-
-Socket_T socket_create_t(const char *host, int port, int type, Ssl_T ssl, int timeout) {
-        int s;
-        int proto = type == SOCKET_UDP ? SOCK_DGRAM : SOCK_STREAM;
+T Socket_create(const char *host, int port, Socket_Type type, Socket_Family family, SslOptions_T ssl, int timeout) {
         ASSERT(host);
-        ASSERT((type == SOCKET_UDP)||(type == SOCKET_TCP));
-        if (ssl.use_ssl) {
-                ASSERT(type == SOCKET_TCP);
-        }
-        ASSERT(timeout>0);
-        if ((s = create_socket(host, port, proto, timeout)) != -1) {
-                Socket_T S = NULL;
-                NEW(S);
-                S->socket = s;
-                S->port = port;
-                S->type = proto;
-                S->timeout = timeout;
-                S->host = Str_dup(host);
-                S->connection_type = TYPE_LOCAL;
-                if (ssl.use_ssl && !socket_switch2ssl(S, ssl)) {
-                        socket_free(&S);
-                        return NULL;
+        ASSERT(timeout > 0);
+        volatile T S = NULL;
+        struct addrinfo *result = _resolve(host, port, type, family);
+        if (result) {
+                char error[STRLEN];
+                // The host may resolve to multiple IPs and if at least one succeeded, we have no problem and don't have to flood the log with partial errors => log only the last error
+                for (struct addrinfo *r = result; r && S == NULL; r = r->ai_next) {
+                        TRY
+                        {
+                                S = _createIpSocket(host, r->ai_addr, r->ai_addrlen, NULL, 0, r->ai_family, r->ai_socktype, r->ai_protocol, ssl, timeout);
+                        }
+                        ELSE
+                        {
+                                snprintf(error, sizeof(error), "%s", Exception_frame.message);
+                        }
+                        END_TRY;
                 }
-                return S;
-        }
-        return NULL;
-}
-
-
-Socket_T socket_create_a(int socket, const char *remote_host, int port, void *sslserver) {
-        Socket_T S;
-        ASSERT(socket >= 0);
-        ASSERT(remote_host);
-        NEW(S);
-        S->port = port;
-        S->socket = socket;
-        S->type = SOCK_STREAM;
-        S->timeout = NET_TIMEOUT;
-        S->host = Str_dup(remote_host);
-        S->connection_type = TYPE_ACCEPT;
-        if (sslserver) {
-                S->sslserver = sslserver;
-                if (! (S->ssl = insert_accepted_ssl_socket(S->sslserver))) {
-                        goto ssl_error;
-                }
-                if (! embed_accepted_ssl_socket(S->ssl, S->socket)) {
-                        goto ssl_error;
-                }
+                freeaddrinfo(result);
+                if (! S)
+                        LogError("Cannot create socket to [%s]:%d -- %s\n", host, port, error);
         }
         return S;
-ssl_error:
-        socket_free(&S);
-        return NULL;
 }
 
 
-void socket_free(Socket_T *S) {
+T Socket_createUnix(const char *path, Socket_Type type, int timeout) {
+        ASSERT(path);
+        ASSERT(timeout > 0);
+        return _createUnixSocket(path, type, timeout);
+}
+
+
+T Socket_createAccepted(int socket, struct sockaddr *addr, socklen_t addrlen, void *sslserver) {
+        ASSERT(socket >= 0);
+        ASSERT(addr);
+        T S;
+        NEW(S);
+        S->socket = socket;
+        S->timeout = Run.limits.networkTimeout;
+        S->connection_type = Connection_Server;
+        S->type = Socket_Tcp;
+        if (addr->sa_family == AF_INET) {
+                struct sockaddr_in *a = (struct sockaddr_in *)addr;
+                S->family = Socket_Ip4;
+                S->port = _getPort(addr, addrlen);
+                S->host = Str_dup(inet_ntoa(a->sin_addr));
+#ifdef HAVE_OPENSSL
+                if (sslserver) {
+                        S->sslserver = sslserver;
+                        if (! (S->ssl = SslServer_newConnection(S->sslserver)) || ! SslServer_accept(S->ssl, S->socket, S->timeout)) {
+                                Socket_free(&S);
+                                return NULL;
+                        }
+                }
+#endif
+        } else {
+                S->family = Socket_Unix;
+        }
+        return S;
+}
+
+
+void Socket_free(T *S) {
         ASSERT(S && *S);
 #ifdef HAVE_OPENSSL
-        if ((*S)->ssl && (*S)->ssl->handler)
+        if ((*S)->ssl)
         {
-                if ((*S)->connection_type == TYPE_LOCAL) {
-                        close_ssl_socket((*S)->ssl);
-                        delete_ssl_socket((*S)->ssl);
-                } else if ((*S)->connection_type == TYPE_ACCEPT && (*S)->sslserver) {
-                        close_accepted_ssl_socket((*S)->sslserver, (*S)->ssl);
+                if ((*S)->connection_type == Connection_Client) {
+                        Ssl_close((*S)->ssl);
+                        Ssl_free(&((*S)->ssl));
+                } else if ((*S)->connection_type == Connection_Server && (*S)->sslserver) {
+                        SslServer_freeConnection((*S)->sslserver, &((*S)->ssl));
                 }
         }
         else
@@ -272,130 +444,218 @@ void socket_free(Socket_T *S) {
 /* ------------------------------------------------------------ Properties */
 
 
-void socket_setTimeout(Socket_T S, int timeout) {
+void Socket_setTimeout(T S, int timeout) {
         ASSERT(S);
         S->timeout = timeout;
 }
 
 
-int socket_getTimeout(Socket_T S) {
+int Socket_getTimeout(T S) {
         ASSERT(S);
         return S->timeout;
 }
 
 
-int socket_is_ready(Socket_T S) {
+boolean_t Socket_isSecure(T S) {
         ASSERT(S);
-        switch(S->type) {
-                case SOCK_STREAM:
-                        return check_socket(S->socket);
-                case SOCK_DGRAM:
-                        return check_udp_socket(S->socket);
-                default:
-                        break;
-        }
-        return FALSE;
-}
-
-
-int socket_is_secure(Socket_T S) {
-        ASSERT(S);
+#ifdef HAVE_OPENSSL
         return (S->ssl != NULL);
+#else
+        return false;
+#endif
 }
 
 
-int socket_is_udp(Socket_T S) {
-        ASSERT(S);
-        return (S->type == SOCK_DGRAM);
-}
-
-
-int socket_get_socket(Socket_T S) {
+int Socket_getSocket(T S) {
         ASSERT(S);
         return S->socket;
 }
 
 
-int socket_get_type(Socket_T S) {
+Socket_Type Socket_getType(T S) {
         ASSERT(S);
         return S->type;
 }
 
 
-void *socket_get_Port(Socket_T S) {
+void *Socket_getPort(T S) {
         ASSERT(S);
         return S->Port;
 }
 
 
-int socket_get_remote_port(Socket_T S) {
+int Socket_getRemotePort(T S) {
         ASSERT(S);
         return S->port;
 }
 
 
-const char *socket_get_remote_host(Socket_T S) {
+const char *Socket_getRemoteHost(T S) {
         ASSERT(S);
         return S->host;
 }
 
 
-int socket_get_local_port(Socket_T S) {
-        struct sockaddr sock;
-        socklen_t len = sizeof(sock);
+int Socket_getLocalPort(T S) {
         ASSERT(S);
-        if (getsockname (S->socket, &sock, &len ) == 0)
-                return ntohs (((struct sockaddr_in *)&sock)->sin_port);
+        struct sockaddr_storage addr;
+        socklen_t addrlen = sizeof(addr);
+        if (getsockname(S->socket, (struct sockaddr *)&addr, &addrlen) == 0)
+                return _getPort((struct sockaddr *)&addr, addrlen);
         return -1;
-
 }
 
 
-const char *socket_get_local_host(Socket_T S) {
-        struct sockaddr sock;
-        socklen_t len = sizeof(sock);
+const char *Socket_getLocalHost(T S, char *host, int hostlen) {
         ASSERT(S);
-        if (getsockname(S->socket, &sock, &len) == 0)
-                return inet_ntoa(((struct sockaddr_in *)&sock)->sin_addr);
+        ASSERT(host);
+        ASSERT(hostlen);
+        struct sockaddr_storage addr;
+        socklen_t addrlen = sizeof(addr);
+        if (! getsockname(S->socket, (struct sockaddr *)&addr, &addrlen)) {
+                int status = getnameinfo((struct sockaddr *)&addr, addrlen, host, hostlen, NULL, 0, NI_NUMERICHOST);
+                if (! status)
+                        return host;
+                LogError("Cannot translate address to hostname -- %s\n", status == EAI_SYSTEM ? STRERROR : gai_strerror(status));
+        } else {
+                LogError("Cannot translate address to hostname -- getsockname failed: %s\n", STRERROR);
+        }
         return NULL;
-
 }
 
 
-void socket_setError(Socket_T S, const char *error, ...) {
-        assert(S);
-        assert(error);
-        va_list ap;
-        va_start(ap, error);
-        vsnprintf((char*)S->buffer, RBUFFER_SIZE, error, ap);
-        va_end(ap);
+static void _testUnix(Port_T p) {
+        T S = _createUnixSocket(p->target.unix.pathname, p->type, p->timeout);
+        if (S) {
+                S->Port = p;
+                TRY
+                {
+                        p->protocol->check(S);
+                }
+                FINALLY
+                {
+                        Socket_free(&S);
+                }
+                END_TRY;
+        } else {
+                THROW(IOException, "Cannot create unix socket for %s", p->target.unix.pathname);
+        }
 }
 
 
-const char *socket_getError(Socket_T S) {
-        assert(S);
-        return (const char *)S->buffer;
+static void _testIp(Port_T p) {
+        char error[STRLEN];
+        Connection_State is_available = Connection_Failed;
+        struct addrinfo *result = _resolve(p->hostname, p->target.net.port, p->type, p->family);
+        if (result) {
+                // The host may resolve to multiple IPs and if at least one succeeded, we have no problem and don't have to flood the log with partial errors => log only the last error
+                for (struct addrinfo *r = result; r && is_available != Connection_Ok; r = r->ai_next) {
+                        if (p->outgoing.addrlen == 0 || p->outgoing.addrlen == r->ai_addrlen) {
+                                const struct sockaddr *localaddr = p->outgoing.addrlen ? (struct sockaddr *)&(p->outgoing.addr) : NULL;
+                                volatile T S = NULL;
+                                TRY
+                                {
+                                        S = _createIpSocket(p->hostname, r->ai_addr, r->ai_addrlen, localaddr, p->outgoing.addrlen, r->ai_family, r->ai_socktype, r->ai_protocol, p->target.net.ssl, p->timeout);
+                                        S->Port = p;
+                                        p->protocol->check(S);
+                                        is_available = Connection_Ok;
+                                }
+                                ELSE
+                                {
+                                        snprintf(error, sizeof(error), "%s", Exception_frame.message);
+                                        DEBUG("Socket test failed for %s -- %s\n", _addressToString(r->ai_addr, r->ai_addrlen, (char[STRLEN]){}, STRLEN), error);
+                                }
+                                FINALLY
+                                {
+                                        if (S)
+                                                Socket_free((Socket_T *)&S);
+                                }
+                                END_TRY;
+                        } else {
+                                snprintf(error, sizeof(error), "No target IP with family matching our outgoing address '%s' was found", p->outgoing.ip);
+                        }
+                }
+                freeaddrinfo(result);
+                if (is_available != Connection_Ok)
+                        THROW(IOException, "%s", error);
+        } else {
+                THROW(IOException, "Cannot resolve [%s]:%d", p->hostname, p->target.net.port);
+        }
 }
 
 
 /* ---------------------------------------------------------------- Public */
 
 
-int socket_switch2ssl(Socket_T S, Ssl_T ssl)  {
-        assert(S);
-        if (! (S->ssl = new_ssl_connection(ssl.clientpemfile, ssl.version)))
-                return FALSE;
-        if (! embed_ssl_socket(S->ssl, S->socket))
-                return FALSE;
-        if (ssl.certmd5 && !check_ssl_md5sum(S->ssl, ssl.certmd5)) {
-                LogError("md5sum of certificate does not match!\n");
-                return FALSE;
+void Socket_test(void *P) {
+        ASSERT(P);
+        Port_T p = P;
+        TRY
+        {
+                int64_t start = Time_micro();
+                switch (p->family) {
+                        case Socket_Unix:
+                                _testUnix(p);
+                                break;
+                        case Socket_Ip:
+                        case Socket_Ip4:
+                        case Socket_Ip6:
+                                _testIp(p);
+                                break;
+                        default:
+                                THROW(IOException, "Invalid socket family %d\n", p->family);
+                                break;
+                }
+                p->response = (double)(Time_micro() - start) / 1000.; // Convert microseconds to milliseconds
+                p->is_available = Connection_Ok;
         }
-        return TRUE;
+        ELSE
+        {
+                p->is_available = Connection_Failed;
+                p->response = -1.;
+                RETHROW;
+        }
+        END_TRY;
 }
 
 
-int socket_print(Socket_T S, const char *m, ...) {
+void Socket_enableSsl(T S, SslOptions_T ssl, const char *name)  {
+        assert(S);
+#ifdef HAVE_OPENSSL
+        if ((S->ssl = Ssl_new(ssl.version != -1 ? ssl.version : Run.ssl.version != -1 ? Run.ssl.version : SSL_Auto,
+                              ssl.CACertificateFile ? ssl.CACertificateFile : Run.ssl.CACertificateFile ? Run.ssl.CACertificateFile : NULL,
+                              ssl.CACertificatePath ? ssl.CACertificatePath : Run.ssl.CACertificatePath ? Run.ssl.CACertificatePath : NULL,
+                              ssl.clientpemfile ? ssl.clientpemfile : Run.ssl.clientpemfile ? Run.ssl.clientpemfile : NULL)))
+        {
+                // Set SSL options with fallback to global SSL options
+
+                if (ssl.verify != -1)
+                        Ssl_setVerifyCertificates(S->ssl, ssl.verify);
+                else if (Run.ssl.verify != -1)
+                        Ssl_setVerifyCertificates(S->ssl, Run.ssl.verify);
+
+                if (ssl.allowSelfSigned != -1)
+                        Ssl_setAllowSelfSignedCertificates(S->ssl, ssl.allowSelfSigned);
+                else if (Run.ssl.allowSelfSigned != -1)
+                        Ssl_setAllowSelfSignedCertificates(S->ssl, Run.ssl.allowSelfSigned);
+
+                if (ssl.minimumValidDays > 0)
+                        Ssl_setCertificateMinimumValidDays(S->ssl, ssl.minimumValidDays);
+                else if (Run.ssl.minimumValidDays > 0)
+                        Ssl_setCertificateMinimumValidDays(S->ssl, Run.ssl.minimumValidDays);
+
+                if (ssl.checksum)
+                        Ssl_setCertificateChecksum(S->ssl, ssl.checksumType, ssl.checksum);
+                else if (Run.ssl.checksum)
+                        Ssl_setCertificateChecksum(S->ssl, Run.ssl.checksumType, Run.ssl.checksum);
+
+                Ssl_connect(S->ssl, S->socket, S->timeout, name);
+        }
+#endif
+}
+
+
+int Socket_print(T S, const char *m, ...) {
         int n;
         va_list ap;
         char *buf = NULL;
@@ -404,28 +664,28 @@ int socket_print(Socket_T S, const char *m, ...) {
         va_start(ap, m);
         buf = Str_vcat(m, ap);
         va_end(ap);
-        n = socket_write(S, buf, strlen(buf));
+        n = Socket_write(S, buf, strlen(buf));
         FREE(buf);
         return n;
 }
 
 
-int socket_write(Socket_T S, void *b, size_t size) {
+int Socket_write(T S, void *b, size_t size) {
         ssize_t n = 0;
         void *p = b;
         ASSERT(S);
-        /* Clear any extra data read from the server */
-        socket_reset(S);
         while (size > 0) {
+#ifdef HAVE_OPENSSL
                 if (S->ssl) {
-                        n = send_ssl_socket(S->ssl, p, size, S->timeout);
+                        n = Ssl_write(S->ssl, p, (int)size, S->timeout);
                 } else {
-                        if (S->type == SOCK_DGRAM)
-                                n = udp_write(S->socket,  p, size, S->timeout);
-                        else
-                                n = sock_write(S->socket,  p, size, S->timeout);
+#endif
+                        n = Net_write(S->socket, p, size, S->timeout);
+#ifdef HAVE_OPENSSL
                 }
-                if (n <= 0) break;
+#endif
+                if (n <= 0)
+                        break;
                 p += n;
                 size -= n;
 
@@ -438,32 +698,30 @@ int socket_write(Socket_T S, void *b, size_t size) {
 }
 
 
-int socket_read_byte(Socket_T S) {
+int Socket_readByte(T S) {
         ASSERT(S);
-        if (S->offset >= S->length) {
-                if (fill(S, S->timeout) <= 0)
+        if (S->offset >= S->length)
+                if (_fill(S, S->timeout) <= 0)
                         return -1;
-        }
         return S->buffer[S->offset++];
 }
 
 
-int socket_read(Socket_T S, void *b, int size) {
+int Socket_read(T S, void *b, int size) {
         int c;
         unsigned char *p = b;
         ASSERT(S);
-        while ((size-- > 0) && ((c = socket_read_byte(S)) >= 0)) {
+        while ((size-- > 0) && ((c = Socket_readByte(S)) >= 0))
                 *p++ = c;
-        }
-        return  (int)((long)p - (long)b);
+        return (int)((long)p - (long)b);
 }
 
 
-char *socket_readln(Socket_T S, char *s, int size) {
+char *Socket_readLine(T S, char *s, int size) {
         int c;
         unsigned char *p = (unsigned char *)s;
         ASSERT(S);
-        while (--size && ((c = socket_read_byte(S)) > 0)) { // Stop when \0 is read
+        while (--size && ((c = Socket_readByte(S)) > 0)) { // Stop when \0 is read
                 *p++ = c;
                 if (c == '\n')
                         break;
@@ -472,26 +730,5 @@ char *socket_readln(Socket_T S, char *s, int size) {
         if (*s)
                 return s;
         return NULL;
-}
-
-
-void socket_reset(Socket_T S) {
-        ASSERT(S);
-        /* Throw away any pending incomming data */
-        while (fill(S, 0) > 0);
-        S->offset = 0;
-        S->length = 0;
-}
-
-
-int socket_shutdown_write(Socket_T S) {
-        ASSERT(S);
-        return (shutdown(S->socket, 1) == 0);
-}
-
-
-int socket_set_tcp_nodelay(Socket_T S) {
-    int on = 1;
-    return (setsockopt(S->socket, IPPROTO_TCP, TCP_NODELAY, &on, sizeof(on)) == 0);
 }
 

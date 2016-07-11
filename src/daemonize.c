@@ -79,117 +79,71 @@
  * Transform a program into a daemon. Inspired by code from Stephen
  * A. Rago's book, Unix System V Network Programming.
  */
-void  daemonize() {
-
-  pid_t pid;
-
-  /*
-   * Clear file creation mask
-   */
-  umask(0);
-
-  /*
-   * Become a session leader to lose our controlling terminal
-   */
-  if((pid = fork ()) < 0) {
-
-    LogError("Cannot fork of a new process\n");
-    exit (1);
-
-  }
-  else if(pid != 0) {
-
-    _exit(0);
-
-  }
-
-  setsid();
-
-  if((pid = fork ()) < 0) {
-
-    LogError("Cannot fork of a new process\n");
-    exit (1);
-
-  }
-  else if(pid != 0) {
-
-    _exit(0);
-
-  }
-
-
-  /*
-   * Change current directory to the root so that other file systems
-   * can be unmounted while we're running
-   */
-  if(chdir("/") < 0) {
-
-    LogError("Cannot chdir to / -- %s\n", STRERROR);
-    exit(1);
-
-  }
-
-  /*
-   * Attach standard descriptors to /dev/null. Other descriptors
-   * should be closed in env.c
-   */
-  Util_redirectStdFds();
-
+void daemonize() {
+        pid_t pid;
+        /*
+         * Become a session leader to lose our controlling terminal
+         */
+        if ((pid = fork ()) < 0) {
+                LogError("Cannot fork of a new process\n");
+                exit (1);
+        } else if (pid != 0) {
+                _exit(0);
+        }
+        setsid();
+        if ((pid = fork ()) < 0) {
+                LogError("Cannot fork of a new process\n");
+                exit (1);
+        } else if (pid != 0) {
+                _exit(0);
+        }
+        /*
+         * Change current directory to the root so that other file systems can be unmounted while we're running
+         */
+        if (chdir("/") < 0) {
+                LogError("Cannot chdir to / -- %s\n", STRERROR);
+                exit(1);
+        }
+        /*
+         * Attach standard descriptors to /dev/null. Other descriptors should be closed in env.c
+         */
+        Util_redirectStdFds();
 }
 
 
 /**
  * Send signal to a daemon process
  * @param sig Signal to send daemon to
- * @return TRUE if signal was send, otherwise FALSE
+ * @return true if signal was send, otherwise false
  */
-int kill_daemon(int sig) {
-
-  pid_t pid;
-
-  if ( (pid = exist_daemon()) > 0 ) {
-
-    if ( kill(pid, sig) < 0 ) {
-
-      LogError("Cannot send signal to daemon process -- %s\n", STRERROR);
-      return FALSE;
-
-    }
-
-  } else {
-
-    LogInfo("No daemon process found\n");
-    return TRUE;
-
-  }
-
-  if(sig == SIGTERM) {
-
-    fprintf(stdout, "%s daemon with pid [%d] killed\n", prog, (int)pid);
-    fflush(stdout);
-
-  }
-
-  return TRUE;
-
+boolean_t kill_daemon(int sig) {
+        pid_t pid;
+        if ((pid = exist_daemon()) > 0) {
+                if (kill(pid, sig) < 0) {
+                        LogError("Cannot signal the monit daemon process -- %s\n", STRERROR);
+                        return false;
+                }
+        } else {
+                LogInfo("Monit daemon is not running\n");
+                return true;
+        }
+        if (sig == SIGTERM) {
+                fprintf(stdout, "Monit daemon with pid [%d] killed\n", (int)pid);
+                fflush(stdout);
+        }
+        return true;
 }
 
 
 /**
- * @return TRUE (i.e. the daemons pid) if a daemon process is running,
- * otherwise FALSE
+ * @return true (i.e. the daemons pid) if a daemon process is running,
+ * otherwise false
  */
 int exist_daemon() {
-
-  pid_t pid;
-
-  errno = 0;
-
-  if( (pid = Util_getPid(Run.pidfile)) )
-    if( (getpgid(pid)) > -1 || (errno == EPERM) )
-      return((int)pid);
-
-  return(FALSE);
-
+        errno = 0;
+        pid_t pid;
+        if ((pid = Util_getPid(Run.files.pid)) && (getpgid(pid) > -1 || errno == EPERM))
+                return (int)pid;
+        return 0;
 }
 

@@ -1,7 +1,7 @@
-[![Monit](http://mmonit.com/monit/img/logo@2x.png)](http://mmonit.com/monit) 
+[![Monit](https://mmonit.com/monit/img/logo@2x.png)](https://mmonit.com/monit/) 
  
 
-#[Monit](http://mmonit.com/monit) is a free open source utility for managing and monitoring, processes, programs, files, directories and filesystems on a UNIX system. Monit conducts automatic maintenance and repair and can execute meaningful causal actions in error situations.#
+#[Monit](https://mmonit.com/monit/) is a free open source utility for managing and monitoring, processes, programs, files, directories and filesystems on a UNIX system. Monit conducts automatic maintenance and repair and can execute meaningful causal actions in error situations.#
 
 ---
 
@@ -12,10 +12,16 @@ __Memory and Disk space__. A minimum of 1 megabytes RAM are required and around 
   
 __ANSI-C Compiler and Build System__. You will need an ANSI-C99 compiler installed to build Monit. The GNU C compiler (GCC) from the Free Software Foundation (FSF) is recommended. In addition, your PATH must contain basic build tools such as make.
 
+GIT
+===
+
+To checkout Monit source code, use `git clone git@bitbucket.org:tildeslash/monit.git`.
+
+
 BOOTSTRAPPING
 =============
 
-If you build Monit from the git repository, you need to call `./bootstrap` first before continuing with the installation steps below. To build a Monit release package from a bootstrapped build directory, perform the following steps. 1. `make cleanall` 2. `./bootstrap && ./configure` 3. `make dist` This will create a self-contained `monit-x.y.z.tar.gz` package which can be distributed. 
+If you build Monit from the git repository you should call `./bootstrap` first, before continuing with the installation steps below. 
 
 
 INSTALLATION
@@ -34,6 +40,16 @@ This will install Monit and the Monit man-file in /usr/local/bin and /usr/local/
 Use ./configure --help for build and install options. By default, Monit is built with SSL, PAM and large file support. You can change this
 with the *--without-<xxx>* options to ./configure. For instance, *--without-ssl*, *--without-pam* or *--without-largefiles*.
 
+DISTRIBUTION
+============
+
+If you need to build your own Monit source release package, follow these steps.
+
+> make cleanall  
+> ./bootstrap && ./configure  
+> make dist 
+
+This will produce a `monit-x.y.tar.gz` file in the current directory which can be used for distribution. Note that we do not use *make distclean* which is the convention, instead we use `make cleanall` to reset the Monit build directory, including libmonit, to pristine condition for a source release. Before a release you might also want to run *unit-tests* in *libmonit*. I.e. *cd libmonit; make verify;*. 
 
 QUICK START
 ===========
@@ -46,7 +62,7 @@ Once started, monit will run as a background process. To stop monit, use `monit 
 start monit with the -Iv options. In diagnostic mode, monit will print debug information to the console. Use `ctrl+c` to stop monit in
 diagnostic mode. To see all options for the program, use `monit -h`.
 
-Copy `monitrc` in the build directory to *$HOME/.monitrc* or if you plan to run Monit as root, to */etc/monitc*. Use this file as a starting
+Copy `monitrc` in the build directory to *~/.monitrc* or if you plan to run Monit as root, to */etc/monitc*. Use this file as a starting
 point to write your own configuration file for Monit.
 
 
@@ -65,8 +81,8 @@ You can subscribe to [Monitʼs mailing list](https://lists.nongnu.org/mailman/li
 CONTRIBUTING
 ============
  
-You are welcome to contribute to this project. Join our [developer mailing
-list](https://lists.nongnu.org/mailman/listinfo/monit-dev) and ask first if a new feature is wanted before working on a patch.
+You are welcome to contribute to this project. Join our [mailing
+list](http://lists.nongnu.org/mailman/listinfo/monit-general) and ask first if a new feature is wanted before working on a patch.
 Good pull requests, patches, improvements and new features are always helpful and appreciated.
 
 To create a pull request:

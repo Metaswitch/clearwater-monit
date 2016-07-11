@@ -50,52 +50,37 @@
  * in the UNIX Environment"
  */
 Sigfunc *signal(int signo, Sigfunc *func) {
+        struct sigaction act, oact;
 
-  struct sigaction act, oact;
-
-  act.sa_handler = func;
-  sigemptyset(&act.sa_mask);
-  act.sa_flags = 0;
-  if (signo == SIGALRM) {
+        act.sa_handler = func;
+        sigemptyset(&act.sa_mask);
+        act.sa_flags = 0;
+        if (signo == SIGALRM) {
 #ifdef  SA_INTERRUPT
-    act.sa_flags |= SA_INTERRUPT;   /* SunOS */
+                act.sa_flags |= SA_INTERRUPT;   /* SunOS */
 #endif
-  } else {
+        } else {
 #ifdef  SA_RESTART
-    act.sa_flags |= SA_RESTART;             /* SVR4, 44BSD */
+                act.sa_flags |= SA_RESTART;             /* SVR4, 44BSD */
 #endif
-  }
-  if (sigaction(signo, &act, &oact) < 0)
-      return(SIG_ERR);
+        }
+        if (sigaction(signo, &act, &oact) < 0)
+                return(SIG_ERR);
 
-  return(oact.sa_handler);
-
+        return(oact.sa_handler);
 }
 
 
 /**
  * Set a collective thread signal block for signals honored by monit
- * @param new The signal mask to use for the block
- * @param old The signal mask used to save the previous mask
  */
-void set_signal_block(sigset_t *new, sigset_t *old) {
-
-  sigemptyset(new);
-  sigaddset(new, SIGHUP);
-  sigaddset(new, SIGINT);
-  sigaddset(new, SIGUSR1);
-  sigaddset(new, SIGTERM);
-  pthread_sigmask(SIG_BLOCK, new, old);
-
+void set_signal_block() {
+        sigset_t mask;
+        sigemptyset(&mask);
+        sigaddset(&mask, SIGHUP);
+        sigaddset(&mask, SIGINT);
+        sigaddset(&mask, SIGUSR1);
+        sigaddset(&mask, SIGTERM);
+        pthread_sigmask(SIG_BLOCK, &mask, NULL);
 }
 
-
-/**
- * Set the thread signal mask back to the old mask
- * @param old The signal mask to restore
- */
-void unset_signal_block(sigset_t *old) {
-
-  pthread_sigmask(SIG_SETMASK, old, NULL);
-
-}

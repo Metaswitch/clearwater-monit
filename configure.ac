@@ -6,7 +6,7 @@ AC_PREREQ([2.53])
 # Note: in  case of beta subversion, use underscore "_" rather then dash "-"
 # since RPM doesn't allow dash in Version
 # Example: 5.0_beta2
-AC_INIT([monit], [5.8.1], [monit-general@nongnu.org])
+AC_INIT([monit], [5.18.1], [monit-general@nongnu.org])
 AC_CONFIG_AUX_DIR(config)
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE
@@ -43,8 +43,7 @@ if test "x$POD2MAN" = "xno"; then
 		AC_MSG_ERROR([pod2man is required to build the monit.1 man file.])
 	fi
 else
-	d=`date  '+%B %d. %Y'`
-	POD2MANFLAGS="--center 'User Commands' --release '${d}' --date='www.mmonit.com' --lax"
+	POD2MANFLAGS="--center 'User Commands' --release AC_PACKAGE_VERSION --date='www.mmonit.com' --lax"
 	AC_SUBST([POD2MANFLAGS])
 fi
 
@@ -55,29 +54,6 @@ fi
 
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
-
-
-# ---------------------------------------------------------------------------
-# Build options
-# ---------------------------------------------------------------------------
-
-AC_ARG_ENABLE(optimized,
-        AS_HELP_STRING([--enable-optimized],
-                [Build software optimized]),
-    [
-        CFLAGS=`echo $CFLAGS|sed 's/-O.* //'`
-        if test "x$enableval" = "xyes" ; then
-                CFLAGS=`echo $CFLAGS|sed 's/-g//'`
-                CFLAGS="$CFLAGS -O3"
-                OPTIMIZED=1
-        else
-                OPTIMIZED=0
-        fi
-    ],
-    [
-        OPTIMIZED=0
-    ]
-)
 
 
 # ------------------------------------------------------------------------
@@ -91,6 +67,7 @@ AC_CHECK_LIB([nsl],    [inet_addr])
 AC_CHECK_LIB([resolv], [inet_aton])
 AC_CHECK_LIB([c], [crypt], [:], [AC_CHECK_LIB([crypt], [crypt])])
 AC_CHECK_LIB([pthread], [pthread_create], [], [AC_MSG_ERROR([POSIX thread library is required])])
+
 
 # ------------------------------------------------------------------------
 # Header files 
@@ -117,14 +94,18 @@ AC_CHECK_HEADERS([ \
 	getopt.h \
 	glob.h \
 	grp.h \
+	ifaddrs.h \
+	kinfo.h \
 	kvm.h \
 	paths.h \
 	kstat.h \
 	zone.h \
 	sys/protosw.h \
+	libproc.h \
 	limits.h \
 	loadavg.h \
 	locale.h \
+        mach/boolean.h \
         mach/host_info.h \
         mach/mach.h \
         mach/mach_host.h \
@@ -167,6 +148,7 @@ AC_CHECK_HEADERS([ \
 	sys/pstat.h \
 	sys/queue.h \
 	sys/resource.h \
+	sys/sched.h \
 	sys/statfs.h \
 	sys/statvfs.h \
 	sys/sysinfo.h \
@@ -181,8 +163,9 @@ AC_CHECK_HEADERS([ \
 	sys/vfs.h \
 	syslog.h \
 	unistd.h \
-        uvm/uvm.h \
+	utmpx.h \
         uvm/uvm_extern.h \
+        uvm/uvm_param.h \
         vm/vm.h \
 	])
 
@@ -235,6 +218,20 @@ AC_CHECK_HEADERS([ \
          #endif
          #if HAVE_NETINET_IP_H
          #include <netinet/ip.h>
+         #endif
+        ])
+
+AC_CHECK_HEADERS([ \
+	netinet/icmp6.h \
+        ],
+        [],
+        [],
+        [
+         #ifdef HAVE_SYS_TYPES_H
+         #include <sys/types.h>
+         #endif
+         #if HAVE_NETINET_IP_H
+         #include <netinet/in.h>
          #endif
         ])
 
@@ -320,7 +317,49 @@ AC_CHECK_HEADERS([ \
          #endif
         ])
 
-# Check for types.
+AC_CHECK_HEADERS([ \
+	uvm/uvm.h \
+        ],
+        [],
+        [],
+        [
+         #ifdef HAVE_SYS_MUTEX_H
+         #include <sys/mutex.h>
+         #endif
+         #ifdef HAVE_SYS_TYPES_H
+         #include <sys/types.h>
+         #endif
+         #ifdef HAVE_SYS_PARAM_H
+         #include <sys/param.h>
+         #endif
+         #ifdef HAVE_UVM_UVM_PARAM_H
+         #include <uvm/uvm_param.h>
+         #endif
+        ])
+
+# ------------------------------------------------------------------------
+# Types
+# ------------------------------------------------------------------------
+
+AC_CHECK_TYPES([boolean_t], [], [],
+        [
+         #ifdef HAVE_SYS_TYPES_H
+         #include <sys/types.h>
+         #endif
+         #ifdef HAVE_MACH_BOOLEAN_H
+         #include <mach/boolean.h>
+         #endif
+         #ifdef HAVE_UVM_UVM_PARAM_H
+         #include <uvm/uvm_param.h>
+         #endif
+         #ifdef HAVE_VM_VM_H
+         #include <vm/vm.h>
+         #endif
+         #ifdef HAVE_KINFO_H
+         #include <kinfo.h>
+         #endif
+        ])
+
 AC_TYPE_MODE_T
 AC_TYPE_PID_T
 AC_TYPE_SIZE_T
@@ -350,16 +389,6 @@ AC_CHECK_FUNCS(vsyslog)
 AC_CHECK_FUNCS(backtrace)
 AC_CHECK_FUNCS(getloadavg)
 AC_CHECK_FUNCS(getopt_long)
-
-# Check for SOL_IP
-AC_MSG_CHECKING(for SOL_IP)
-AC_TRY_COMPILE([
-	#include <netdb.h>
-	#include <sys/socket.h>], 
-	[int level = SOL_IP;], 
-	[AC_MSG_RESULT(yes)
-	AC_DEFINE([HAVE_SOL_IP], [1], [Define to 1 if SOL_IP is defined.])], 
-	[AC_MSG_RESULT(no)])
 
 AC_MSG_CHECKING(for va_copy)
 AC_TRY_LINK([
@@ -402,6 +431,34 @@ fi
 
 
 # ------------------------------------------------------------------------
+# IPv6 Support
+# ------------------------------------------------------------------------
+
+AC_MSG_CHECKING(for IPv6 support)
+AC_CACHE_VAL(ac_cv_ipv6,
+        AC_TRY_RUN([
+        #include <sys/types.h>
+        #include <sys/socket.h>
+        #include <netinet/in.h>
+        /* Make sure the definitions for AF_INET6 and struct sockaddr_in6
+         * are defined, and that we can actually create an IPv6 TCP socket.*/
+        main()
+        {
+                int fd;
+                struct sockaddr_in6 foo;
+                fd = socket(AF_INET6, SOCK_STREAM, 0);
+                exit(fd >= 0 ? 0 : 1);
+        }],
+        ac_cv_ipv6=yes,
+        ac_cv_ipv6=no,
+        ac_cv_ipv6=no))
+AC_MSG_RESULT($ac_cv_ipv6)
+if test $ac_cv_ipv6 = yes ; then
+        AC_DEFINE([HAVE_IPV6], 1, [Define to 1 if the system supports IPv6])
+fi
+
+
+# ------------------------------------------------------------------------
 # Paths 
 # ------------------------------------------------------------------------
 
@@ -427,6 +484,7 @@ then
 elif test -f "/etc/mnttab"; then
   AC_DEFINE([HAVE_MNTTAB], 1, [Define to 1 if you have /etc/mnttab])
 fi
+
 
 # ------------------------------------------------------------------------
 # Architecture/OS detection
@@ -496,6 +554,11 @@ then
    ARCH="NETBSD"
    CFLAGS="$CFLAGS -D _REENTRANT"
    test_kvm="true"
+elif test "$architecture" = "DragonFly"
+then
+   ARCH="DRAGONFLY"
+   CFLAGS="$CFLAGS -D _REENTRANT"
+   test_kvm="true"
 elif test "$architecture" = "Darwin"
 then
    ARCH="DARWIN"
@@ -505,12 +568,9 @@ then
 elif test "$architecture" = "AIX"
 then
    ARCH="AIX"
+   CFLAGS=`echo $CFLAGS|sed 's/-g//g'`
    CFLAGS="$CFLAGS -D_THREAD_SAFE -D_REENTRANT"
-   LIBS="$LIBS -lodm"	
-   # AIX v. 5.2
-   LIBS="$LIBS -lcfg"	
-   # AIX v. 5.3
-   LIBS="$LIBS -lperfstat"	
+   LIBS="$LIBS -lodm -lperfstat"
    AC_DEFINE([HAVE_CPU_WAIT], [1], [Define to 1 if CPU wait information is available.])
 else
    AC_MSG_WARN([Architecture not supported: ${architecture}])
@@ -518,6 +578,7 @@ else
    ARCH="UNKNOWN"
 fi
 AC_SUBST(ARCH)
+
 
 # ------------------------------------------------------------------------
 # Resource code
@@ -580,6 +641,7 @@ AC_ARG_WITH(largefiles,
 # Settings for largefiles support
 if test "$use_largefiles" = 1; then
         AC_SYS_LARGEFILE
+        AC_DEFINE([HAVE_LARGEFILES], 1, [Define to 1 if you have large files support])
 fi
 
 
@@ -602,7 +664,9 @@ AC_ARG_WITH(pam,
         fi
     ],
     [
-        if test "x$use_pam" = "x" ; then
+        if test "$use_pam" = "0"; then
+            AC_MSG_RESULT([disabled])
+        else
             use_pam=1
             AC_MSG_RESULT([enabled])
         fi
@@ -660,7 +724,7 @@ AC_ARG_WITH(ssl-static,
             checksslincldir "$dir"
         done
         for dir in "$withval" "$withval/lib"; do
-            checkssllibdirstatic "$dir" && break 2
+            checkssllibdirstatic "$dir" && break
         done
         use_sslstatic=1
         LDFLAGS="`echo $LDFLAGS | sed -e 's/-rdynamic/-ldl/g'`"
@@ -712,7 +776,7 @@ then
                 	checksslincldir "$dir"
                 done
                 for dir in "$withval" "$withval/lib"; do
-                    checkssllibdirdynamic "$dir" && break 2
+                    checkssllibdirdynamic "$dir" && break
                 done
             ]
         )
@@ -823,11 +887,95 @@ then
 fi
 # Check TLS version
 if test "$use_sslstatic" = "1" -o "$use_ssl" = "1"; then
-        AC_CHECK_LIB([ssl], [TLSv1_1_client_method], 
-                [AC_DEFINE([HAVE_TLSV1_1_CLIENT_METHOD], 1, [Define to 1 if you have openssl with TLSv1.1])])
-        AC_CHECK_LIB([ssl], [TLSv1_2_client_method],
-                [AC_DEFINE([HAVE_TLSV1_2_CLIENT_METHOD], 1, [Define to 1 if you have openssl with TLSv1.2])])
+        if test "x$sslincldir" != "x"; then
+                CFLAGS="$CFLAGS -I$sslincldir"
+        fi
+        if test "x$ssllibdir" != "x"; then
+                LIBS="$LIBS -L$ssllibdir"
+        fi
+        AC_MSG_CHECKING([for TLSv1.1])
+        AC_LINK_IFELSE(
+                [AC_LANG_PROGRAM([#include <openssl/ssl.h>], [TLSv1_1_method()])],
+                [tlsv11=yes],
+                [tlsv11=no])
+        AC_MSG_RESULT($tlsv11)
+        if test "$tlsv11" = "yes" ; then
+                AC_DEFINE([HAVE_TLSV1_1], 1, [Define to 1 if you have openssl with TLSv1.1])
+        fi
+
+        AC_MSG_CHECKING([for TLSv1.2])
+        AC_LINK_IFELSE(
+                [AC_LANG_PROGRAM([#include <openssl/ssl.h>], [TLSv1_2_method()])],
+                [tlsv12=yes],
+                [tlsv12=no])
+        AC_MSG_RESULT($tlsv12)
+        if test "$tlsv12" = "yes" ; then
+                AC_DEFINE([HAVE_TLSV1_2], 1, [Define to 1 if you have openssl with TLSv1.2])
+        fi
+
+        AC_MSG_CHECKING([for EC_KEY support])
+        AC_LINK_IFELSE(
+                [AC_LANG_PROGRAM([#include <openssl/ssl.h>], [EC_KEY_new_by_curve_name(0)])],
+                [ec=yes],
+                [ec=no])
+        AC_MSG_RESULT($ec)
+        if test "$ec" = "yes" ; then
+                AC_DEFINE([HAVE_EC_KEY], 1, [Define to 1 if you have openssl with EC_KEY])
+        fi
+
+        AC_MSG_CHECKING([for ASN1_TIME_diff support])
+        AC_LINK_IFELSE(
+                [AC_LANG_PROGRAM([#include <openssl/ssl.h>], [ASN1_TIME_diff(0, 0, 0, 0)])],
+                [asn1timediff=yes],
+                [asn1timediff=no])
+        AC_MSG_RESULT($asn1timediff)
+        if test "$asn1timediff" = "yes" ; then
+                AC_DEFINE([HAVE_ASN1_TIME_DIFF], 1, [Define to 1 if you have openssl with ASN1_TIME_diff])
+        fi
 fi
+
+
+# ---------------------------------------------------------------------------
+# Build options
+# ---------------------------------------------------------------------------
+
+AC_ARG_ENABLE(optimized,
+        AS_HELP_STRING([--enable-optimized],
+                [Build software optimized]),
+    [
+        CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
+        if test "x$enableval" = "xyes" ; then
+                CFLAGS=`echo $CFLAGS|sed 's/-g[[^ ]]*//g'`
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
+                CFLAGS="$CFLAGS -O3 -DNDEBUG"
+                OPTIMIZED=1
+        else
+                OPTIMIZED=0
+        fi
+    ],
+    [
+        OPTIMIZED=0
+    ]
+)
+
+AC_ARG_ENABLE(profiling,
+        AS_HELP_STRING([--enable-profiling],
+                [Build with debug and profiling options]),
+    [
+        if test "x$enableval" = "xyes" ; then
+                CFLAGS=`echo $CFLAGS|sed 's/-g.//g'`
+                CFLAGS=`echo $CFLAGS|sed 's/-O.//g'`
+                CFLAGS="$CFLAGS -g -pg"
+                profile="true"
+        else
+                profile="false"
+        fi
+    ],
+    [
+        profile="false"
+    ]
+)
+AM_CONDITIONAL([ENABLE_PROFILING], [test x$profile = xtrue])
 
 
 # ------------------------------------------------------------------------
@@ -896,5 +1044,10 @@ if test "x1" = "x$OPTIMIZED"; then
 echo "|   Optimized:                                    ENABLED    |"
 else
 echo "|   Optimized:                                    DISABLED   |"
+fi
+if test "xfalse" = "x$profile"; then
+echo "|   Profiling:                                    DISABLED   |"
+else
+echo "|   Profiling:                                    ENABLED    |"
 fi
 echo "+------------------------------------------------------------+"

@@ -25,7 +25,7 @@
 #include "config.h"
 
 #include "monit.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "process_sysdep.h"
 
 
@@ -37,24 +37,21 @@
 
 
 int init_process_info_sysdep(void) {
-  systeminfo.mem_kbyte_max = 0;
-
-  return FALSE;
+        return false;
 }
 
 
 /**
  * THIS IS JUST A DUMMY!!!
  *
- * Read all processes of the proc files system to initialize
- * the process tree (sysdep version... but should work for
- * all procfs based unices)
- * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * @param reference reference of ProcessTree
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
-  return 0;
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
+        return 0;
 }
+
 
 /**
  * THIS IS JUST A DUMMY!!!
@@ -66,29 +63,26 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
  * @return: 0 if successful, -1 if failed (and all load averages are 0).
  */
 int getloadavg_sysdep (double *loadv, int nelem) {
-  int i;
-
-  for (i = 0; i < nelem; i++)
-    loadv[i] = 0.0;
-
-  return -1;
+        for (int i = 0; i < nelem; i++)
+                loadv[i] = 0.0;
+        return -1;
 }
 
 
 /**
  * This routine returns kbyte of real memory in use.
- * @return: TRUE if successful, FALSE if failed (or not available)
+ * @return: true if successful, false if failed (or not available)
  */
-int used_system_memory_sysdep(SystemInfo_T *si) {
-  return FALSE;
+boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
+        return false;
 }
 
 
 /**
  * This routine returns system/user CPU time in use.
- * @return: TRUE if successful, FALSE if failed (or not available)
+ * @return: true if successful, false if failed (or not available)
  */
-int used_system_cpu_sysdep(SystemInfo_T *si) {
-  return FALSE;
+boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
+        return false;
 }
 

@@ -61,75 +61,87 @@
 
 #define MAX_STACK_DEPTH 512
 
-  int buffer_stack_ptr = 0;
+int buffer_stack_ptr = 0;
 
-  struct buffer_stack_s {
-    int             lineno;
-    char           *currentfile;
-    YY_BUFFER_STATE buffer;
-  } buffer_stack[MAX_STACK_DEPTH];
+struct buffer_stack_s {
+        int             lineno;
+        char           *currentfile;
+        YY_BUFFER_STATE buffer;
+} buffer_stack[MAX_STACK_DEPTH];
 
+int lineno = 1;
+int arglineno = 1;
+char *currentfile = NULL;
+char *argcurrentfile = NULL;
+char *argyytext = NULL;
+typedef enum {
+        Proc_State,
+        File_State,
+        FileSys_State,
+        Dir_State,
+        Host_State,
+        System_State,
+        Fifo_State,
+        Program_State,
+        Net_State,
+        None_State
+} __attribute__((__packed__)) Check_State;
 
-  int lineno = 1;
-  int arglineno = 1;
-  char *currentfile=NULL;
-  char *argcurrentfile=NULL;
-  char *argyytext=NULL;
-  typedef enum {
-          Proc_State,
-          File_State,
-          FileSys_State,
-          Dir_State,
-          Host_State,
-          System_State,
-          Fifo_State,
-          Program_State,
-          None_State
-  } Check_State;
+static Check_State check_state = None_State;
 
-  static Check_State check_state = None_State;
-
-  /* Prototypes */
-  extern void yyerror(const char*,...);
-  extern void yywarning(const char *,...);
-  static void steplinenobycr(char *);
-  static void save_arg(void);
-  static void include_file(char *);
-  static char *handle_quoted_string(char *);
-  static void push_buffer_state(YY_BUFFER_STATE, char*);
-  static int  pop_buffer_state(void);
-  static URL_T create_URL(char *proto);
+/* Prototypes */
+extern void yyerror(const char *,...);
+extern void yyerror2(const char *,...);
+extern void yywarning(const char *,...);
+extern void yywarning2(const char *,...);
+static void steplinenobycr(char *);
+static void save_arg(void);
+static void include_file(char *);
+static char *handle_quoted_string(char *);
+static void push_buffer_state(YY_BUFFER_STATE, char*);
+static int  pop_buffer_state(void);
+static URL_T create_URL(char *proto);
 
 %}
 
-ws          [ \r\t]+
-wws         [ \r\t;,()]+
-number      [0-9]+
-real        [0-9]+([.][0-9]+)?
-str         [^\000-\041@:{}"';(),%]+
-hostname    {str}(\.{str})*
-greater     ("greater"|"gt"|">")
-less        ("less"|"lt"|"<")
-equal       ("equal"|"eq"|"=="|"=")
-notequal    ("notequal"|"ne"|"!=")
-loadavg1    load(avg)[ ]*(\([ ]*1[ ]*(m|min)?[ ]*\))?
-loadavg5    load(avg)[ ]*\([ ]*5[ ]*(m|min)?[ ]*\)
-loadavg15   load(avg)[ ]*\([ ]*15[ ]*(m|min)?[ ]*\)
-cpuuser     cpu[ ]*(usage)*[ ]*\([ ]*(us|usr|user)?[ ]*\)
-cpusyst     cpu[ ]*(usage)*[ ]*\([ ]*(sy|sys|system)?[ ]*\)
-cpuwait     cpu[ ]*(usage)*[ ]*\([ ]*(wa|wait)?[ ]*\)
-startarg    start{ws}?(program)?{ws}?([=]{ws})?["]
-stoparg     stop{ws}?(program)?{ws}?([=]{ws})?["]
-restartarg  restart{ws}?(program)?{ws}?([=]{ws})?["]
-execarg     exec(ute)?{ws}?["]
-pathtokarg  path{ws}?["]
-percent     ("percent"|"%")
-byte        ("byte"|"b")
-kilobyte    ("kilobyte"|"kb")
-megabyte    ("megabyte"|"mb")
-gigabyte    ("gigabyte"|"gb")
+ws             [ \r\t]+
+wws            [ \r\t;,()]+
+number         [0-9]+
+real           [0-9]+([.][0-9]+)?
+str            [^\000-\041@:{}"';(),%]+
+address        [^\000-\041<>{}\[\]]+
+addrname       [^\000-\037@<>{}\[\]]+
+hostname       {str}(\.{str})*
+greater        ("more"|"greater"|"gt"|">")
+greaterorequal ("ge"|">=")
+less           ("less"|"lt"|"<")
+lessorequal    ("le"|"<=")
+equal          ("equal"|"eq"|"=="|"=")
+notequal       ("notequal"|"ne"|"!=")
+loadavg1       load(avg)[ ]*(\([ ]*1[ ]*(m|min)?[ ]*\))?
+loadavg5       load(avg)[ ]*\([ ]*5[ ]*(m|min)?[ ]*\)
+loadavg15      load(avg)[ ]*\([ ]*15[ ]*(m|min)?[ ]*\)
+cpuuser        cpu[ ]*(usage)*[ ]*\([ ]*(us|usr|user)?[ ]*\)
+cpusyst        cpu[ ]*(usage)*[ ]*\([ ]*(sy|sys|system)?[ ]*\)
+cpuwait        cpu[ ]*(usage)*[ ]*\([ ]*(wa|wait)?[ ]*\)
+startarg       start{ws}?(program)?{ws}?([=]{ws})?["]
+stoparg        stop{ws}?(program)?{ws}?([=]{ws})?["]
+restartarg     restart{ws}?(program)?{ws}?([=]{ws})?["]
+execarg        exec(ute)?{ws}?["]
+pathtokarg     path{ws}?["]
+percent        ("percent"|"%")
+byte           ("byte"|"bytes"|"b")("/s")?
+kilobyte       ("kilobyte"|"kilobytes"|"kb")("/s")?
+megabyte       ("megabyte"|"megabytes"|"mb")("/s")?
+gigabyte       ("gigabyte"|"gigabytes"|"gb")("/s")?
+millisecond    ("millisecond"|"milliseconds"|"ms")
+second         ("second"|"seconds"|"s")
+minute         ("minute"|"minutes"|"m")
+hour           ("hour"|"hours"|"h")
+day            ("day"|"days")
+month          ("month"|"months")
 
-%x ARGUMENT_COND DEPEND_COND SERVICE_COND URL_COND STRING_COND EVERY_COND INCLUDE
+%x ARGUMENT_COND DEPEND_COND SERVICE_COND URL_COND ADDRESS_COND STRING_COND EVERY_COND HTTP_HEADER_COND INCLUDE
 
 %%
 
@@ -140,6 +152,7 @@ is                {/* EMPTY */}
 as                {/* EMPTY */}
 are               {/* EMPTY */}
 for               {/* EMPTY */}
+via               {/* EMPTY */}
 on(ly)?           {/* EMPTY */}
 with(in|out)?     {/* EMPTY */}
 program(s)?       {/* EMPTY */}
@@ -148,6 +161,7 @@ has               {/* EMPTY */}
 using             {/* EMPTY */}
 use               {/* EMPTY */}
 the               {/* EMPTY */}
+to                {/* EMPTY */}
 sum               {/* EMPTY */}
 than              {/* EMPTY */}
 usage             {/* EMPTY */}
@@ -155,7 +169,13 @@ was               {/* EMPTY */}
 times             {/* EMPTY */}
 but               {/* EMPTY */}
 of                {/* EMPTY */}
+or                {/* EMPTY */}
 does              {/* EMPTY */}
+per               {/* EMPTY */}
+in                {/* EMPTY */}
+last              {/* EMPTY */}
+capacity          {/* EMPTY */}
+option(s)?        {/* EMPTY */}
 
 {startarg}        { BEGIN(ARGUMENT_COND); return START; }
 {stoparg}         { BEGIN(ARGUMENT_COND); return STOP; }
@@ -172,26 +192,47 @@ does              {/* EMPTY */}
                   }
 
 if                { return IF; }
-or                { return OR; }
 then              { return THEN; }
 failed            { return FAILED; }
-ssl               { return HTTPDSSL; }
+ssl               { return SSL; }
+tls               { return SSL; }
 enable            { return ENABLE; }
 disable           { return DISABLE; }
+verify            { return VERIFY; }
+valid             { return VALID; }
+certificate       { return CERTIFICATE; }
+cacertificatefile { return CACERTIFICATEFILE; }
+cacertificatepath { return CACERTIFICATEPATH; }
 set               { return SET; }
 daemon            { return DAEMON; }
 delay             { return DELAY; }
+terminal          { return TERMINAL; }
+batch             { return BATCH; }
 logfile           { return LOGFILE; }
 syslog            { return SYSLOG; }
 facility          { return FACILITY; }
 httpd             { return HTTPD; }
 address           { return ADDRESS; }
+interface         { return INTERFACE; }
+link              { return LINK; }
+packet(s)?("/s")? { return PACKET; }
+bytein            { return BYTEIN; }
+byteout           { return BYTEOUT; }
+packetin          { return PACKETIN; }
+packetout         { return PACKETOUT; }
+upload(ed)?       { return UPLOAD; }
+download(ed)?     { return DOWNLOAD; }
+saturation        { return SATURATION; }
+speed             { return SPEED; }
+total             { return TOTAL; }
 clientpemfile     { return CLIENTPEMFILE; }
 allowselfcertification  { return ALLOWSELFCERTIFICATION; }
+selfsigned        { return SELFSIGNED; }
 certmd5           { return CERTMD5; }
 pemfile           { return PEMFILE; }
 init              { return INIT; }
 allow             { return ALLOW; }
+reject            { return REJECTOPT; }
 read[-]?only      { return READONLY; }
 pidfile           { return PIDFILE; }
 idfile            { return IDFILE; }
@@ -201,6 +242,8 @@ start             { return START; }
 stop              { return STOP; }
 port(number)?     { return PORT; }
 unix(socket)?     { return UNIXSOCKET; }
+ipv4              { return IPV4; }
+ipv6              { return IPV6; }
 type              { return TYPE; }
 proto(col)?       { return PROTOCOL; }
 tcp               { return TCP; }
@@ -219,21 +262,27 @@ mailserver        { return MAILSERVER; }
 host              { return HOST; }
 hostheader        { return HOSTHEADER; }
 status            { return STATUS; }
-system            { return SYSTEM; }
 default           { return DEFAULT; }
 http              { return HTTP; }
+https             { return HTTPS; }
 apache-status     { return APACHESTATUS; }
 ftp               { return FTP; }
 smtp              { return SMTP; }
+smtps             { return SMTPS; }
 postfix-policy    { return POSTFIXPOLICY; }
 pop               { return POP; }
+pops              { return POPS; }
 imap              { return IMAP; }
+imaps             { return IMAPS; }
 clamav            { return CLAMAV; }
 dns               { return DNS; }
 mysql             { return MYSQL; }
 nntp              { return NNTP; }
 ntp3              { return NTP3; }
 ssh               { return SSH; }
+redis             { return REDIS; }
+mongodb           { return MONGODB; }
+sieve             { return SIEVE; }
 dwp               { return DWP; }
 ldap2             { return LDAP2; }
 ldap3             { return LDAP3; }
@@ -255,6 +304,9 @@ mode              { return MODE; }
 active            { return ACTIVE; }
 passive           { return PASSIVE; }
 manual            { return MANUAL; }
+onreboot          { return ONREBOOT; }
+nostart           { return NOSTART; }
+laststate         { return LASTSTATE; }
 uid               { return UID; }
 euid              { return EUID; }
 gid               { return GID; }
@@ -275,21 +327,20 @@ swap              { return SWAP; }
 total[ ]?mem(ory)? { return TOTALMEMORY; }
 cpu               { return CPU; }
 total[ ]?cpu      { return TOTALCPU; }
-child(ren)        { return CHILDREN; }
+child(ren)?       { return CHILDREN; }
+thread(s)?        { return THREADS; }
 timestamp         { return TIMESTAMP; }
 changed           { return CHANGED; }
-second(s)?        { return SECOND; }
-minute(s)?        { return MINUTE; }
-hour(s)?          { return HOUR; }
-day(s)?           { return DAY; }
 sslv2             { return SSLV2; }
 sslv3             { return SSLV3; }
 tlsv1             { return TLSV1; }
 tlsv11            { return TLSV11; }
 tlsv12            { return TLSV12; }
+auto              { return AUTO; }
 sslauto           { return SSLAUTO; }
 inode(s)?         { return INODE; }
 space             { return SPACE; }
+free              { return TFREE; }
 perm(ission)?     { return PERMISSION; }
 exec(ute)?        { return EXEC; }
 size              { return SIZE; }
@@ -304,10 +355,19 @@ connection        { return CONNECTION; }
 unmonitor         { return UNMONITOR; }
 action            { return ACTION; }
 icmp              { return ICMP; }
+ping              { return PING; }
+ping4             { return PING4; }
+ping6             { return PING6; }
 echo              { return ICMPECHO; }
 send              { return SEND; }
 expect            { return EXPECT; }
 expectbuffer      { return EXPECTBUFFER; }
+limits            { return LIMITS; }
+sendexpectbuffer  { return SENDEXPECTBUFFER; }
+filecontentbuffer { return FILECONTENTBUFFER; }
+httpcontentbuffer { return HTTPCONTENTBUFFER; }
+programoutput     { return PROGRAMOUTPUT; }
+networktimeout    { return NETWORKTIMEOUT; }
 cleartext         { return CLEARTEXT; }
 md5               { return MD5HASH; }
 sha1              { return SHA1HASH; }
@@ -327,6 +387,7 @@ content           { return CONTENT; }
 pid               { return PID; }
 ppid              { return PPID; }
 count             { return COUNT; }
+repeat            { return REPEAT; }
 reminder          { return REMINDER; }
 instance          { return INSTANCE; }
 hostname          { return HOSTNAME; }
@@ -347,9 +408,17 @@ fips              { return FIPS; }
 {cpusyst}         { return CPUSYSTEM; }
 {cpuwait}         { return CPUWAIT; }
 {greater}         { return GREATER; }
+{greaterorequal}  { return GREATEROREQUAL; }
 {less}            { return LESS; }
+{lessorequal}     { return LESSOREQUAL; }
 {equal}           { return EQUAL; }
 {notequal}        { return NOTEQUAL; }
+{millisecond}     { return MILLISECOND; }
+{second}          { return SECOND; }
+{minute}          { return MINUTE; }
+{hour}            { return HOUR; }
+{day}             { return DAY; }
+{month}           { return MONTH; }
 
 include           { BEGIN(INCLUDE); }
 
@@ -410,10 +479,10 @@ check[ \t]+host   {
                     return CHECKHOST;
                   }
 
-check[ \t]+system {
+check[ \t]+network {
                     BEGIN(SERVICE_COND);
-                    check_state = System_State;
-                    return CHECKSYSTEM;
+                    check_state = Net_State;
+                    return CHECKNET;
                   }
 
 check[ \t]+fifo   {
@@ -428,25 +497,37 @@ check[ \t]+program   {
                     return CHECKPROGRAM;
                   }
 
+check[ \t]+system {
+                    BEGIN(SERVICE_COND);
+                    check_state = System_State;
+                    return CHECKSYSTEM;
+                  }
+
 group[ \t]+       {
                     BEGIN(STRING_COND);
                     return GROUP;
                   }
 
+"http headers"{ws} {
+                        BEGIN(HTTP_HEADER_COND);
+                        return '[';
+                  }
+
 [a-zA-Z0-9]+"://" {
-                    yylval.url=
-                      create_URL(Str_ndup(yytext, strlen(yytext)-3));
+                    yylval.url = create_URL(Str_ndup(yytext, strlen(yytext)-3));
                     BEGIN(URL_COND);
                   }
 
 {number}          {
                     yylval.number = atoi(yytext);
-                    save_arg(); return NUMBER;
+                    save_arg();
+                    return NUMBER;
                   }
 
 {real}            {
                     yylval.real = atof(yytext);
-                    save_arg(); return REAL;
+                    save_arg();
+                    return REAL;
                   }
 
 {percent}         {
@@ -455,74 +536,85 @@ group[ \t]+       {
 
 [a-zA-Z0-9]{str}  {
                     yylval.string = Str_dup(yytext);
-                    save_arg(); return STRING;
+                    save_arg();
+                    return STRING;
                   }
 
 \"[/][^\"\n]*\"   {
                     yylval.string = handle_quoted_string(yytext);
-                    save_arg(); return PATH;
+                    save_arg();
+                    return PATH;
                   }
 
 \'[/][^\'\n]*\'   {
                     yylval.string = handle_quoted_string(yytext);
-                    save_arg(); return PATH;
+                    save_arg();
+                    return PATH;
                   }
 
 \"[^\"]*\"        {
                     steplinenobycr(yytext);
                     yylval.string = handle_quoted_string(yytext);
-                    save_arg(); return STRING;
+                    save_arg();
+                    return STRING;
                   }
 
 \'[^\']*\'        {
                     steplinenobycr(yytext);
                     yylval.string = handle_quoted_string(yytext);
-                    save_arg(); return STRING;
+                    save_arg();
+                    return STRING;
                   }
 
 {str}[@]{str}     {
                     yylval.string = Str_dup(yytext);
-                    save_arg(); return MAILADDR;
+                    save_arg();
+                    return MAILADDR;
                   }
 
 [/]{str}          {
                      yylval.string = Str_dup(yytext);
-                     save_arg(); return PATH;
+                     save_arg();
+                    return PATH;
                   }
 
 "/"               {
                      yylval.string = Str_dup(yytext);
-                     save_arg(); return PATH;
+                     save_arg();
+                    return PATH;
                   }
 
-"from:"[ \t]*{str}[@]{str} {
-                      char *p = yytext+strlen("from:");
-                      yylval.string = Str_trim(Str_dup(p));
-                      save_arg(); return MAILFROM;
+"from:"[ \t]* {
+                      yylval.address = Address_new();
+                      BEGIN(ADDRESS_COND);
+                      return MAILFROM;
                   }
 
-"reply-to:"[ \t]*{str}[@]{str} {
-                      char *p = yytext+strlen("reply-to:");
-                      yylval.string = Str_trim(Str_dup(p));
-                      save_arg(); return MAILREPLYTO;
+"reply-to:"[ \t]* {
+                      yylval.address = Address_new();
+                      BEGIN(ADDRESS_COND);
+                      return MAILREPLYTO;
                   }
 
 "subject:"[^}\n]* {
                       char *p = yytext+strlen("subject:");
                       yylval.string = Str_trim(Str_dup(p));
-                      save_arg(); return MAILSUBJECT;
+                      save_arg();
+                      return MAILSUBJECT;
                   }
 
 "message:"[^}]*   {
                       char *p = yytext+strlen("message:");
                       steplinenobycr(yytext);
                       yylval.string = Str_trim(Str_dup(p));
-                      save_arg(); return MAILBODY;
+                      save_arg();
+                      return MAILBODY;
                   }
 
 {hostname}        {
                       yylval.string = Str_dup(yytext);
-                      save_arg(); return STRING;
+                      save_arg();
+                      return STRING;
                   }
 
 [\"\']            {
@@ -540,19 +632,22 @@ group[ \t]+       {
   {str}           {
                     yylval.string = Str_dup(yytext);
                     BEGIN(INITIAL);
-                    save_arg(); return SERVICENAME;
+                    save_arg();
+                    return SERVICENAME;
                   }
 
   \"{str}\"       {
                     yylval.string = handle_quoted_string(yytext);
                     BEGIN(INITIAL);
-                    save_arg(); return SERVICENAME;
+                    save_arg();
+                    return SERVICENAME;
                   }
 
   \'{str}\'       {
                     yylval.string = handle_quoted_string(yytext);
                     BEGIN(INITIAL);
-                    save_arg(); return SERVICENAME;
+                    save_arg();
+                    return SERVICENAME;
                   }
 
   [\"\']          {
@@ -571,7 +666,8 @@ group[ \t]+       {
 
   {str}           {
                     yylval.string = Str_dup(yytext);
-                    save_arg(); return SERVICENAME;
+                    save_arg();
+                    return SERVICENAME;
                   }
 
   [ \r\n\t]+[^,]  {
@@ -597,7 +693,8 @@ group[ \t]+       {
   \'[^\']*\'      {
                       steplinenobycr(yytext);
                       yylval.string = handle_quoted_string(yytext);
-                      save_arg(); return STRING;
+                      save_arg();
+                      return STRING;
                   }
 
   \'              {
@@ -606,7 +703,8 @@ group[ \t]+       {
 
   [^ \t\n\"]+     {
                       yylval.string = Str_dup(yytext);
-                      save_arg(); return STRING;
+                      save_arg();
+                      return STRING;
                   }
 
 }
@@ -615,19 +713,20 @@ group[ \t]+       {
 
   {ws}|[\n]       {
                       BEGIN(INITIAL);
-                      if(!yylval.url->hostname)
-                        yyerror("missing hostname in URL");
-                      if(!yylval.url->path)
-                        yylval.url->path = Str_dup("/");
-                      yylval.url->url = Str_cat("%s://%s:%d%s%s%s",
-                        yylval.url->protocol,
-                        /* possible credentials are hidden */
-                        yylval.url->hostname,
-                        yylval.url->port,
-                        yylval.url->path,
-                        yylval.url->query?"?":"",
-                        yylval.url->query?yylval.url->query:"");
-                      save_arg(); return URLOBJECT;
+                      if (! yylval.url->hostname)
+                                yyerror("missing hostname in URL");
+                      if (! yylval.url->path)
+                                yylval.url->path = Str_dup("/");
+                      yylval.url->url = Str_cat("%s://[%s]:%d%s%s%s",
+                                yylval.url->protocol,
+                                /* possible credentials are hidden */
+                                yylval.url->hostname,
+                                yylval.url->port,
+                                yylval.url->path,
+                                yylval.url->query ? "?" : "",
+                                yylval.url->query ? yylval.url->query : "");
+                      save_arg();
+                      return URLOBJECT;
                   }
 
   [^:@ ]+/[:][^@: ]+[@] {
@@ -639,8 +738,12 @@ group[ \t]+       {
                       yylval.url->password = Str_ndup(yytext, strlen(yytext)-1);
                   }
 
-  [^/?:#\r\n ]+   {
+  ([a-zA-Z0-9\-]+)([.]([a-zA-Z0-9\-]+))* {
                       yylval.url->hostname = Str_dup(yytext);
+                  }
+
+  \[[0-9a-zA-Z:%]+\] {
+                      yylval.url->hostname = Str_ndup(yytext + 1, yyleng - 2);
                   }
 
   [:]{number}     {
@@ -661,24 +764,59 @@ group[ \t]+       {
 
 }
 
+<ADDRESS_COND>{
+
+   [}\n]        {
+                        if (yytext[0] == '}')
+                                yyless(0);
+                        BEGIN(INITIAL);
+                        if (! yylval.address->address)
+                                yyerror("missing address");
+                        save_arg();
+                        return ADDRESSOBJECT;
+                }
+
+  {address}     {
+                        yylval.address->address = Str_dup(yytext);
+                }
+
+  {addrname}    {
+                        char *name = Str_unquote(Str_dup(yytext));
+                        if (name && *name)
+                                yylval.address->name = Str_unquote(Str_dup(yytext));
+                }
+
+  [<>:\[\]]     {
+                        // Ignore
+                }
+
+  .             {
+                        BEGIN(INITIAL);
+                        yyerror("invalid mail format");
+                }
+}
+
 <STRING_COND>{
 
   {str}           {
                     yylval.string = Str_dup(yytext);
                     BEGIN(INITIAL);
-                    save_arg(); return STRINGNAME;
+                    save_arg();
+                    return STRINGNAME;
                   }
 
   \"{str}\"       {
                     yylval.string = handle_quoted_string(yytext);
                     BEGIN(INITIAL);
-                    save_arg(); return STRINGNAME;
+                    save_arg();
+                    return STRINGNAME;
                   }
 
   \'{str}\'       {
                     yylval.string = handle_quoted_string(yytext);
                     BEGIN(INITIAL);
-                    save_arg(); return STRINGNAME;
+                    save_arg();
+                    return STRINGNAME;
                   }
 
   [\"\']          {
@@ -694,13 +832,15 @@ group[ \t]+       {
   {number}        {
                     yylval.number = atoi(yytext);
                     BEGIN(INITIAL);
-                    save_arg(); return NUMBER;
+                    save_arg();
+                    return NUMBER;
                   }
 
   ['"]{ws}?[0-9,*-]+{ws}[0-9,*-]+{ws}[0-9,*-]+{ws}[0-9,*-]+{ws}[0-9,*-]+{ws}?['"] { // A minimal syntax check of the cron format string; 5 fields separated with white-space
                     yylval.string = Str_dup(Str_unquote(yytext));
                     BEGIN(INITIAL);
-                    save_arg(); return TIMESPEC;
+                    save_arg();
+                    return TIMESPEC;
                   }
 
   .               {
@@ -710,8 +850,41 @@ group[ \t]+       {
 
 }
 
+<HTTP_HEADER_COND>{
 
-<INITIAL,ARGUMENT_COND,SERVICE_COND,DEPEND_COND,URL_COND,STRING_COND,EVERY_COND>. {
+        {wws}   ;
+
+        "["     ;
+
+        [\n]    {
+                        lineno++;
+                }
+
+        ([^\t\r\n,\[\]:]+)/[:] { // name/:
+                        save_arg();
+                }
+
+        [:](({ws}?["][^"]+["])|({ws}?['][^']+['])|([^\r\n\],:]+)) { // : value
+                        yylval.string = Str_cat("%s:%s", Str_trim(argyytext), Str_unquote(yytext + 1));
+                        save_arg();
+                        return HTTPHEADER;
+                }
+
+        "]"     {
+                        BEGIN(INITIAL);
+                        save_arg();
+                        return ']';
+                }
+
+        .       {
+                        BEGIN(INITIAL);
+                        yyerror("invalid HTTP header list format");
+                }
+
+}
+
+
+<INITIAL,ARGUMENT_COND,SERVICE_COND,DEPEND_COND,URL_COND,ADDRESS_COND,STRING_COND,EVERY_COND,HTTP_HEADER_COND>. {
                       check_state = None_State;
                       return yytext[0];
                   }
@@ -720,7 +893,7 @@ group[ \t]+       {
 <INCLUDE>[ \t]*      /* eat the whitespace */
 
 <INCLUDE>\"[^\"\r\n]+\" { /* got the include file name with double quotes */
-                     char *temp=Str_dup(yytext);
+                     char *temp = Str_dup(yytext);
                      Str_unquote(temp);
                      include_file(temp);
                      FREE(temp);
@@ -728,7 +901,7 @@ group[ \t]+       {
                    }
 
 <INCLUDE>\'[^\'\r\n]+\' { /* got the include file name with single quotes*/
-                     char *temp=Str_dup(yytext);
+                     char *temp = Str_dup(yytext);
                      Str_unquote(temp);
                      include_file(temp);
                      FREE(temp);
@@ -736,7 +909,7 @@ group[ \t]+       {
                    }
 
 <INCLUDE>[^ \t\r\n]+ { /* got the include file name without quotes*/
-                     char *temp=Str_dup(yytext);
+                     char *temp = Str_dup(yytext);
                      include_file(temp);
                      FREE(temp);
                      BEGIN(INITIAL);
@@ -745,12 +918,10 @@ group[ \t]+       {
 
 <<EOF>>           {
 
-                       if ( !pop_buffer_state() )
-                       {
-                         yyterminate();
-                       } else {
-                         BEGIN(INITIAL);
-                       }
+                       BEGIN(INITIAL);
+                       check_state = None_State;
+                       if (! pop_buffer_state())
+                                yyterminate();
                   }
 
 %%
@@ -762,119 +933,128 @@ group[ \t]+       {
 
 static void steplinenobycr(char *string) {
 
-  char *pos = string;
+        char *pos = string;
 
-  while(*pos)
-    if('\n'==*pos++) {
-      lineno++;
-    }
+        while (*pos)
+        if ('\n' == *pos++) {
+                lineno++;
+        }
 
 }
 
 
 static char *handle_quoted_string(char *string) {
-  char *buf = Str_dup(string);
-  Str_unquote(buf);
-  Util_handleEscapes(buf);
-  return buf;
+        char *buf = Str_dup(string);
+        Str_unquote(buf);
+        Util_handleEscapes(buf);
+        return buf;
+}
+
+
+static void _include(const char *path) {
+        if (Str_cmp(Run.files.control, path) == 0) {
+                yywarning("Include loop detected when trying to include %s", path);
+                return;
+        }
+        for (int i = 0; i < buffer_stack_ptr; i++) {
+                if (Str_cmp(buffer_stack[i].currentfile, path) == 0) {
+                        yywarning("Include loop detected when trying to include %s", path);
+                        return;
+                }
+        }
+        FILE *yyin = fopen(path, "r");
+        if (! yyin)
+                yyerror("Cannot include file '%s' -- %s", path, STRERROR);
+        else
+                push_buffer_state(yy_create_buffer(yyin, YY_BUF_SIZE), (char *)path);
 }
 
 
 static void include_file(char *pattern) {
-  glob_t globbuf;
-  int i;
-
-  if (glob(pattern,  GLOB_MARK, NULL, &globbuf) != 0)
-    return; // no include files found
-
-  for (i = 0; i < globbuf.gl_pathc; i++) {
-    FILE *yyin;
-    size_t filename_length = strlen(globbuf.gl_pathv[i]);
-
-    /* check whenever we have caught a directory or file backup copy */
-    if ((filename_length == 0) || (globbuf.gl_pathv[i][filename_length-1] == '~' ) || (globbuf.gl_pathv[i][filename_length-1] == '/' ))
-      continue;
-
-    yyin = fopen( globbuf.gl_pathv[i], "r" );
-
-    if (! yyin)
-      yyerror( "failed to include file" );
-    else
-      push_buffer_state(yy_create_buffer( yyin, YY_BUF_SIZE ), globbuf.gl_pathv[i]);
-  }
-  globfree(&globbuf);
+        glob_t globbuf;
+        if (glob(pattern, GLOB_MARK, NULL, &globbuf) == 0) {
+                for (int i = 0; i < globbuf.gl_pathc; i++) {
+                        size_t filename_length = strlen(globbuf.gl_pathv[i]);
+                        if ((filename_length == 0) || (globbuf.gl_pathv[i][filename_length - 1] == '~' ) || (globbuf.gl_pathv[i][filename_length - 1] == '/'))
+                                continue; // skip subdirectories and file backup copies
+                        _include(globbuf.gl_pathv[i]);
+                }
+                globfree(&globbuf);
+        } else {
+                yywarning("Include failed -- %s", STRERROR); // no include files found
+        }
 }
 
 
 static void push_buffer_state(YY_BUFFER_STATE buffer, char *filename) {
-  if ( buffer_stack_ptr >= MAX_STACK_DEPTH ) {
-    yyerror("include files limit reached");
-    exit( 1 );
-  }
+        if (buffer_stack_ptr >= MAX_STACK_DEPTH) {
+                yyerror("include files limit reached");
+                exit( 1 );
+        }
 
-  buffer_stack[buffer_stack_ptr].lineno = lineno;
-  buffer_stack[buffer_stack_ptr].currentfile = currentfile;
-  buffer_stack[buffer_stack_ptr].buffer = YY_CURRENT_BUFFER;
+        buffer_stack[buffer_stack_ptr].lineno = lineno;
+        buffer_stack[buffer_stack_ptr].currentfile = currentfile;
+        buffer_stack[buffer_stack_ptr].buffer = YY_CURRENT_BUFFER;
 
-  buffer_stack_ptr++;
+        buffer_stack_ptr++;
 
-  lineno = 1;
-  currentfile = Str_dup(filename);
+        lineno = 1;
+        currentfile = Str_dup(filename);
 
-  yy_switch_to_buffer(buffer);
+        yy_switch_to_buffer(buffer);
 
-  BEGIN(INITIAL);
+        BEGIN(INITIAL);
 
 }
 
 
 static int pop_buffer_state(void) {
 
-  if ( --buffer_stack_ptr < 0 ) {
+        if ( --buffer_stack_ptr < 0 ) {
 
-    return 0;
+                return 0;
 
-  } else {
+        } else {
 
-    fclose(yyin);
-    lineno=buffer_stack[buffer_stack_ptr].lineno;
+                fclose(yyin);
+                lineno = buffer_stack[buffer_stack_ptr].lineno;
 
-    FREE(currentfile);
-    currentfile=buffer_stack[buffer_stack_ptr].currentfile;
+                FREE(currentfile);
+                currentfile = buffer_stack[buffer_stack_ptr].currentfile;
 
-    yy_delete_buffer( YY_CURRENT_BUFFER );
-    yy_switch_to_buffer( buffer_stack[buffer_stack_ptr].buffer );
+                yy_delete_buffer( YY_CURRENT_BUFFER );
+                yy_switch_to_buffer( buffer_stack[buffer_stack_ptr].buffer );
 
-  }
+        }
 
-  return 1;
+        return 1;
 
 }
 
 
 static void save_arg(void) {
-
-  arglineno=lineno;
-  argcurrentfile=currentfile;
-  FREE(argyytext);
-  argyytext=Str_dup(yytext);
-
+        arglineno = lineno;
+        argcurrentfile = currentfile;
+        FREE(argyytext);
+        argyytext = Str_dup(yytext);
 }
 
 
 static URL_T create_URL(char *proto) {
-  URL_T url;
-  ASSERT(proto);
-  NEW(url);
-  url->protocol = proto;
-  if(IS(url->protocol, "https")) {
-    url->port = 443;
-    if(!have_ssl())
-      yyerror("HTTPS protocol not supported -- SSL support disabled" );
-  } else if(IS(url->protocol, "http")) {
-    url->port = 80;
-  } else {
-    yyerror("URL protocol not supported -- ");
-  }
-  return url;
+        URL_T url;
+        ASSERT(proto);
+        NEW(url);
+        url->protocol = proto;
+        if (IS(url->protocol, "https")) {
+                url->port = 443;
+#ifndef HAVE_OPENSSL
+                yyerror("HTTPS protocol not supported -- SSL support disabled" );
+#endif
+        } else if (IS(url->protocol, "http")) {
+                url->port = 80;
+        } else {
+                yyerror("URL protocol not supported -- ");
+        }
+        return url;
 }
+

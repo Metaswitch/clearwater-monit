@@ -3,7 +3,8 @@
 AUTOMAKE_OPTIONS = foreign no-dependencies subdir-objects
 ACLOCAL_AMFLAGS  = -I m4
 
-SUBDIRS         = . test
+SUBDIRS         = . $(UNIT_TEST)
+DIST_SUBDIRS    = . test
 
 EXTRA_DIST      = README COPYING bootstrap test src config
 
@@ -25,6 +26,7 @@ libmonit_la_SOURCES = \
                   src/system/Time.c \
                   src/system/Command.c \
                   src/system/System.c \
+                  src/system/Link.c \
                   src/util/List.c \
                   src/util/Str.c \
                   src/util/StringBuffer.c \

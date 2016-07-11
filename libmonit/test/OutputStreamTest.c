@@ -27,7 +27,7 @@ int main(void) {
 
         printf("============> Start OutputStream Tests\n\n");
 
-        printf("=> Test0: create/destroy the file input stream\n");
+        printf("=> Test0: create/destroy the stream\n");
         {
                 out = OutputStream_new(STDOUT);
                 assert(!OutputStream_isClosed(out));
@@ -39,7 +39,7 @@ int main(void) {
         printf("=> Test1: get/set timeout\n");
         {
                 out = OutputStream_new(STDOUT);
-                printf("\tCurrent timeout: %ldms\n", OutputStream_getTimeout(out));
+                printf("\tCurrent timeout: %lldms\n", (long long)OutputStream_getTimeout(out));
                 OutputStream_setTimeout(out, TIMEOUT);
                 assert(OutputStream_getTimeout(out) == TIMEOUT);
                 printf("\tTimeout set to:  %dms\n", TIMEOUT);

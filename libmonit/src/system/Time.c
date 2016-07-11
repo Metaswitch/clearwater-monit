@@ -19,7 +19,7 @@
  * including the two.
  *
  * You must obey the GNU Affero General Public License in all respects
- * for all of the code used other than OpenSSL.  
+ * for all of the code used other than OpenSSL.
  */
 
 
@@ -31,6 +31,7 @@
 #include <time.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <unistd.h>
 
 #include "Str.h"
@@ -50,350 +51,412 @@
 /* ----------------------------------------------------------- Definitions */
 
 
-#define CTIME       "%a %b %d %H:%M:%S %z %Y"
-#define RFC822      "%a, %d %b %Y %H:%M:%S %z"
-#define RFC1123     "%a, %d %b %Y %H:%M:%S GMT"
+#ifndef HAVE_TIMEGM
+/*
+ * Spdylay - SPDY Library
+ *
+ * Copyright (c) 2013 Tatsuhiro Tsujikawa
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be
+ * included in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+ * NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+ * LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+ * OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+ * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+
+/* Counter the number of leap year in the range [0, y). The |y| is the
+ year, including century (e.g., 2012) */
+static int count_leap_year(int y)
+{
+        y -= 1;
+        return y/4-y/100+y/400;
+}
+
+
+/* Returns nonzero if the |y| is the leap year. The |y| is the year,
+ including century (e.g., 2012) */
+static int is_leap_year(int y)
+{
+        return y%4 == 0 && (y%100 != 0 || y%400 == 0);
+}
+
+
+/* The number of days before ith month begins */
+static int daysum[] = {
+        0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334
+};
+
+
+/* Based on the algorithm of Python 2.7 calendar.timegm. */
+time_t timegm(struct tm *tm)
+{
+        int days;
+        int num_leap_year;
+        int64_t t;
+        if(tm->tm_mon > 11) {
+                return -1;
+        }
+        num_leap_year = count_leap_year(tm->tm_year + 1900) - count_leap_year(1970);
+        days = (tm->tm_year - 70) * 365 +
+        num_leap_year + daysum[tm->tm_mon] + tm->tm_mday-1;
+        if(tm->tm_mon >= 2 && is_leap_year(tm->tm_year + 1900)) {
+                ++days;
+        }
+        t = ((int64_t)days * 24 + tm->tm_hour) * 3600 + tm->tm_min * 60 + tm->tm_sec;
+        if(sizeof(time_t) == 4) {
+                if(t < INT_MIN || t > INT_MAX) {
+                        return -1;
+                }
+        }
+        return t;
+}
+#endif /* !HAVE_TIMEGM */
+
+
+#if HAVE_STRUCT_TM_TM_GMTOFF
+#define TM_GMTOFF tm_gmtoff
+#else
+#define TM_GMTOFF tm_wday
+#endif
+
+
+#define _i2a(i) (x[0] = ((i) / 10) + '0', x[1] = ((i) % 10) + '0')
+
 
 #define TEST_RANGE(v, f, t) \
         do { \
                 if (v < f || v > t) \
                         THROW(AssertException, "#v is outside the range (%d..%d)", f, t); \
         } while (0)
-
 static const char days[] = "SunMonTueWedThuFriSat";
 static const char months[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
-#define MONTHS_LEN 36
 
 
 /* --------------------------------------------------------------- Private */
 
 
-static time_t parseDate(const char *date) {
-#define YYCTYPE     char
-#define YYCURSOR    date
-#define YYLIMIT     end
-#define YYMARKER    m
-#define YYFILL(n)   ((void)0)  
-	const char *t;
-	const char *m;
-	struct tm time = {0};
-	const char *end = date + strlen(date);
-	time.tm_mon   = -1;
-	time.tm_year  = -1;
-	time.tm_mday  = -1;
-	time.tm_isdst = -1;
-	for (;;) {
-		if (YYCURSOR >= YYLIMIT) {
-			if (time.tm_mon== -1 || time.tm_year== -1 || time.tm_mday== -1)
-				return -1;
-			return mktime(&time);
-		}
-		t = YYCURSOR;
-                {
-                        YYCTYPE yych;
-                        unsigned int yyaccept = 0;
-
-                        if ((YYLIMIT - YYCURSOR) < 8) YYFILL(8);
-                        yych = *YYCURSOR;
-                        switch (yych) {
-                                case '0':
-                                case '1':
-                                case '2':
-                                case '3':
-                                case '4':
-                                case '5':
-                                case '6':
-                                case '7':
-                                case '8':
-                                case '9':	goto yy11;
-                                case 'A':
-                                case 'a':	goto yy6;
-                                case 'D':
-                                case 'd':	goto yy10;
-                                case 'F':
-                                case 'f':	goto yy4;
-                                case 'J':
-                                case 'j':	goto yy2;
-                                case 'M':
-                                case 'm':	goto yy5;
-                                case 'N':
-                                case 'n':	goto yy9;
-                                case 'O':
-                                case 'o':	goto yy8;
-                                case 'S':
-                                case 's':	goto yy7;
-                                default:	goto yy12;
-                        }
-                yy2:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych <= 'U') {
-                                if (yych == 'A') goto yy53;
-                                if (yych >= 'U') goto yy52;
-                        } else {
-                                if (yych <= 'a') {
-                                        if (yych >= 'a') goto yy53;
-                                } else {
-                                        if (yych == 'u') goto yy52;
-                                }
-                        }
-                yy3:
-                        {
-                                continue;
-                        }
-                yy4:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych == 'E') goto yy49;
-                        if (yych == 'e') goto yy49;
-                        goto yy3;
-                yy5:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych == 'A') goto yy44;
-                        if (yych == 'a') goto yy44;
-                        goto yy3;
-                yy6:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych <= 'U') {
-                                if (yych == 'P') goto yy39;
-                                if (yych <= 'T') goto yy3;
-                                goto yy38;
-                        } else {
-                                if (yych <= 'p') {
-                                        if (yych <= 'o') goto yy3;
-                                        goto yy39;
-                                } else {
-                                        if (yych == 'u') goto yy38;
-                                        goto yy3;
-                                }
-                        }
-                yy7:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych == 'E') goto yy35;
-                        if (yych == 'e') goto yy35;
-                        goto yy3;
-                yy8:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych == 'C') goto yy32;
-                        if (yych == 'c') goto yy32;
-                        goto yy3;
-                yy9:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych == 'O') goto yy29;
-                        if (yych == 'o') goto yy29;
-                        goto yy3;
-                yy10:
-                        yyaccept = 0;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych == 'E') goto yy26;
-                        if (yych == 'e') goto yy26;
-                        goto yy3;
-                yy11:
-                        yych = *++YYCURSOR;
-                        if (yych <= '/') goto yy3;
-                        if (yych <= '9') goto yy13;
-                        goto yy3;
-                yy12:
-                        yych = *++YYCURSOR;
-                        goto yy3;
-                yy13:
-                        yyaccept = 1;
-                        yych = *(YYMARKER = ++YYCURSOR);
-                        if (yych <= '/') goto yy14;
-                        if (yych <= '9') goto yy15;
-                        if (yych <= ':') goto yy17;
-                yy14:
-                        {
-                                if (sscanf(t, "%d", &time.tm_mday) != 1)
-                                        time.tm_mday = -1;
-                                continue;
-                        }
-                yy15:
-                        yych = *++YYCURSOR;
-                        if (yych <= '/') goto yy16;
-                        if (yych <= '9') goto yy24;
-                yy16:
-                        YYCURSOR = YYMARKER;
-                        if (yyaccept <= 0) {
-                                goto yy3;
-                        } else {
-                                goto yy14;
-                        }
-                yy17:
-                        yych = *++YYCURSOR;
-                        if (yych <= '/') goto yy16;
-                        if (yych >= ':') goto yy16;
-                        yych = *++YYCURSOR;
-                        if (yych <= '/') goto yy16;
-                        if (yych >= ':') goto yy16;
-                        yych = *++YYCURSOR;
-                        if (yych != ':') goto yy16;
-                        yych = *++YYCURSOR;
-                        if (yych <= '/') goto yy16;
-                        if (yych >= ':') goto yy16;
-                        yych = *++YYCURSOR;
-                        if (yych <= '/') goto yy16;
-                        if (yych >= ':') goto yy16;
-                        ++YYCURSOR;
-                        {
-                                sscanf(t, "%d:%d:%d", &time.tm_hour, &time.tm_min, &time.tm_sec);
-                                continue;
-                        }
-                yy24:
-                        ++YYCURSOR;
-                        {
-                                if (sscanf(t, "%d", &time.tm_year) == 1)
-                                        time.tm_year -=1900;
-                                else
-                                        time.tm_year = -1;
-                                continue;
-                        }
-                yy26:
-                        yych = *++YYCURSOR;
-                        if (yych == 'C') goto yy27;
-                        if (yych != 'c') goto yy16;
-                yy27:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 11;
-                                continue;
-                        }
-                yy29:
-                        yych = *++YYCURSOR;
-                        if (yych == 'V') goto yy30;
-                        if (yych != 'v') goto yy16;
-                yy30:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 10;
-                                continue;
-                        }
-                yy32:
-                        yych = *++YYCURSOR;
-                        if (yych == 'T') goto yy33;
-                        if (yych != 't') goto yy16;
-                yy33:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 9;
-                                continue;
-                        }
-                yy35:
-                        yych = *++YYCURSOR;
-                        if (yych == 'P') goto yy36;
-                        if (yych != 'p') goto yy16;
-                yy36:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 8;
-                                continue;
-                        }
-                yy38:
-                        yych = *++YYCURSOR;
-                        if (yych == 'G') goto yy42;
-                        if (yych == 'g') goto yy42;
-                        goto yy16;
-                yy39:
-                        yych = *++YYCURSOR;
-                        if (yych == 'R') goto yy40;
-                        if (yych != 'r') goto yy16;
-                yy40:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 3;
-                                continue;
-                        }
-                yy42:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 7;
-                                continue;
-                        }
-                yy44:
-                        yych = *++YYCURSOR;
-                        if (yych <= 'Y') {
-                                if (yych == 'R') goto yy45;
-                                if (yych <= 'X') goto yy16;
-                                goto yy47;
-                        } else {
-                                if (yych <= 'r') {
-                                        if (yych <= 'q') goto yy16;
-                                } else {
-                                        if (yych == 'y') goto yy47;
-                                        goto yy16;
-                                }
-                        }
-                yy45:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 2;
-                                continue;
-                        }
-                yy47:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 4;
-                                continue;
-                        }
-                yy49:
-                        yych = *++YYCURSOR;
-                        if (yych == 'B') goto yy50;
-                        if (yych != 'b') goto yy16;
-                yy50:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 1;
-                                continue;
-                        }
-                yy52:
-                        yych = *++YYCURSOR;
-                        if (yych <= 'N') {
-                                if (yych == 'L') goto yy58;
-                                if (yych <= 'M') goto yy16;
-                                goto yy56;
-                        } else {
-                                if (yych <= 'l') {
-                                        if (yych <= 'k') goto yy16;
-                                        goto yy58;
-                                } else {
-                                        if (yych == 'n') goto yy56;
-                                        goto yy16;
-                                }
-                        }
-                yy53:
-                        yych = *++YYCURSOR;
-                        if (yych == 'N') goto yy54;
-                        if (yych != 'n') goto yy16;
-                yy54:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 0;
-                                continue;
-                        }
-                yy56:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 5;
-                                continue;
-                        }
-                yy58:
-                        ++YYCURSOR;
-                        {
-                                time.tm_mon = 6;
-                                continue;
-                        }
-                }
-	}
-	return -1;
+static inline int _a2i(const char *a, int l) {
+        int n = 0;
+        for (; *a && l--; a++)
+                n = n * 10 + (*a) - '0';
+        return n;
 }
 
 
 /* ----------------------------------------------------------------- Class */
+
+
+time_t Time_toTimestamp(const char *s) {
+        if (STR_DEF(s)) {
+                struct tm t = {};
+                if (Time_toDateTime(s, &t)) {
+                        t.tm_year -= 1900;
+                        time_t offset = t.TM_GMTOFF;
+                        return timegm(&t) - offset;
+                }
+        }
+        return 0;
+}
+
+
+struct tm *Time_toDateTime(const char *s, struct tm *t) {
+        assert(t);
+        assert(s);
+        struct tm tm = {.tm_isdst = -1};
+        int has_date = false, has_time = false;
+        const char *limit = s + strlen(s), *marker, *token, *cursor = s;
+        while (true) {
+                if (cursor >= limit) {
+                        if (has_date || has_time) {
+                                *(struct tm*)t = tm;
+                                return t;
+                        }
+                        THROW(AssertException, "Invalid date or time");
+                }
+                token = cursor;
+
+#line 187 "<stdout>"
+{
+        unsigned char yych;
+        unsigned int yyaccept = 0;
+        static const unsigned char yybm[] = {
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                128, 128, 128, 128, 128, 128, 128, 128,
+                128, 128,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+                  0,   0,   0,   0,   0,   0,   0,   0,
+        };
+
+        yych = *cursor;
+        if (yych <= ',') {
+                if (yych == '+') goto yy4;
+                goto yy5;
+        } else {
+                if (yych <= '-') goto yy4;
+                if (yych <= '/') goto yy5;
+                if (yych >= ':') goto yy5;
+        }
+        yyaccept = 0;
+        yych = *(marker = ++cursor);
+        if (yych <= '/') goto yy3;
+        if (yych <= '9') goto yy15;
+yy3:
+#line 243 "src/system/Time.re"
+        {
+                        continue;
+                 }
+#line 244 "<stdout>"
+yy4:
+        yyaccept = 0;
+        yych = *(marker = ++cursor);
+        if (yych <= '/') goto yy3;
+        if (yych <= '9') goto yy6;
+        goto yy3;
+yy5:
+        yych = *++cursor;
+        goto yy3;
+yy6:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych <= '9') goto yy8;
+yy7:
+        cursor = marker;
+        if (yyaccept <= 1) {
+                if (yyaccept == 0) {
+                        goto yy3;
+                } else {
+                        goto yy9;
+                }
+        } else {
+                if (yyaccept == 2) {
+                        goto yy23;
+                } else {
+                        goto yy31;
+                }
+        }
+yy8:
+        yyaccept = 1;
+        yych = *(marker = ++cursor);
+        if (yych == '\n') goto yy9;
+        if (yych <= '/') goto yy10;
+        if (yych <= '9') goto yy11;
+        goto yy10;
+yy9:
+#line 230 "src/system/Time.re"
+        { // Timezone: +-HH:MM, +-HH or +-HHMM is offset from UTC in seconds
+                        if (has_time) { // Only set timezone if time has been seen
+                                tm.TM_GMTOFF = _a2i(token + 1, 2) * 3600;
+                                if (isdigit(token[3]))
+                                        tm.TM_GMTOFF += _a2i(token + 3, 2) * 60;
+                                else if (isdigit(token[4]))
+                                        tm.TM_GMTOFF += _a2i(token + 4, 2) * 60;
+                                if (token[0] == '-')
+                                        tm.TM_GMTOFF *= -1;
+                        }
+                        continue;
+                 }
+#line 294 "<stdout>"
+yy10:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych <= '9') goto yy14;
+        goto yy7;
+yy11:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yych = *++cursor;
+        if (yych <= '/') goto yy9;
+        if (yych >= ':') goto yy9;
+yy13:
+        yych = *++cursor;
+        goto yy9;
+yy14:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych <= '9') goto yy13;
+        goto yy7;
+yy15:
+        yych = *++cursor;
+        if (yych <= '/') goto yy17;
+        if (yych >= ':') goto yy17;
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych <= '9') goto yy27;
+        goto yy7;
+yy17:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yych = *++cursor;
+        if (yych <= '/') goto yy20;
+        if (yych <= '9') goto yy7;
+yy20:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yyaccept = 2;
+        yych = *(marker = ++cursor);
+        if (yych == ',') goto yy24;
+        if (yych == '.') goto yy24;
+yy23:
+#line 214 "src/system/Time.re"
+        { // Time: HH:MM:SS
+                        tm.tm_hour = _a2i(token, 2);
+                        tm.tm_min  = _a2i(token + 3, 2);
+                        tm.tm_sec  = _a2i(token + 6, 2);
+                        has_time = true;
+                        continue;
+                 }
+#line 353 "<stdout>"
+yy24:
+        yych = *++cursor;
+        if (yybm[0+yych] & 128) {
+                goto yy25;
+        }
+        goto yy7;
+yy25:
+        ++cursor;
+        yych = *cursor;
+        if (yybm[0+yych] & 128) {
+                goto yy25;
+        }
+        goto yy23;
+yy27:
+        yych = *++cursor;
+        if (yych <= '/') goto yy28;
+        if (yych <= '9') goto yy29;
+yy28:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych <= '9') goto yy38;
+        goto yy7;
+yy29:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yyaccept = 3;
+        yych = *(marker = ++cursor);
+        if (yych <= '-') {
+                if (yych == ',') goto yy33;
+        } else {
+                if (yych <= '.') goto yy33;
+                if (yych <= '/') goto yy31;
+                if (yych <= '9') goto yy32;
+        }
+yy31:
+#line 222 "src/system/Time.re"
+        { // Compressed Time: HHMMSS
+                        tm.tm_hour = _a2i(token, 2);
+                        tm.tm_min  = _a2i(token + 2, 2);
+                        tm.tm_sec  = _a2i(token + 4, 2);
+                        has_time = true;
+                        continue;
+                 }
+#line 398 "<stdout>"
+yy32:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych <= '9') goto yy36;
+        goto yy7;
+yy33:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+yy34:
+        ++cursor;
+        yych = *cursor;
+        if (yych <= '/') goto yy31;
+        if (yych <= '9') goto yy34;
+        goto yy31;
+yy36:
+        ++cursor;
+#line 206 "src/system/Time.re"
+        { // Compressed Date: YYYYMMDD
+                        tm.tm_year  = _a2i(token, 4);
+                        tm.tm_mon   = _a2i(token + 4, 2) - 1;
+                        tm.tm_mday  = _a2i(token + 6, 2);
+                        has_date = true;
+                        continue;
+                 }
+#line 424 "<stdout>"
+yy38:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yych = *++cursor;
+        if (yych <= '/') goto yy40;
+        if (yych <= '9') goto yy7;
+yy40:
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        yych = *++cursor;
+        if (yych <= '/') goto yy7;
+        if (yych >= ':') goto yy7;
+        ++cursor;
+#line 198 "src/system/Time.re"
+        { // Date: YYYY-MM-DD
+                        tm.tm_year  = _a2i(token, 4);
+                        tm.tm_mon   = _a2i(token + 5, 2) - 1;
+                        tm.tm_mday  = _a2i(token + 8, 2);
+                        has_date = true;
+                        continue;
+                 }
+#line 448 "<stdout>"
+}
+#line 246 "src/system/Time.re"
+
+        }
+        return NULL;
+}
 
 
 time_t Time_build(int year, int month, int day, int hour, int min, int sec) {
@@ -414,13 +477,6 @@ time_t Time_build(int year, int month, int day, int hour, int min, int sec) {
 }
 
 
-time_t Time_parse(const char *date) {
-	if (STR_DEF(date))
-		return parseDate(date);
-	return -1;
-}
-
-
 time_t Time_now(void) {
 	struct timeval t;
 	if (gettimeofday(&t, NULL) != 0)
@@ -437,10 +493,11 @@ long long int Time_milli(void) {
 }
 
 
-time_t Time_gmt(time_t localtime) {
-	struct tm r;
-	gmtime_r(&localtime, &r);
-	return mktime(&r);
+long long int Time_micro(void) {
+	struct timeval t;
+	if (gettimeofday(&t, NULL) != 0)
+                THROW(AssertException, "%s", System_getLastError());
+	return (long long int)t.tv_sec * 1000000  +  (long long int)t.tv_usec;
 }
 
 
@@ -493,43 +550,23 @@ int Time_year(time_t time) {
 }
 
 
-time_t Time_add(time_t time, int years, int months, int days) {
-        struct tm tm;
-        localtime_r(&time, &tm);
-        tm.tm_year += years;
-        tm.tm_mon += months;
-        tm.tm_mday += days;
-        tm.tm_isdst = -1;
-        return mktime(&tm);
-}
-
-
-int Time_daysBetween(time_t to, time_t from) {
-        double t = difftime(to, from);
-        if (t < 0) t *= -1;
-	return ((t + (86400L/2))/86400L);
-}
-
-
-char *Time_string(time_t time, char *result) {
 #define i2a(i) (x[0]=(i/10)+'0', x[1]=(i%10)+'0')
+char *Time_string(time_t time, char *result) {
         if (result) {
                 char x[2];
                 struct tm ts;
-                /* This implementation needs to be fast and is around 50%
-                   faster than strftime */
                 localtime_r((const time_t *)&time, &ts);
                 memcpy(result, "aaa, xx aaa xxxx xx:xx:xx\0", 26);
                 /*              0    5  8   1214 17 20 2326 */
-                memcpy(result, days+3*ts.tm_wday, 3);
+                memcpy(result, days + 3 * ts.tm_wday, 3);
                 i2a(ts.tm_mday);
                 result[5] = x[0];
                 result[6] = x[1];
-                memcpy(result + 8, months+3*ts.tm_mon, 3);
-                i2a((ts.tm_year+1900)/100);
+                memcpy(result + 8, months + 3 * ts.tm_mon, 3);
+                i2a((ts.tm_year + 1900) / 100);
                 result[12] = x[0];
                 result[13] = x[1];
-                i2a((ts.tm_year+1900)%100);
+                i2a((ts.tm_year + 1900) % 100);
                 result[14] = x[0];
                 result[15] = x[1];
                 i2a(ts.tm_hour);
@@ -542,7 +579,7 @@ char *Time_string(time_t time, char *result) {
                 result[23] = x[0];
                 result[24] = x[1];
         }
-	return result;     
+	return result;
 }
 
 
@@ -550,20 +587,18 @@ char *Time_gmtstring(time_t time, char *result) {
         if (result) {
                 char x[2];
                 struct tm ts;
-                /* This implementation needs to be fast and is around 50%
-                 faster than strftime */
                 gmtime_r(&time, &ts);
                 memcpy(result, "aaa, xx aaa xxxx xx:xx:xx GMT\0", 30);
                 /*              0    5  8   1214 17 20 23    29 */
-                memcpy(result, days+3*ts.tm_wday, 3);
+                memcpy(result, days + 3 * ts.tm_wday, 3);
                 i2a(ts.tm_mday);
                 result[5] = x[0];
                 result[6] = x[1];
-                memcpy(result + 8, months+3*ts.tm_mon, 3);
-                i2a((ts.tm_year+1900)/100);
+                memcpy(result + 8, months + 3 * ts.tm_mon, 3);
+                i2a((ts.tm_year + 1900) / 100);
                 result[12] = x[0];
                 result[13] = x[1];
-                i2a((ts.tm_year+1900)%100);
+                i2a((ts.tm_year + 1900) % 100);
                 result[14] = x[0];
                 result[15] = x[1];
                 i2a(ts.tm_hour);
@@ -576,7 +611,7 @@ char *Time_gmtstring(time_t time, char *result) {
                 result[23] = x[0];
                 result[24] = x[1];
         }
-	return result;     
+	return result;
 }
 
 
@@ -585,9 +620,9 @@ char *Time_fmt(char *result, int size, const char *format, time_t time) {
         assert(result);
         assert(format);
         localtime_r((const time_t *)&time, &tm);
-        if (strftime(result, size, format, &tm) == 0) 
+        if (strftime(result, size, format, &tm) == 0)
                 *result = 0;
-	return result;
+        return result;
 }
 
 
@@ -599,160 +634,154 @@ char *Time_uptime(time_t sec, char *result) {
                 result[0] = 0;
                 if (sec > 0) {
                         if ((r = sec/86400) > 0) {
-                                n = snprintf(result, 24, "%ldd", r);
+                                n = snprintf(result, 24, "%lldd", (long long)r);
                                 sec -= r * 86400;
                         }
-                        if((r = sec/3600) > 0) {
-                                n += snprintf(result + n, (24 - n), "%s%ldh", n ? ", " : "", r);
+                        if ((r = sec/3600) > 0) {
+                                n += snprintf(result + n, (24 - n), "%s%lldh", n ? ", " : "", (long long)r);
                                 sec -= r * 3600;
                         }
                         r = sec/60;
-                        snprintf(result + n, (24 - n), "%s%ldm", n ? ", " : "", r);
+                        snprintf(result + n, (24 - n), "%s%lldm", n ? ", " : "", (long long)r);
                 }
         }
         return result;
 }
 
 
-/* 
+/*
  cron string is on format "minute hour day month wday"
- where fields may have a numeric type, an asterix, a 
- sequence of numbers or a range 
+ where fields may have a numeric type, an asterix, a
+ sequence of numbers or a range
  */
 int Time_incron(const char *cron, time_t time) {
         assert(cron);
-#undef YYCURSOR 
-#undef YYLIMIT  
-#undef YYMARKER 
 #define YYCURSOR cron
 #define YYLIMIT  end
-#define YYMARKER m
 #define YYTOKEN  t
-	const char *m;
-	const char *t;
-	const char *end = cron + strlen(cron);
+        const char *m;
+        const char *t;
+        const char *end = cron + strlen(cron);
         int n = 0;
         int found = 0;
         int fields[] = {Time_minutes(time), Time_hour(time), Time_day(time), Time_month(time), Time_weekday(time)};
+
 parse:
         if (YYCURSOR >= YYLIMIT)
                 return found == 5;
         YYTOKEN = YYCURSOR;
-	
+
         {
-                YYCTYPE yych;
+                unsigned char yych;
                 static const unsigned char yybm[] = {
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        128, 128, 128, 128, 128, 128, 128, 128, 
-                        128, 128,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
-                        0,   0,   0,   0,   0,   0,   0,   0, 
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        128, 128, 128, 128, 128, 128, 128, 128,
+                        128, 128,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
+                        0,   0,   0,   0,   0,   0,   0,   0,
                 };
-                if ((YYLIMIT - YYCURSOR) < 3) YYFILL(3);
-                yych = *YYCURSOR;
+
+                yych = *cron;
                 if (yych <= ' ') {
                         if (yych <= '\f') {
-                                if (yych <= 0x08) goto yy70;
-                                if (yych >= '\v') goto yy70;
+                                if (yych <= 0x08) goto yy10;
+                                if (yych >= '\v') goto yy10;
                         } else {
-                                if (yych <= '\r') goto yy62;
-                                if (yych <= 0x1F) goto yy70;
+                                if (yych <= '\r') goto yy2;
+                                if (yych <= 0x1F) goto yy10;
                         }
                 } else {
                         if (yych <= '+') {
-                                if (yych == '*') goto yy64;
-                                goto yy70;
+                                if (yych == '*') goto yy4;
+                                goto yy10;
                         } else {
-                                if (yych <= ',') goto yy66;
-                                if (yych <= '/') goto yy70;
-                                if (yych <= '9') goto yy68;
-                                goto yy70;
+                                if (yych <= ',') goto yy6;
+                                if (yych <= '/') goto yy10;
+                                if (yych <= '9') goto yy8;
+                                goto yy10;
                         }
                 }
-        yy62:
-                ++YYCURSOR;
+        yy2:
+                ++cron;
                 {
                         goto parse;
                 }
-        yy64:
-                ++YYCURSOR;
+        yy4:
+                ++cron;
                 {
                         n++;
                         found++;
                         goto parse;
                 }
-        yy66:
-                ++YYCURSOR;
+        yy6:
+                ++cron;
                 {
-                        n--; // backtrack on field advance
+                        n--; // backtrack on fields advance
                         assert(n < 5 && n >= 0);
                         goto parse;
                 }
-        yy68:
-                yych = *(YYMARKER = ++YYCURSOR);
-                goto yy73;
-        yy69:
+        yy8:
+                yych = *(m = ++cron);
+                goto yy13;
+        yy9:
                 {
-                        int v = Str_parseInt(YYTOKEN);
-                        if (fields[n] == v)
+                        if (fields[n] == Str_parseInt(YYTOKEN))
                                 found++;
                         n++;
                         goto parse;
                 }
-        yy70:
-                ++YYCURSOR;
+        yy10:
+                ++cron;
                 {
                         return false;
                 }
-        yy72:
-                YYMARKER = ++YYCURSOR;
-                if ((YYLIMIT - YYCURSOR) < 2) YYFILL(2);
-                yych = *YYCURSOR;
-        yy73:
+        yy12:
+                m = ++cron;
+                yych = *cron;
+        yy13:
                 if (yybm[0+yych] & 128) {
-                        goto yy72;
+                        goto yy12;
                 }
-                if (yych != '-') goto yy69;
-                yych = *++YYCURSOR;
-                if (yych <= '/') goto yy75;
-                if (yych <= '9') goto yy76;
-        yy75:
-                YYCURSOR = YYMARKER;
-                goto yy69;
-        yy76:
-                ++YYCURSOR;
-                if (YYLIMIT <= YYCURSOR) YYFILL(1);
-                yych = *YYCURSOR;
-                if (yych <= '/') goto yy78;
-                if (yych <= '9') goto yy76;
-        yy78:
+                if (yych != '-') goto yy9;
+                yych = *++cron;
+                if (yych <= '/') goto yy15;
+                if (yych <= '9') goto yy16;
+        yy15:
+                cron = m;
+                goto yy9;
+        yy16:
+                ++cron;
+                yych = *cron;
+                if (yych <= '/') goto yy18;
+                if (yych <= '9') goto yy16;
+        yy18:
                 {
                         int from = Str_parseInt(YYTOKEN);
                         int to = Str_parseInt(strchr(YYTOKEN, '-') + 1);
@@ -762,7 +791,8 @@ parse:
                         goto parse;
                 }
         }
-	return found == 5;
+
+        return found == 5;
 }
 
 

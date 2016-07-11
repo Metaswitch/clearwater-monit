@@ -14,12 +14,6 @@
  */
 
 
-static void apply(void *value, void *ap) {
-        *(int *)ap += 1;
-}
-
-
-
 int main(void) {
         List_T L = NULL;
 
@@ -120,38 +114,30 @@ int main(void) {
                 List_append(l, "d");
                 printf("\tList before reverse: ");
                 for (p = l->head; p; p = p->next)
-                        printf("%s%s", (char*)p->e, p->next?"->":"\n");
+                        printf("%s%s", (char*)p->e, p->next ? "->" : "\n");
                 assert(Str_isEqual(l->head->e, "a"));
                 assert(Str_isEqual(l->tail->e, "d"));
                 List_reverse(l);
                 printf("\tList after reverse: ");
                 for (p = l->head; p; p = p->next)
-                        printf("%s%s", (char*)p->e, p->next?"->":"\n");
+                        printf("%s%s", (char*)p->e, p->next ? "->" : "\n");
                 assert(Str_isEqual(l->head->e, "d"));
                 assert(Str_isEqual(l->tail->e, "a"));
                 List_free(&l);
         }
         printf("=> Test5: OK\n\n");
 
-        printf("=> Test6: List_map()\n");
-        {
-                int i = 0;
-                List_map(L, apply, &i);
-                assert(i == 19);
-        }
-        printf("=> Test6: OK\n\n");
-
-        printf("=> Test7: List_clear()\n");
+        printf("=> Test6: List_clear()\n");
         {
                 List_clear(L);
                 assert(List_length(L) == 0);
                 assert(L->freelist);
         }
-        printf("=> Test7: OK\n\n");
+        printf("=> Test6: OK\n\n");
 
         List_free(&L);
 
-        printf("=> Test8: List malloc\n");
+        printf("=> Test7: List malloc\n");
         {
                 L = List_new();
                 List_push(L, "1");
@@ -193,9 +179,9 @@ int main(void) {
                 assert(List_length(L) == 15);
                 List_free(&L);
         }
-        printf("=> Test8: OK\n\n");
+        printf("=> Test7: OK\n\n");
 
-        printf("=> Test9: List remove\n");
+        printf("=> Test8: List remove\n");
         {
                 char *one = "1";
                 char *two = "2";
@@ -224,9 +210,9 @@ int main(void) {
                 printf("OK\n");
                 List_free(&L);
         }
-        printf("=> Test9: OK\n\n");
+        printf("=> Test8: OK\n\n");
 
-        printf("=> Test10: check pointers\n");
+        printf("=> Test9: check pointers\n");
         {
                 L = List_new();
                 printf("\tCheck pop.. ");
@@ -249,9 +235,9 @@ int main(void) {
                 printf("OK\n");
                 List_free(&L);
         }
-        printf("=> Test10: OK\n\n");
+        printf("=> Test9: OK\n\n");
 
-        printf("=> Test11: List_toArray()\n");
+        printf("=> Test10: List_toArray()\n");
         {
                 List_T l = List_new();
                 List_append(l, "a");
@@ -267,7 +253,7 @@ int main(void) {
                 FREE(array);
                 List_free(&l);
         }
-        printf("=> Test11: OK\n\n");
+        printf("=> Test10: OK\n\n");
 
         printf("============> List Tests: OK\n\n");
 

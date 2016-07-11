@@ -67,7 +67,13 @@ struct T {
         long long int bytesWritten;
         uchar_t buffer[BUFFER_SIZE + 1];
 };
-typedef struct va_list_box {va_list ap;} va_list_box;
+
+
+typedef struct va_list_box {
+        va_list ap;
+} va_list_box;
+
+
 typedef void (*fmt_t)(T S, int code, va_list_box *box, unsigned char flags[256], int width, int precision);
 
 

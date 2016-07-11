@@ -49,16 +49,6 @@
 #include <stdlib.h>
 #endif
 
-#ifdef TIME_WITH_SYS_TIME
-#include <time.h>
-
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#else
-#include <time.h>
-#endif
-
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -94,7 +84,7 @@
 #endif
 
 #include "monit.h"
-#include "process.h"
+#include "ProcessTree.h"
 #include "process_sysdep.h"
 
 static int         page_size;
@@ -119,23 +109,23 @@ struct pst_status *psall;
  * "SunOS to HP-UX 9.05 Porting Guide" at http://www.interex.org/tech/9000/Tech/sun_hpux_port/portguide.html
  */
 
-int init_process_info_sysdep(void) {
+boolean_t init_process_info_sysdep(void) {
         struct pst_dynamic psd;
         struct pst_static pst;
 
-        if (pstat_getdynamic(&psd,sizeof(psd),(size_t)1,0) != -1)
-                systeminfo.cpus=psd.psd_proc_cnt;
+        if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) != -1)
+                systeminfo.cpus = psd.psd_proc_cnt;
         else
-                return FALSE;
+                return false;
 
         if (pstat_getstatic(&pst, sizeof(pst), (size_t) 1, 0) != -1) {
-                systeminfo.mem_kbyte_max=(unsigned long)(pst.physical_memory * (pst.page_size / 1024));
-                page_size=pst.page_size;
+                systeminfo.mem_max = (uint64_t)pst.physical_memory * (uint64_t)pst.page_size;
+                page_size = pst.page_size;
         } else {
-                return FALSE;
+                return false;
         }
 
-        return TRUE;
+        return true;
 }
 
 
@@ -161,23 +151,20 @@ int getloadavg_sysdep (double *a, int na) {
                                 a[0] = psd.psd_avg_1_min;
                 }
         } else {
-                return FALSE;
+                return -1;
         }
 
-        return TRUE;
+        return 0;
 }
 
 
 /**
  * Read all processes to initialize the process tree
  * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise 0.
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
-        int            i;
-        int            treesize;
-        ProcessTree_T *pt;
-
+int initprocesstree_sysdep(ProcessTree_T ** reference, ProcessEngine_Flags pflags) {
         ASSERT(reference);
 
         pstat_getdynamic(&pst_dyn, sizeof(struct pst_dynamic), 1, 0);
@@ -188,28 +175,26 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
         else
                 return 0;
 
-        if ((treesize = pstat_getproc(psall, sizeof(struct pst_status), nproc , 0)) == -1) {
+        int treesize = pstat_getproc(psall, sizeof(struct pst_status), nproc , 0);
+        if (treesize == -1) {
                 LogError("system statistic error 1 -- pstat_getproc failed: %s\n", strerror(errno));
                 return 0;
         }
 
-        pt = CALLOC(sizeof(ProcessTree_T), treesize);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
-        for (i = 0; i < treesize; i++) {
-                pt[i].pid         = psall[i].pst_pid;
-                pt[i].ppid        = psall[i].pst_ppid;
-                pt[i].uid         = psall[i].pst_uid;
-                pt[i].euid        = psall[i].pst_euid;
-                pt[i].gid         = psall[i].pst_gid;
-                pt[i].starttime   = psall[i].pst_start;
-                pt[i].time        = get_float_time();
-                pt[i].cputime     =  psall[i].pst_utime + psall[i].pst_stime * 10;
-                pt[i].cpu_percent = (int)(1000. * psall[i].pst_pctcpu / (float)systeminfo.cpus);
-                pt[i].mem_kbyte   = (unsigned long)(psall[i].pst_rssize * (page_size / 1024.0));
-                pt[i].cmdline     = (psall[i].pst_cmd && *psall[i].pst_cmd) ? Str_dup(psall[i].pst_cmd) : Str_dup(psall[i].pst_ucomm);
-
-                if ( psall[i].pst_stat == PS_ZOMBIE )
-                        pt[i].status_flag |= PROCESS_ZOMBIE;
+        for (int i = 0; i < treesize; i++) {
+                pt[i].pid          = psall[i].pst_pid;
+                pt[i].ppid         = psall[i].pst_ppid;
+                pt[i].cred.uid     = psall[i].pst_uid;
+                pt[i].cred.euid    = psall[i].pst_euid;
+                pt[i].cred.gid     = psall[i].pst_gid;
+                pt[i].uptime       = systeminfo.time / 10. - psall[i].pst_start;
+                pt[i].cpu.time     = (psall[i].pst_utime + psall[i].pst_stime) * 10;
+                pt[i].memory.usage = (uint64_t)psall[i].pst_rssize * (uint64_t)page_size;
+                pt[i].zombie       = psall[i].pst_stat == PS_ZOMBIE ? true : false;
+                if (pflags & ProcessEngine_CollectCommandLine)
+                        pt[i].cmdline = (psall[i].pst_cmd && *psall[i].pst_cmd) ? Str_dup(psall[i].pst_cmd) : Str_dup(psall[i].pst_ucomm);
         }
 
         *reference = pt;
@@ -220,10 +205,10 @@ int initprocesstree_sysdep(ProcessTree_T ** reference) {
 
 /**
  * This routine returns kbyte of real memory in use.
- * @return: TRUE if successful, FALSE if failed (or not available)
+ * @return: true if successful, false if failed (or not available)
  */
-int used_system_memory_sysdep(SystemInfo_T *si) {
-        int                 i, n, num;
+boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
+        int                 n, num;
         struct pst_static   pst;
         struct pst_dynamic  psd;
         struct swaptable   *s;
@@ -232,38 +217,38 @@ int used_system_memory_sysdep(SystemInfo_T *si) {
         unsigned long long  used  = 0ULL;
 
         /* Memory */
-        if(pstat_getstatic(&pst, sizeof(pst), (size_t)1, 0) == -1) {
+        if (pstat_getstatic(&pst, sizeof(pst), (size_t)1, 0) == -1) {
                 LogError("system statistic error -- pstat_getstatic failed: %s\n", STRERROR);
-                return FALSE;
+                return false;
         }
-        if(pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1) {
+        if (pstat_getdynamic(&psd, sizeof(psd), (size_t)1, 0) == -1) {
                 LogError("system statistic error -- pstat_getdynamic failed: %s\n", STRERROR);
-                return FALSE;
+                return false;
         }
-        si->total_mem_kbyte = (unsigned long)((pst.physical_memory - psd.psd_free) * (pst.page_size/1024));
+        si->total_mem = (uint64_t)(pst.physical_memory - psd.psd_free) * (uint64_t)pst.page_size;
 
         /* Swap */
 again:
         if ((num = swapctl(SC_GETNSWP, 0)) == -1) {
                 LogError("system statistic error -- swap usage gathering failed: %s\n", STRERROR);
-                return FALSE;
+                return false;
         }
         if (num == 0) {
                 DEBUG("system statistic -- no swap configured\n");
-                si->swap_kbyte_max = 0;
-                return TRUE;
+                si->swap_max = 0ULL;
+                return true;
         }
         s = (struct swaptable *)ALLOC(num * sizeof(struct swapent) + sizeof(struct swaptable));
         strtab = (char *)ALLOC((num + 1) * MAXSTRSIZE);
-        for (i = 0; i < (num + 1); i++)
+        for (int i = 0; i < (num + 1); i++)
                 s->swt_ent[i].ste_path = strtab + (i * MAXSTRSIZE);
         s->swt_n = num + 1;
         if ((n = swapctl(SC_LIST, s)) < 0) {
                 LogError("system statistic error -- swap usage gathering failed: %s\n", STRERROR);
-                si->swap_kbyte_max = 0;
+                si->swap_max = 0ULL;
                 FREE(s);
                 FREE(strtab);
-                return FALSE;
+                return false;
         }
         if (n > num) {
                 DEBUG("system statistic -- new swap added: deferring swap usage statistics to next cycle\n");
@@ -271,27 +256,26 @@ again:
                 FREE(strtab);
                 goto again;
         }
-        for (i = 0; i < n; i++) {
-                if (!(s->swt_ent[i].ste_flags & ST_INDEL) && !(s->swt_ent[i].ste_flags & ST_DOINGDEL)) {
+        for (int i = 0; i < n; i++) {
+                if (! (s->swt_ent[i].ste_flags & ST_INDEL) && ! (s->swt_ent[i].ste_flags & ST_DOINGDEL)) {
                         total += s->swt_ent[i].ste_pages;
                         used  += s->swt_ent[i].ste_pages - s->swt_ent[i].ste_free;
                 }
         }
         FREE(s);
         FREE(strtab);
-        si->swap_kbyte_max   = (unsigned long)(double)(total * page_size) / 1024.;
-        si->total_swap_kbyte = (unsigned long)(double)(used  * page_size) / 1024.;
+        si->swap_max = (uint64_t)total * (uint64_t)page_size;
+        si->total_swap = (uint64_t)used * (uint64_t)page_size;
 
-        return TRUE;
+        return true;
 }
 
 
 /**
  * This routine returns system/user CPU time in use.
- * @return: TRUE if successful, FALSE if failed (or not available)
+ * @return: true if successful, false if failed (or not available)
  */
-int used_system_cpu_sysdep(SystemInfo_T *si) {
-        int                i;
+boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
         long               cpu_total;
         long               cpu_total_new = 0;
         long               cpu_user = 0;
@@ -301,7 +285,7 @@ int used_system_cpu_sysdep(SystemInfo_T *si) {
 
         pstat_getdynamic(&psd, sizeof(psd), 1, 0);
 
-        for(i = 0; i < CPUSTATES; i++)
+        for (int i = 0; i < CPUSTATES; i++)
                 cpu_total_new += psd.psd_cpu_time[i];
         cpu_total     = cpu_total_new - cpu_total_old;
         cpu_total_old = cpu_total_new;
@@ -309,14 +293,14 @@ int used_system_cpu_sysdep(SystemInfo_T *si) {
         cpu_syst      = psd.psd_cpu_time[CP_SYS];
         cpu_wait      = psd.psd_cpu_time[CP_WAIT];
 
-        si->total_cpu_user_percent = (cpu_total > 0)?(int)(1000 * (double)(cpu_user - cpu_user_old) / cpu_total):-10;
-        si->total_cpu_syst_percent = (cpu_total > 0)?(int)(1000 * (double)(cpu_syst - cpu_syst_old) / cpu_total):-10;
-        si->total_cpu_wait_percent = (cpu_total > 0)?(int)(1000 * (double)(cpu_wait - cpu_wait_old) / cpu_total):-10;
+        si->total_cpu_user_percent = (cpu_total > 0) ? (100. * (double)(cpu_user - cpu_user_old) / cpu_total) : -1.;
+        si->total_cpu_syst_percent = (cpu_total > 0) ? (100. * (double)(cpu_syst - cpu_syst_old) / cpu_total) : -1.;
+        si->total_cpu_wait_percent = (cpu_total > 0) ? (100. * (double)(cpu_wait - cpu_wait_old) / cpu_total) : -1.;
 
         cpu_user_old = cpu_user;
         cpu_syst_old = cpu_syst;
         cpu_wait_old = cpu_wait;
 
-        return TRUE;
+        return true;
 }
 

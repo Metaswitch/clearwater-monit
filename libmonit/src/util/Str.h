@@ -38,6 +38,13 @@
 
 
 /**
+ * Maximum length of input for Str_compareConstantTime() method. We support
+ * currently up to 64 characters, which is enough for SHA256 digests.
+ */
+#define MAX_CONSTANT_TIME_STRING_LENGTH 64
+
+
+/**
  * Test if the given string is defined. That is; not NULL nor the 
  * empty ("") string
  * @param s The string to test
@@ -111,17 +118,6 @@ char *Str_toLower(char *s);
  * @return s converted to upper case letters
  */
 char *Str_toUpper(char *s);
-
-
-/**
- * Converts a number to a string. The given <code>s</code> buffer
- * is returned with the string representation of <code>n</code>.
- * @param n The number (long) to convert to a string
- * @param s A buffer to write the string representation of <code>n</code>
- * into. The buffer must be of size 43 bytes or more
- * @return A pointer to <code>s</code>
- */
-char *Str_ton(long n, char s[43]);
 
 
 /**
@@ -223,6 +219,23 @@ char *Str_sub(const char *a, const char *b);
  * @return true if s contains chars in charset, otherwise false
  */
 int Str_has(const char *charset, const char *s);
+
+
+/**
+ * Unescape all characters in <code>s</code> which are in the 
+ * <code>charset</code> and return <code>s</code> modified.
+ * Example:
+ * <pre>
+ * char s[] = "foo\'ba\"r\}baz";
+ * Str_unescape("\"'", s) -> foo'ba"r\}baz
+ * </pre>
+ * @param charset The characters to test <code>s</code> against. 
+ * A character is unescaped in <code>s</code> if it is in the 
+ * charset and is preceded with '\'.
+ * @param s The string to unescape
+ * @return A pointer to s
+ */
+char *Str_unescape(const char *charset, char *s);
 
 
 /**
@@ -332,18 +345,18 @@ char *Str_vcat(const char *s, va_list ap);
 
 /**
  * Truncate <code>s</code> at <code>n</code> and add a trailing ellipsis
- * to the end of <code>s</code>. If <code>s</code> is shorter than 
- * <code>n</code> or has no space for the trail, <code>s</code> is left
- * untouched otherwise this function modifies <code>s</code>. 
+ * to the end of <code>s</code>. If <code>s</code> is shorter than
+ * <code>n</code>, <code>s</code> is left untouched otherwise this
+ * function modifies <code>s</code>.
  * <pre>
- * Example: 
+ * Example:
  *  char s[] = "Hello World!";
- *  Str_trunc(s, strlen(s)); -> "Hello World!" 
- *  Str_trunc(s, 5); -> "Hello..."
- *  Str_trunc(s, 0); -> "..."
+ *  Str_trunc(s, strlen(s)); -> "Hello World!"
+ *  Str_trunc(s, 8); -> "Hello..."
+ *  Str_trunc(s, 3); -> "..."
  * </pre>
  * @param s String to truncate at n
- * @param n number of bytes from where s is truncated
+ * @param n maximum number of bytes left after truncation
  * @return A pointer to s
  * @exception AssertException if n is less than 0
 */
@@ -351,7 +364,7 @@ char *Str_trunc(char *s, int n);
 
 
 /**
- * Cut string <code>s</code> short at <code>t</code>. That is, 
+ * Cut string <code>s</code> short at <code>t</code>. That is,
  * remove all bytes in <code>s</code> from and including 
  * <code>t</code> to the end of the string. If <code>t</code>
  * is not found in <code>s</code>, <code>s</code> is not modified.
@@ -419,4 +432,34 @@ unsigned int Str_hash(const void *x);
 int Str_cmp(const void *x, const void *y);
 
 
+/**
+ * Compare case sensitive two strings in constant time. This function
+ * can be used for timing-attack resistent comparison of credentials.
+ * @param x A String
+ * @param y A String
+ * @return 0 if x and y are equal otherwise a non-zero integer
+ */
+int Str_compareConstantTime(const void *x, const void *y);
+
+
+/**
+ * Convert the numeric bytes value to a string representation scaled to
+ * human friendly storage unit [B, kB, MB, etc.].
+ * @param bytes Byte value to convert
+ * @param s A result buffer, must be large enough to hold 10 chars
+ * @return A pointer to s
+ */
+char *Str_bytesToSize(double bytes, char s[10]);
+
+
+/**
+ * Convert the value in milliseconds to human friendlier unit (ms/s/m).
+ * @param milli The time value in milliseconds to present
+ * @param s A result buffer, must be large enough to hold 23 chars
+ * @return A pointer to s
+ */
+char *Str_milliToTime(double milli, char s[23]);
+
+
 #endif
+

@@ -202,12 +202,12 @@
  * @param mutex The mutex to lock
  * @hideinitializer
  */
-#define LOCK(mutex) do { Mutex_T *_yymutex=&(mutex); assert(pthread_mutex_lock(_yymutex)==0);
+#define LOCK(mutex) do { Mutex_T *_yymutex=&(mutex); int _yystatus=pthread_mutex_lock(_yymutex); assert(_yystatus==0);
 /**
  * Ends a LOCK block
  * @hideinitializer
  */
-#define END_LOCK assert(pthread_mutex_unlock(_yymutex)==0); } while (0)
+#define END_LOCK _yystatus=pthread_mutex_unlock(_yymutex); assert(_yystatus==0); } while (0)
 //@}
 /** @name Read/Write Lock methods */
 //@{
@@ -251,23 +251,23 @@
  * @param lock The read lock
  * @hideinitializer
  */
-#define RLOCK(lock) do { Lock_T *_yyrlock=&(lock); assert(pthread_rwlock_rdlock(_yyrlock)==0);
+#define RLOCK(lock) do { Lock_T *_yyrlock=&(lock); int _yystatus=pthread_rwlock_rdlock(_yyrlock); assert(_yystatus==0);
 /**
  * Ends a RLOCK block
  * @hideinitializer
  */
-#define END_RLOCK assert(pthread_rwlock_unlock(_yyrlock)==0); } while (0)
+#define END_RLOCK _yystatus=pthread_rwlock_unlock(_yyrlock); assert(_yystatus==0);} while (0)
 /**
  * Defines a block of code to execute after the given write locked is acquired
  * @param lock The write lock
  * @hideinitializer
  */
-#define WLOCK(lock) do { Lock_T *_yywlock=&(lock); assert(pthread_rwlock_wrlock(_yywlock)==0);
+#define WLOCK(lock) do { Lock_T *_yywlock=&(lock); int _yystatus=pthread_rwlock_wrlock(_yywlock); assert(_yystatus==0);
 /**
  * Ends a RLOCK block
  * @hideinitializer
  */
-#define END_WLOCK assert(pthread_rwlock_unlock(_yywlock)==0); } while (0)
+#define END_WLOCK _yystatus=pthread_rwlock_unlock(_yywlock); assert(_yystatus==0); } while (0)
 //@}
 /** @name Thread data methods */
 //@{

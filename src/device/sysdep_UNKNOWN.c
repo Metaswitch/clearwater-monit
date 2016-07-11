@@ -33,27 +33,14 @@
 #include "monit.h"
 #include "device_sysdep.h"
 
-/**
- * Unknown OS special block device dummy mountpoint method.
- *
- * @param inf  Information structure
- * @param blockdev Identifies block special device
- * @return         NULL
- */
-char *device_mountpoint_sysdep(Info_T inf, char *blockdev) {
-  LogError("Unsupported mounted filesystem information method\n");
-  return NULL;
+char *device_mountpoint_sysdep(char *dev, char *buf, int buflen) {
+        LogError("Unsupported mounted filesystem information method\n");
+        return NULL;
 }
 
 
-/**
- * Unknown OS filesystem dummy usage statistics.
- *
- * @param inf Information structure
- * @return        FALSE
- */
-int filesystem_usage_sysdep(Info_T inf) {
-  LogError("Unsupported filesystem informations gathering method\n");
-  return FALSE;
+boolean_t filesystem_usage_sysdep(Info_T inf) {
+        LogError("Unsupported filesystem informations gathering method\n");
+        return false;
 }
 

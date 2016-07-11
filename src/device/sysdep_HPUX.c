@@ -58,60 +58,43 @@
 #include "device_sysdep.h"
 
 
-/**
- * HPUX special block device mountpoint method. Filesystem must be mounted.
- * In the case of success, mountpoint is stored in filesystem information
- * structure for later use.
- *
- * @param inf  Information structure where resulting data will be stored
- * @param blockdev Identifies block special device
- * @return         NULL in the case of failure otherwise mountpoint
- */
-char *device_mountpoint_sysdep(Info_T inf, char *blockdev) {
-  struct mntent *mnt;
-  FILE          *mntfd;
+char *device_mountpoint_sysdep(char *dev, char *buf, int buflen) {
+        struct mntent *mnt;
+        FILE          *mntfd;
 
-  ASSERT(inf);
-  ASSERT(blockdev);
+        ASSERT(dev);
 
-  if ((mntfd = setmntent("/etc/mnttab", "r")) == NULL) {
-    LogError("Cannot open /etc/mnttab file\n");
-    return NULL;
-  }
-  while ((mnt = getmntent(mntfd)) != NULL) {
-    if (IS(blockdev, mnt->mnt_fsname)) {
-      endmntent(mntfd);
-      inf->priv.filesystem.mntpath = Str_dup(mnt->mnt_dir);
-      return inf->priv.filesystem.mntpath;
-    }
-  }
-  endmntent(mntfd);
-  return NULL;
+        if ((mntfd = setmntent("/etc/mnttab", "r")) == NULL) {
+                LogError("Cannot open /etc/mnttab file\n");
+                return NULL;
+        }
+        while ((mnt = getmntent(mntfd)) != NULL) {
+                if (IS(dev, mnt->mnt_fsname)) {
+                        endmntent(mntfd);
+                        snprintf(buf, buflen, "%s", mnt->mnt_dir);
+                        return buf;
+                }
+        }
+        endmntent(mntfd);
+        return NULL;
 }
 
 
-/**
- * HPUX filesystem usage statistics. In the case of success result is stored in
- * given information structure.
- *
- * @param inf Information structure where resulting data will be stored
- * @return        TRUE if informations were succesfully read otherwise FALSE
- */
-int filesystem_usage_sysdep(Info_T inf) {
-  struct statfs usage;
+boolean_t filesystem_usage_sysdep(char *mntpoint, Info_T inf) {
+        struct statfs usage;
 
-  ASSERT(inf);
+        ASSERT(inf);
 
-  if (statfs(inf->priv.filesystem.mntpath, &usage) != 0) {
-    LogError("Error getting usage statistics for filesystem '%s' -- %s\n", inf->priv.filesystem.mntpath, STRERROR);
-    return FALSE;
-  }
-  inf->priv.filesystem.f_bsize =           usage.f_bsize;
-  inf->priv.filesystem.f_blocks =          usage.f_blocks;
-  inf->priv.filesystem.f_blocksfree =      usage.f_bavail;
-  inf->priv.filesystem.f_blocksfreetotal = usage.f_bfree;
-  inf->priv.filesystem.f_files =           usage.f_files;
-  inf->priv.filesystem.f_filesfree =       usage.f_ffree;
-  return TRUE;
+        if (statfs(mntpoint, &usage) != 0) {
+                LogError("Error getting usage statistics for filesystem '%s' -- %s\n", mntpoint, STRERROR);
+                return false;
+        }
+        inf->priv.filesystem.f_bsize =           usage.f_bsize;
+        inf->priv.filesystem.f_blocks =          usage.f_blocks;
+        inf->priv.filesystem.f_blocksfree =      usage.f_bavail;
+        inf->priv.filesystem.f_blocksfreetotal = usage.f_bfree;
+        inf->priv.filesystem.f_files =           usage.f_files;
+        inf->priv.filesystem.f_filesfree =       usage.f_ffree;
+        return true;
 }
 

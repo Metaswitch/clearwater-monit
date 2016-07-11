@@ -51,16 +51,6 @@
 #include <stdlib.h>
 #endif
 
-#ifdef TIME_WITH_SYS_TIME
-#include <time.h>
-
-#ifdef HAVE_SYS_TIME_H
-#include <sys/time.h>
-#endif
-#else
-#include <time.h>
-#endif
-
 #ifdef HAVE_STRING_H
 #include <string.h>
 #endif
@@ -110,7 +100,11 @@
 #include <libperfstat.h>
 #endif
 
-#include "process.h"
+#ifdef HAVE_UTMPX_H
+#include <utmpx.h>
+#endif
+
+#include "ProcessTree.h"
 #include "process_sysdep.h"
 
 /**
@@ -119,8 +113,8 @@
  *  @file
  */
 
-/* There is no prototype for getprocs64 in AIX <= 5.3 */
 int getprocs64(void *, int, void *, int, pid_t *, int);
+int getargs(struct procentry64 *processBuffer, int bufferLen, char *argsBuffer, int argsLen);
 
 static int                page_size;
 static int                cpu_initialized = 0;
@@ -129,22 +123,27 @@ static unsigned long long cpu_user_old  = 0ULL;
 static unsigned long long cpu_syst_old  = 0ULL;
 static unsigned long long cpu_wait_old  = 0ULL;
 
-struct procentry64 *procs = NULL;
 
+boolean_t init_process_info_sysdep(void) {
+        perfstat_memory_total_t mem;
 
-int init_process_info_sysdep(void) {
-  perfstat_memory_total_t mem;
+        if (perfstat_memory_total(NULL, &mem, sizeof(perfstat_memory_total_t), 1) < 1) {
+                LogError("system statistic error -- perfstat_memory_total failed: %s\n", STRERROR);
+                return false;
+        }
 
-  if (perfstat_memory_total(NULL, &mem, sizeof(perfstat_memory_total_t), 1) < 1) {
-    LogError("system statistic error -- perfstat_memory_total failed: %s\n", STRERROR);
-    return FALSE;
-  }
+        page_size          = getpagesize();
+        systeminfo.mem_max = (uint64_t)mem.real_total * (uint64_t)page_size;
+        systeminfo.cpus    = sysconf(_SC_NPROCESSORS_ONLN);
 
-  page_size                = getpagesize();
-  systeminfo.mem_kbyte_max = (unsigned long)(mem.real_total * (page_size / 1024));
-  systeminfo.cpus          = sysconf(_SC_NPROCESSORS_ONLN);
+	setutxent();
+	struct utmpx _booted = {.ut_type = BOOT_TIME};
+	struct utmpx *booted = getutxid(&_booted);
+	if (booted)
+		systeminfo.booted = booted->ut_tv.tv_sec;
+	endutxent();
 
-  return TRUE;
+        return true;
 }
 
 
@@ -156,167 +155,174 @@ int init_process_info_sysdep(void) {
  * @return: 0 if successful, -1 if failed (and all load averages are 0).
  */
 int getloadavg_sysdep (double *loadv, int nelem) {
-  perfstat_cpu_total_t cpu;
+        perfstat_cpu_total_t cpu;
 
-  if (perfstat_cpu_total(NULL, &cpu, sizeof(perfstat_cpu_total_t), 1) < 1) {
-      LogError("system statistic error -- perfstat_cpu_total failed: %s\n", STRERROR);
-      return -1;
-  }
+        if (perfstat_cpu_total(NULL, &cpu, sizeof(perfstat_cpu_total_t), 1) < 1) {
+                LogError("system statistic error -- perfstat_cpu_total failed: %s\n", STRERROR);
+                return -1;
+        }
 
-  switch (nelem) {
-    case 3:
-      loadv[2] = (double)cpu.loadavg[2] / (double)(1<<SBITS);
+        switch (nelem) {
+                case 3:
+                        loadv[2] = (double)cpu.loadavg[2] / (double)(1 << SBITS);
 
-    case 2:
-      loadv[1] = (double)cpu.loadavg[1] / (double)(1<<SBITS);
+                case 2:
+                        loadv[1] = (double)cpu.loadavg[1] / (double)(1 << SBITS);
 
-    case 1:
-      loadv[0] = (double)cpu.loadavg[0] / (double)(1<<SBITS);
-  }
+                case 1:
+                        loadv[0] = (double)cpu.loadavg[0] / (double)(1 << SBITS);
+        }
 
-  return TRUE;
+        return 0;
 }
 
 
 /**
  * Read all processes to initialize the process tree
  * @param reference  reference of ProcessTree
- * @return treesize>0 if succeeded otherwise =0.
+ * @param pflags Process engine flags
+ * @return treesize > 0 if succeeded otherwise 0.
  */
-int initprocesstree_sysdep(ProcessTree_T ** reference) {
-  int             i;
-  int             treesize;
-  struct userinfo user;
-  ProcessTree_T  *pt;
-  pid_t           firstproc = 0;
+int initprocesstree_sysdep(ProcessTree_T **reference, ProcessEngine_Flags pflags) {
+        int treesize;
+        pid_t firstproc = 0;
+        if ((treesize = getprocs64(NULL, 0, NULL, 0, &firstproc, PID_MAX)) < 0) {
+                LogError("system statistic error -- getprocs64 failed: %s\n", STRERROR);
+                return 0;
+        }
 
-  memset(&user, 0, sizeof(struct userinfo));
+        struct procentry64 *procs = CALLOC(sizeof(struct procentry64), treesize);
 
-  if ((treesize = getprocs64(NULL, 0, NULL, 0, &firstproc, PID_MAX)) < 0) {
-    LogError("system statistic error -- getprocs64 failed: %s\n", STRERROR);
-    return FALSE;
-  }
+        firstproc = 0;
+        if ((treesize = getprocs64(procs, sizeof(struct procentry64), NULL, 0, &firstproc, treesize)) < 0) {
+                FREE(procs);
+                LogError("system statistic error -- getprocs64 failed: %s\n", STRERROR);
+                return 0;
+        }
 
-  procs = CALLOC(sizeof(struct procentry64), treesize);
+        ProcessTree_T *pt = CALLOC(sizeof(ProcessTree_T), treesize);
 
-  firstproc = 0;
-  if ((treesize = getprocs64(procs, sizeof(struct procentry64), NULL, 0, &firstproc, treesize)) < 0) {
-    FREE(procs);
-    LogError("system statistic error -- getprocs64 failed: %s\n", STRERROR);
-    return FALSE;
-  }
+        for (int i = 0; i < treesize; i++) {
+                pt[i].pid          = procs[i].pi_pid;
+                pt[i].ppid         = procs[i].pi_ppid;
+                pt[i].cred.euid    = procs[i].pi_uid;
+                pt[i].threads      = procs[i].pi_thcount;
+                pt[i].uptime       = systeminfo.time / 10. - procs[i].pi_start;
+                pt[i].memory.usage = (uint64_t)(procs[i].pi_drss + procs[i].pi_trss) * (uint64_t)page_size;
+                pt[i].cpu.time     = procs[i].pi_ru.ru_utime.tv_sec * 10 + (double)procs[i].pi_ru.ru_utime.tv_usec / 100000. + procs[i].pi_ru.ru_stime.tv_sec * 10 + (double)procs[i].pi_ru.ru_stime.tv_usec / 100000.;
+                pt[i].zombie       = procs[i].pi_state == SZOMB ? true: false;
 
-  pt = CALLOC(sizeof(ProcessTree_T), treesize);
+                char filename[STRLEN];
+                snprintf(filename, sizeof(filename), "/proc/%d/psinfo", pt[i].pid);
+                int fd = open(filename, O_RDONLY);
+                if (fd < 0) {
+                        DEBUG("Cannot open proc file %s -- %s\n", filename, STRERROR);
+                        continue;
+                }
+                struct psinfo ps;
+                if (read(fd, &ps, sizeof(ps)) < 0) {
+                        DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
+                        if (close(fd) < 0)
+                                LogError("Socket close failed -- %s\n", STRERROR);
+                        continue;
+                }
+                if (close(fd) < 0)
+                        LogError("Socket close failed -- %s\n", STRERROR);
+                pt[i].cred.uid = ps.pr_uid;
+                pt[i].cred.gid = ps.pr_gid;
+                if (pflags & ProcessEngine_CollectCommandLine) {
+                        if (ps.pr_argc == 0) {
+                                pt[i].cmdline = Str_dup(procs[i].pi_comm); // Kernel thread
+                        } else {
+                                char command[4096];
+                                if (! getargs(&procs[i], sizeof(struct procentry64), command, sizeof(command))) {
+                                        // The arguments are separated with '\0' with the last one terminated by '\0\0' -> merge arguments into one string
+                                        for (int i = 0; i < sizeof(command) - 1; i++) {
+                                                if (command[i] == '\0') {
+                                                        if (command[i + 1] == '\0')
+                                                                break;
+                                                        command[i] = ' ';
+                                                }
+                                        }
+                                        pt[i].cmdline = Str_dup(command);
+                                } else {
+                                        pt[i].cmdline = Str_dup(procs[i].pi_comm);
+                                }
+                        }
+                }
+        }
 
-  for (i = 0; i < treesize; i++) {
-    int fd;
-    struct psinfo ps;
-    char filename[STRLEN];
+        FREE(procs);
+        *reference = pt;
 
-    pt[i].cputime     = 0;
-    pt[i].cpu_percent = 0;
-    pt[i].mem_kbyte   = 0;
-    pt[i].pid         = procs[i].pi_pid;
-    pt[i].ppid        = procs[i].pi_ppid;
-    pt[i].starttime   = procs[i].pi_start;
-
-    if (procs[i].pi_state == SZOMB) {
-      pt[i].status_flag |= PROCESS_ZOMBIE;
-    } else if (getuser(&(procs[i]), sizeof(struct procinfo), &user, sizeof(struct userinfo)) != -1) {
-      pt[i].mem_kbyte = (user.ui_drss + user.ui_trss) * (page_size / 1024);
-      pt[i].cputime   = (user.ui_ru.ru_utime.tv_sec + user.ui_ru.ru_utime.tv_usec * 1.0e-6 + user.ui_ru.ru_stime.tv_sec + user.ui_ru.ru_stime.tv_usec * 1.0e-6) * 10;
-    }
-
-    snprintf(filename, sizeof(filename), "/proc/%d/psinfo", pt[i].pid);
-    if ((fd = open(filename, O_RDONLY)) < 0) {
-      DEBUG("Cannot open proc file %s -- %s\n", filename, STRERROR);
-      continue;
-    }
-    if (read(fd, &ps, sizeof(ps)) < 0) {
-      DEBUG("Cannot read proc file %s -- %s\n", filename, STRERROR);
-      if (close(fd) < 0)
-        LogError("Socket close failed -- %s\n", STRERROR);
-      return FALSE;
-    }
-    if (close(fd) < 0)
-      LogError("Socket close failed -- %s\n", STRERROR);
-    pt[i].uid     = ps.pr_uid;
-    pt[i].euid    = ps.pr_euid;
-    pt[i].gid     = ps.pr_gid;
-    pt[i].cmdline = (ps.pr_psargs && *ps.pr_psargs) ? Str_dup(ps.pr_psargs) : Str_dup(procs[i].pi_comm);
-  }
-
-  FREE(procs);
-  *reference = pt;
-
-  return treesize;
+        return treesize;
 }
 
 
 /**
  * This routine returns kbyte of real memory in use.
- * @return: TRUE if successful, FALSE if failed (or not available)
+ * @return: true if successful, false if failed (or not available)
  */
-int used_system_memory_sysdep(SystemInfo_T *si) {
-  perfstat_memory_total_t  mem;
+boolean_t used_system_memory_sysdep(SystemInfo_T *si) {
+        perfstat_memory_total_t  mem;
 
-  /* Memory */
-  if (perfstat_memory_total(NULL, &mem, sizeof(perfstat_memory_total_t), 1) < 1) {
-    LogError("system statistic error -- perfstat_memory_total failed: %s\n", STRERROR);
-    return FALSE;
-  }
-  si->total_mem_kbyte = (unsigned long)((mem.real_total - mem.real_free - mem.numperm) * (page_size / 1024));
+        /* Memory */
+        if (perfstat_memory_total(NULL, &mem, sizeof(perfstat_memory_total_t), 1) < 1) {
+                LogError("system statistic error -- perfstat_memory_total failed: %s\n", STRERROR);
+                return false;
+        }
+        si->total_mem = (uint64_t)(mem.real_total - mem.real_free - mem.numperm) * (uint64_t)page_size;
 
-  /* Swap */
-  si->swap_kbyte_max   = (unsigned long)(mem.pgsp_total * 4);                   /* 4kB blocks */
-  si->total_swap_kbyte = (unsigned long)((mem.pgsp_total - mem.pgsp_free) * 4); /* 4kB blocks */
+        /* Swap */
+        si->swap_max   = (uint64_t)mem.pgsp_total * 4096;                   /* 4kB blocks */
+        si->total_swap = (uint64_t)(mem.pgsp_total - mem.pgsp_free) * 4096; /* 4kB blocks */
 
-  return TRUE;
+        return true;
 }
 
 
 /**
  * This routine returns system/user CPU time in use.
- * @return: TRUE if successful, FALSE if failed (or not available)
+ * @return: true if successful, false if failed (or not available)
  */
-int used_system_cpu_sysdep(SystemInfo_T *si) {
-  perfstat_cpu_total_t cpu;
-  unsigned long long cpu_total;
-  unsigned long long cpu_total_new = 0ULL;
-  unsigned long long cpu_user      = 0ULL;
-  unsigned long long cpu_syst      = 0ULL;
-  unsigned long long cpu_wait      = 0ULL;
+boolean_t used_system_cpu_sysdep(SystemInfo_T *si) {
+        perfstat_cpu_total_t cpu;
+        unsigned long long cpu_total;
+        unsigned long long cpu_total_new = 0ULL;
+        unsigned long long cpu_user      = 0ULL;
+        unsigned long long cpu_syst      = 0ULL;
+        unsigned long long cpu_wait      = 0ULL;
 
-  if (perfstat_cpu_total(NULL, &cpu, sizeof(perfstat_cpu_total_t), 1) < 0) {
-      LogError("system statistic error -- perfstat_cpu_total failed: %s\n", STRERROR);
-      return -1;
-  }
+        if (perfstat_cpu_total(NULL, &cpu, sizeof(perfstat_cpu_total_t), 1) < 0) {
+                LogError("system statistic error -- perfstat_cpu_total failed: %s\n", STRERROR);
+                return -1;
+        }
 
-  cpu_total_new = (cpu.user + cpu.sys + cpu.wait + cpu.idle) / cpu.ncpus;
-  cpu_total     = cpu_total_new - cpu_total_old;
-  cpu_total_old = cpu_total_new;
-  cpu_user      = cpu.user / cpu.ncpus;
-  cpu_syst      = cpu.sys / cpu.ncpus;
-  cpu_wait      = cpu.wait / cpu.ncpus;
+        cpu_total_new = (cpu.user + cpu.sys + cpu.wait + cpu.idle) / cpu.ncpus;
+        cpu_total     = cpu_total_new - cpu_total_old;
+        cpu_total_old = cpu_total_new;
+        cpu_user      = cpu.user / cpu.ncpus;
+        cpu_syst      = cpu.sys / cpu.ncpus;
+        cpu_wait      = cpu.wait / cpu.ncpus;
 
-  if (cpu_initialized) {
-    if (cpu_total > 0) {
-      si->total_cpu_user_percent = 1000 * ((double)(cpu_user - cpu_user_old) / (double)cpu_total);
-      si->total_cpu_syst_percent = 1000 * ((double)(cpu_syst - cpu_syst_old) / (double)cpu_total);
-      si->total_cpu_wait_percent = 1000 * ((double)(cpu_wait - cpu_wait_old) / (double)cpu_total);
-    } else {
-      si->total_cpu_user_percent = 0;
-      si->total_cpu_syst_percent = 0;
-      si->total_cpu_wait_percent = 0;
-    }
-  }
+        if (cpu_initialized) {
+                if (cpu_total > 0) {
+                        si->total_cpu_user_percent = 100. * ((double)(cpu_user - cpu_user_old) / (double)cpu_total);
+                        si->total_cpu_syst_percent = 100. * ((double)(cpu_syst - cpu_syst_old) / (double)cpu_total);
+                        si->total_cpu_wait_percent = 100. * ((double)(cpu_wait - cpu_wait_old) / (double)cpu_total);
+                } else {
+                        si->total_cpu_user_percent = 0.;
+                        si->total_cpu_syst_percent = 0.;
+                        si->total_cpu_wait_percent = 0.;
+                }
+        }
 
-  cpu_user_old = cpu_user;
-  cpu_syst_old = cpu_syst;
-  cpu_wait_old = cpu_wait;
+        cpu_user_old = cpu_user;
+        cpu_syst_old = cpu_syst;
+        cpu_wait_old = cpu_wait;
 
-  cpu_initialized = 1;
+        cpu_initialized = 1;
 
-  return TRUE;
+        return true;
 }
 

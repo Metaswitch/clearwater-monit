@@ -28,57 +28,39 @@
 #include <string.h>
 #endif
 
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
 #ifdef HAVE_ARPA_INET_H
 #include <arpa/inet.h>
 #endif
 
 #include "protocol.h"
 
+// libmonit
+#include "system/Time.h"
+#include "exceptions/IOException.h"
+
+
 /**
- *  Check the server response, check the time it returns and accept a
- *  TIME_TOLERANCE sec delta with the current system time.
+ *  Check the server time with three seconds difference tolerance
  *
- *  This test is based on RFC868. Rdate returns number of seconds since
- *  00:00:00 UTC, January 1, 1900.
+ *  This test is based on RFC868
  *
  *  @file
  */
-int check_rdate(Socket_T socket) {
-
-/* Offset of 00:00:00 UTC, January 1, 1970 from 00:00:00 UTC, January 1, 1900 */
-#define  TIME_OFFSET    2208988800UL
-#define  TIME_TOLERANCE (time_t)3
-
-  time_t delta;
-  time_t rdatet;
-  time_t systemt;
-
-  ASSERT(socket);
-
-  if(socket_read(socket,(char*) &rdatet, sizeof(time_t)) <= 0) {
-    socket_setError(socket, "RDATE: error receiving data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  /* Get remote time and substract offset to allow unix time comparision */
-  rdatet = ntohl(rdatet) - TIME_OFFSET;
-
-  if((systemt = time(NULL)) == -1) {
-    socket_setError(socket, "RDATE error: cannot get system time -- %s", STRERROR);
-    return FALSE;
-  }
-
-  if(rdatet >= systemt)
-    delta = (rdatet-systemt);
-  else
-    delta = (systemt-rdatet);
-
-  if(delta > TIME_TOLERANCE) {
-    socket_setError(socket, "RDATE error: time does not match system time -- %s", STRERROR);
-    return FALSE;
-  }
-
-  return TRUE;
-
+void check_rdate(Socket_T socket) {
+        ASSERT(socket);
+        time_t time;
+        if (Socket_read(socket, (char *)&time, sizeof(time)) <= 0)
+                THROW(IOException, "RDATE: error receiving data -- %s", STRERROR);
+        // Compare system time with the RDATE server time (RDATE starts at 00:00:00 UTC, January 1, 1900 => add offset to 00:00:00 UTC, January 1, 1970)
+        if (llabs((long long)Time_now() + 2208988800LL - (long long)ntohl(time)) > 3LL)
+                THROW(IOException, "RDATE error: time does not match system time");
 }
 

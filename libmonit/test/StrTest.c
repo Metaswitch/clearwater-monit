@@ -184,8 +184,7 @@ int main(void) {
         printf("=> Test12: startsWith\n");
         {
                 char *a = "mysql://localhost:3306/zild?user=root&password=swordfish";
-                printf("\tResult: starts with mysql - %s\n", 
-                       Str_startsWith(a, "mysql")?"yes":"no");
+                printf("\tResult: starts with mysql - %s\n", Str_startsWith(a, "mysql") ? "yes" : "no");
                 assert(Str_startsWith(a, "mysql"));
                 assert(!Str_startsWith(a, "sqlite"));
                 assert(Str_startsWith("sqlite", "sqlite"));
@@ -203,7 +202,7 @@ int main(void) {
         printf("=> Test13: endsWith\n");
         {
                 char *a = "mysql://localhost:3306";
-                printf("\tResult: ends with 3306 - %s\n", Str_endsWith(a, "3306")?"yes":"no");
+                printf("\tResult: ends with 3306 - %s\n", Str_endsWith(a, "3306") ? "yes" : "no");
                 assert(Str_endsWith(a, "3306"));
                 assert(!Str_endsWith(a, "sqlite"));
                 assert(Str_endsWith("sqlite", "sqlite"));
@@ -221,7 +220,7 @@ int main(void) {
         printf("=> Test14: isEqual\n");
         {
                 char *a = "mysql://localhost:3306";
-                printf("\tResult: is equal - %s\n", Str_isEqual(a, "mysql://localhost:3306")?"yes":"no");
+                printf("\tResult: is equal - %s\n", Str_isEqual(a, "mysql://localhost:3306") ? "yes" : "no");
                 assert(Str_isEqual("sqlite", "sqlite"));
                 printf("\tTesting for NULL and NUL argument\n");
                 assert(!Str_isEqual(a, NULL));
@@ -239,10 +238,12 @@ int main(void) {
                 assert(Str_trunc(NULL, 100) == NULL);
                 assert(Str_isEqual(Str_trunc("", 0), ""));
                 assert(Str_isEqual(Str_trunc(s, (int)strlen(s)), "This string will be trailed someplace"));
-                printf("\tResult: %s\n", Str_trunc(s, 27));
+                printf("\tResult: %s\n", Str_trunc(s, 30));
                 assert(Str_isEqual(s, "This string will be trailed..."));
-                printf("\tResult: %s\n", Str_trunc(s, 0));
+                printf("\tResult: %s\n", Str_trunc(s, 3));
                 assert(Str_isEqual(s, "..."));
+                printf("\tResult: %s\n", Str_trunc(s, 0));
+                assert(Str_isEqual(s, ""));
         }
         printf("=> Test15: OK\n\n");
 
@@ -388,19 +389,76 @@ int main(void) {
         }
         printf("=> Test22: OK\n\n");
 
-        printf("=> Test23: Str_ton\n");
+        printf("=> Test23: Str_bytesToSize\n");
         {
-                char str[43];
-                long l1 = 42, l2 = 0, l3 = -42, l4 = LONG_MAX, l5 = LONG_MIN;
-                assert(Str_isByteEqual("42", Str_ton(42, (char[43]){0})));
-                assert(Str_isByteEqual("42", Str_ton(l1, str)));
-                assert(Str_isByteEqual("0", Str_ton(l2, str)));
-                assert(Str_isByteEqual("-42", Str_ton(l3, str)));
-                assert(l4 == Str_parseLLong(Str_ton(l4, str)));
-                assert(l5 == Str_parseLLong(Str_ton(l5, str)));
+                char str[10];
+                Str_bytesToSize(0, str);
+                assert(Str_isEqual(str, "0 B"));
+                Str_bytesToSize(2048, str);
+                assert(Str_isEqual(str, "2 KB"));
+                Str_bytesToSize(2097152, str);
+                assert(Str_isEqual(str, "2 MB"));
+                Str_bytesToSize(2621440, str);
+                assert(Str_isEqual(str, "2.5 MB"));
+                Str_bytesToSize(9083741824, str);
+                assert(Str_isEqual(str, "8.5 GB"));
+                Str_bytesToSize(9083741824987653, str);
+                assert(Str_isEqual(str, "8.1 PB"));
+                Str_bytesToSize(LLONG_MAX, str);
+                assert(Str_isEqual(str, "8 EB"));
         }
         printf("=> Test23: OK\n\n");
 
+        printf("=> Test24: Str_unescape\n");
+        {
+                char s[] = "foo\\'ba\\`r\\}baz";
+                char t[] = "\\&gt\\;";
+                assert(Str_isEqual("foo'ba`r\\}baz", Str_unescape("`'", s)));
+                assert(Str_isEqual(s, Str_unescape("@*", s)));
+                assert(Str_isEqual(Str_unescape("&;", t), "&gt;"));
+                assert(Str_unescape("@*!#$%&/(=", NULL) == NULL);
+        }
+        printf("=> Test24: OK\n\n");
+
+        printf("=> Test25: Str_compareConstantTime\n");
+        {
+                assert(Str_compareConstantTime(NULL,     NULL)        == 0);
+                assert(Str_compareConstantTime("abcdef", NULL)        != 0);
+                assert(Str_compareConstantTime(NULL,     "abcdef")    != 0);
+                assert(Str_compareConstantTime("abcdef", "abcdef")    == 0);
+                assert(Str_compareConstantTime("abcdef", "ABCDEF")    != 0);
+                assert(Str_compareConstantTime("abcdef", "abc")       != 0);
+                assert(Str_compareConstantTime("abcdef", "abcdefghi") != 0);
+                // Test maximum length
+                unsigned char ok[] = "1111111111111111111111111111111111111111111111111111111111111111"; // 64 characters currently
+                assert(Str_compareConstantTime(ok, ok) == 0);
+                // Test maximum length + 1
+                unsigned char ko[] = "11111111111111111111111111111111111111111111111111111111111111111"; // 65 characters should fail
+                assert(Str_compareConstantTime(ko, ko) != 0);
+        }
+        printf("=> Test25: OK\n\n");
+
+        printf("=> Test25: Str_milliToTime\n");
+        {
+                char str[13];
+                Str_milliToTime(0, str);
+                assert(Str_isEqual(str, "0 ms"));
+                Str_milliToTime(0.5, str);
+                assert(Str_isEqual(str, "0.500 ms"));
+                Str_milliToTime(1, str);
+                assert(Str_isEqual(str, "1 ms"));
+                Str_milliToTime(2000, str);
+                assert(Str_isEqual(str, "2 s"));
+                Str_milliToTime(2123, str);
+                assert(Str_isEqual(str, "2.123 s"));
+                Str_milliToTime(60000, str);
+                assert(Str_isEqual(str, "1 m"));
+                Str_milliToTime(90000, str);
+                assert(Str_isEqual(str, "1.500 m"));
+                Str_milliToTime(3600000, str);
+                assert(Str_isEqual(str, "60 m"));
+        }
+        printf("=> Test25: OK\n\n");
 
         printf("============> Str Tests: OK\n\n");
         return 0;

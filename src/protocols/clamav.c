@@ -30,37 +30,27 @@
 
 #include "protocol.h"
 
+// libmonit
+#include "exceptions/IOException.h"
+
 /**
  *  Send PING and check for PONG.
- *  If alive return TRUE, else, return FALSE.
  *
  *  @file
  */
-int check_clamav(Socket_T socket) {
+void check_clamav(Socket_T socket) {
+        ASSERT(socket);
 
-  char buf[STRLEN];
-  const char *ok = "PONG";
+        // Send PING
+        if (Socket_print(socket, "PING\r\n") < 0)
+                THROW(IOException, "CLAMAV: PING command error -- %s", STRERROR);
 
-  ASSERT(socket);
-
-  if(socket_print(socket, "PING\r\n") < 0) {
-    socket_setError(socket, "CLAMAV: error sending data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  if(!socket_readln(socket, buf, sizeof(buf))) {
-    socket_setError(socket, "CLAMAV: error receiving data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  Str_chomp(buf);
-
-  if(strncasecmp(buf, ok, strlen(ok)) != 0) {
-    socket_setError(socket, "CLAMAV error: %s", buf);
-    return FALSE;
-  }
-
-  return TRUE;
-
+        // Read and check PONG
+        char buf[STRLEN];
+        if (! Socket_readLine(socket, buf, sizeof(buf)))
+                THROW(IOException, "CLAMAV: PONG read error -- %s", STRERROR);
+        Str_chomp(buf);
+        if (strncasecmp(buf, "PONG", 4) != 0)
+                THROW(IOException, "CLAMAV: invalid PONG response -- %s", buf);
 }
 

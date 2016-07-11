@@ -78,7 +78,7 @@ const char *PATH_SEPARATOR = ":";
 
 int File_open(const char *file, const char *mode) {
         if (file && mode) {
-                switch(mode[0]) {
+                switch (mode[0]) {
                         case 'r':
                                 switch (mode[1]) {
                                         case '+': return open(file, O_RDWR|O_NONBLOCK);
@@ -155,7 +155,7 @@ int File_isFile(const char *file) {
 
 
 int File_isSocket(const char *file) {
-        if(file) {
+        if (file) {
                 struct stat buf;
                 return (stat(file, &buf) == 0 && S_ISSOCK(buf.st_mode));
         }

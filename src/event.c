@@ -60,8 +60,12 @@
 #include "monit.h"
 #include "alert.h"
 #include "event.h"
-#include "process.h"
+#include "ProcessTree.h"
+#include "MMonit.h"
 
+// libmonit
+#include "io/File.h"
+#include "system/Time.h"
 
 /**
  * Implementation of the event interface.
@@ -73,41 +77,295 @@
 /* ------------------------------------------------------------- Definitions */
 
 EventTable_T Event_Table[] = {
-  {Event_Action,     "Action done",             "Action done",                "Action done",              "Action done"},
-  {Event_Checksum,   "Checksum failed",         "Checksum succeeded",         "Checksum changed",         "Checksum not changed"},
-  {Event_Connection, "Connection failed",       "Connection succeeded",       "Connection changed",       "Connection not changed"},
-  {Event_Content,    "Content failed",          "Content succeeded",          "Content match",            "Content doesn't match"},
-  {Event_Data,       "Data access error",       "Data access succeeded",      "Data access changed",      "Data access not changed"},
-  {Event_Exec,       "Execution failed",        "Execution succeeded",        "Execution changed",        "Execution not changed"},
-  {Event_Fsflag,     "Filesystem flags failed", "Filesystem flags succeeded", "Filesystem flags changed", "Filesystem flags not changed"},
-  {Event_Gid,        "GID failed",              "GID succeeded",              "GID changed",              "GID not changed"},
-  {Event_Heartbeat,  "Heartbeat failed",        "Heartbeat succeeded",        "Heartbeat changed",        "Heartbeat not changed"},
-  {Event_Icmp,       "ICMP failed",             "ICMP succeeded",             "ICMP changed",             "ICMP not changed"},
-  {Event_Instance,   "Monit instance failed",   "Monit instance succeeded",   "Monit instance changed",   "Monit instance not changed"},
-  {Event_Invalid,    "Invalid type",            "Type succeeded",             "Type changed",             "Type not changed"},
-  {Event_Nonexist,   "Does not exist",          "Exists",                     "Existence changed",        "Existence not changed"},
-  {Event_Permission, "Permission failed",       "Permission succeeded",       "Permission changed",       "Permission not changed"},
-  {Event_Pid,        "PID failed",              "PID succeeded",              "PID changed",              "PID not changed"},
-  {Event_PPid,       "PPID failed",             "PPID succeeded",             "PPID changed",             "PPID not changed"},
-  {Event_Resource,   "Resource limit matched",  "Resource limit succeeded",   "Resource limit changed",   "Resource limit not changed"},
-  {Event_Size,       "Size failed",             "Size succeeded",             "Size changed",             "Size not changed"},
-  {Event_Status,     "Status failed",           "Status succeeded",           "Status changed",           "Status not changed"},
-  {Event_Timeout,    "Timeout",                 "Timeout recovery",           "Timeout changed",          "Timeout not changed"},
-  {Event_Timestamp,  "Timestamp failed",        "Timestamp succeeded",        "Timestamp changed",        "Timestamp not changed"},
-  {Event_Uid,        "UID failed",              "UID succeeded",              "UID changed",              "UID not changed"},
-  {Event_Uptime,     "Uptime failed",           "Uptime succeeded",           "Uptime changed",           "Uptime not changed"},
-  /* Virtual events */
-  {Event_Null,       "No Event",                "No Event",                   "No Event",                 "No Event"}
+        {Event_Action,     "Action done",               "Action done",                "Action done",              "Action done"},
+        {Event_ByteIn,     "Download bytes exceeded",   "Download bytes ok",          "Download bytes changed",   "Download bytes not changed"},
+        {Event_ByteOut,    "Upload bytes exceeded",     "Upload bytes ok",            "Upload bytes changed",     "Upload bytes not changed"},
+        {Event_Checksum,   "Checksum failed",           "Checksum succeeded",         "Checksum changed",         "Checksum not changed"},
+        {Event_Connection, "Connection failed",         "Connection succeeded",       "Connection changed",       "Connection not changed"},
+        {Event_Content,    "Content failed",            "Content succeeded",          "Content match",            "Content doesn't match"},
+        {Event_Data,       "Data access error",         "Data access succeeded",      "Data access changed",      "Data access not changed"},
+        {Event_Exec,       "Execution failed",          "Execution succeeded",        "Execution changed",        "Execution not changed"},
+        {Event_Fsflag,     "Filesystem flags failed",   "Filesystem flags succeeded", "Filesystem flags changed", "Filesystem flags not changed"},
+        {Event_Gid,        "GID failed",                "GID succeeded",              "GID changed",              "GID not changed"},
+        {Event_Heartbeat,  "Heartbeat failed",          "Heartbeat succeeded",        "Heartbeat changed",        "Heartbeat not changed"},
+        {Event_Icmp,       "ICMP failed",               "ICMP succeeded",             "ICMP changed",             "ICMP not changed"},
+        {Event_Instance,   "Monit instance failed",     "Monit instance succeeded",   "Monit instance changed",   "Monit instance not changed"},
+        {Event_Invalid,    "Invalid type",              "Type succeeded",             "Type changed",             "Type not changed"},
+        {Event_Link,       "Link down",                 "Link up",                    "Link changed",             "Link not changed"},
+        {Event_Nonexist,   "Does not exist",            "Exists",                     "Existence changed",        "Existence not changed"},
+        {Event_PacketIn,   "Download packets exceeded", "Download packets ok",        "Download packets changed", "Download packets not changed"},
+        {Event_PacketOut,  "Upload packets exceeded",   "Upload packets ok",          "Upload packets changed",   "Upload packets not changed"},
+        {Event_Permission, "Permission failed",         "Permission succeeded",       "Permission changed",       "Permission not changed"},
+        {Event_Pid,        "PID failed",                "PID succeeded",              "PID changed",              "PID not changed"},
+        {Event_PPid,       "PPID failed",               "PPID succeeded",             "PPID changed",             "PPID not changed"},
+        {Event_Resource,   "Resource limit matched",    "Resource limit succeeded",   "Resource limit changed",   "Resource limit not changed"},
+        {Event_Saturation, "Saturation exceeded",       "Saturation ok",              "Saturation changed",       "Saturation not changed"},
+        {Event_Size,       "Size failed",               "Size succeeded",             "Size changed",             "Size not changed"},
+        {Event_Speed,      "Speed failed",              "Speed ok",                   "Speed changed",            "Speed not changed"},
+        {Event_Status,     "Status failed",             "Status succeeded",           "Status changed",           "Status not changed"},
+        {Event_Timeout,    "Timeout",                   "Timeout recovery",           "Timeout changed",          "Timeout not changed"},
+        {Event_Timestamp,  "Timestamp failed",          "Timestamp succeeded",        "Timestamp changed",        "Timestamp not changed"},
+        {Event_Uid,        "UID failed",                "UID succeeded",              "UID changed",              "UID not changed"},
+        {Event_Uptime,     "Uptime failed",             "Uptime succeeded",           "Uptime changed",           "Uptime not changed"},
+        /* Virtual events */
+        {Event_Null,       "No Event",                  "No Event",                   "No Event",                 "No Event"}
 };
 
 
-/* -------------------------------------------------------------- Prototypes */
+/* ----------------------------------------------------------------- Private */
 
 
-static void handle_event(Event_T);
-static void handle_action(Event_T, Action_T);
-static void Event_queue_add(Event_T);
-static void Event_queue_update(Event_T, const char *);
+/**
+ * Return the actual event state based on event state bitmap and event ratio needed to trigger the state change
+ * @param E An event object
+ * @param S Actual posted state
+ * @return The event state
+ */
+static boolean_t _checkState(Event_T E, State_Type S) {
+        ASSERT(E);
+        int count = 0;
+        State_Type state = (S == State_Succeeded || S == State_ChangedNot) ? State_Succeeded : State_Failed; /* translate to 0/1 class */
+
+        /* Only failed/changed state condition can change the initial state */
+        if (! state && E->state == State_Init && ! (E->source->error & E->id))
+                return false;
+
+        Action_T action = ! state ? E->action->succeeded : E->action->failed;
+
+        /* Compare as many bits as cycles able to trigger the action */
+        for (int i = 0; i < action->cycles; i++) {
+                /* Check the state of the particular cycle given by the bit position */
+                long long flag = (E->state_map >> i) & 0x1;
+
+                /* Count occurrences of the posted state */
+                if (flag == state)
+                        count++;
+        }
+
+        /* the internal instance and action events are handled as changed any time since we need to deliver alert whenever it occurs */
+        if (E->id == Event_Instance || E->id == Event_Action || (count >= action->count && (S != E->state || S == State_Changed))) {
+                memset(&(E->state_map), state, sizeof(E->state_map)); // Restart state map on state change, so we'll not flicker on multiple-failures condition (next state change requires full number of cycles to pass)
+                return true;
+        }
+
+        return false;
+}
+
+
+/**
+ * Add the partialy handled event to the global queue
+ * @param E An event object
+ */
+static void _queueAdd(Event_T E) {
+        ASSERT(E);
+        ASSERT(E->flag != Handler_Succeeded);
+
+        if (! file_checkQueueDirectory(Run.eventlist_dir)) {
+                LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
+                return;
+        }
+
+        if (! file_checkQueueLimit(Run.eventlist_dir, Run.eventlist_slots)) {
+                LogError("Aborting event - queue over quota\n");
+                return;
+        }
+
+        /* compose the file name of actual timestamp and service name */
+        char file_name[PATH_MAX];
+        snprintf(file_name, PATH_MAX, "%s/%lld_%lx", Run.eventlist_dir, (long long)Time_now(), (long unsigned)E->source->name);
+
+        LogInfo("Adding event to the queue file %s for later delivery\n", file_name);
+
+        FILE *file = fopen(file_name, "w");
+        if (! file) {
+                LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
+                return;
+        }
+
+        boolean_t rv;
+
+        /* write event structure version */
+        int version = EVENT_VERSION;
+        if (! (rv = file_writeQueue(file, &version, sizeof(int))))
+                goto error;
+
+        /* write event structure */
+        if (! (rv = file_writeQueue(file, E, sizeof(*E))))
+                goto error;
+
+        /* write source */
+        if (! (rv = file_writeQueue(file, E->source->name, strlen(E->source->name) + 1)))
+                goto error;
+
+        /* write message */
+        if (! (rv = file_writeQueue(file, E->message, E->message ? strlen(E->message) + 1 : 0)))
+                goto error;
+
+        /* write event action */
+        Action_Type action = Event_get_action(E);
+        if (! (rv = file_writeQueue(file, &action, sizeof(Action_Type))))
+                goto error;
+
+error:
+        fclose(file);
+        if (! rv) {
+                LogError("Aborting event - unable to save event information to %s\n",  file_name);
+                if (unlink(file_name) < 0)
+                        LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
+        } else {
+                if (! (Run.flags & Run_HandlerInit) && E->flag & Handler_Alert)
+                        Run.handler_queue[Handler_Alert]++;
+                if (! (Run.flags & Run_HandlerInit) && E->flag & Handler_Mmonit)
+                        Run.handler_queue[Handler_Mmonit]++;
+        }
+}
+
+
+/**
+ * Update the partialy handled event in the global queue
+ * @param E An event object
+ * @param file_name File name
+ */
+static void _queueUpdate(Event_T E, const char *file_name) {
+        int version = EVENT_VERSION;
+        Action_Type action = Event_get_action(E);
+        boolean_t rv;
+
+        ASSERT(E);
+        ASSERT(E->flag != Handler_Succeeded);
+
+        if (! file_checkQueueDirectory(Run.eventlist_dir)) {
+                LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
+                return;
+        }
+
+        DEBUG("Updating event in the queue file %s for later delivery\n", file_name);
+
+        FILE *file = fopen(file_name, "w");
+        if (! file) {
+                LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
+                return;
+        }
+
+        /* write event structure version */
+        if (! (rv = file_writeQueue(file, &version, sizeof(int))))
+                goto error;
+
+        /* write event structure */
+        if (! (rv = file_writeQueue(file, E, sizeof(*E))))
+                goto error;
+
+        /* write source */
+        if (! (rv = file_writeQueue(file, E->source->name, strlen(E->source->name) + 1)))
+                goto error;
+
+        /* write message */
+        if (! (rv = file_writeQueue(file, E->message, E->message ? strlen(E->message) + 1 : 0)))
+                goto error;
+
+        /* write event action */
+        if (! (rv = file_writeQueue(file, &action, sizeof(Action_Type))))
+                goto error;
+
+error:
+        fclose(file);
+        if (! rv) {
+                LogError("Aborting event - unable to update event information to %s\n", file_name);
+                if (unlink(file_name) < 0)
+                        LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
+        }
+}
+
+
+static void _handleAction(Event_T E, Action_T A) {
+        ASSERT(E);
+        ASSERT(A);
+
+        E->flag = Handler_Succeeded;
+
+        if (A->id != Action_Ignored) {
+                /* Alert and mmonit event notification are common actions */
+                E->flag |= MMonit_send(E);
+                E->flag |= handle_alert(E);
+                /* In the case that some subhandler failed, enqueue the event for partial reprocessing */
+                if (E->flag != Handler_Succeeded) {
+                        if (Run.eventlist_dir)
+                                _queueAdd(E);
+                        else
+                                LogError("Aborting event\n");
+                }
+                /* Action event is handled already. For Instance events we don't want actions like stop to be executed to prevent the disabling of system service monitoring */
+                if (A->id == Action_Alert || E->id == Event_Instance) {
+                        return;
+                } else if (A->id == Action_Exec) {
+                        if (E->state_changed || (E->state && A->repeat && E->count % A->repeat == 0)) {
+                                LogInfo("'%s' exec: %s\n", E->source->name, A->exec->arg[0]);
+                                spawn(E->source, A->exec, E);
+                                return;
+                        }
+                } else {
+                        if (E->source->actionratelist && (A->id == Action_Start || A->id == Action_Restart))
+                                E->source->nstart++;
+                        if (E->source->mode == Monitor_Passive && (A->id == Action_Start || A->id == Action_Stop  || A->id == Action_Restart))
+                                return;
+                        if ((A->id == Action_Start) || (A->id == Action_Stop) || (A->id == Action_Restart)) {
+                                // About to restart this service, so reset all its values.
+                                E->state = State_Init;
+                                memset(&(E->state_map), State_Init, sizeof(E->state_map));
+                        }
+                        control_service(E->source->name, A->id);
+                }
+        }
+}
+
+
+static void _handleEvent(Service_T S, Event_T E) {
+        ASSERT(E);
+        ASSERT(E->action);
+        ASSERT(E->action->failed);
+        ASSERT(E->action->succeeded);
+
+        /* We will handle only first succeeded event, recurrent succeeded events
+         * or insufficient succeeded events during failed service state are
+         * ignored. Failed events are handled each time. */
+        if (! E->state_changed && (E->state == State_Succeeded || E->state == State_ChangedNot || ((E->state_map & 0x1) ^ 0x1))) {
+                DEBUG("'%s' %s\n", S->name, E->message);
+                return;
+        }
+
+        if (E->message) {
+                /* In the case that the service state is initializing yet and error
+                 * occured, log it and exit. Succeeded events in init state are not
+                 * logged. Instance and action events are logged always with priority
+                 * info. */
+                if (E->state != State_Init || E->state_map & 0x1) {
+                        if (E->state == State_Succeeded || E->state == State_ChangedNot || E->id == Event_Instance || E->id == Event_Action)
+                                LogInfo("'%s' %s\n", S->name, E->message);
+                        else
+                                LogError("'%s' %s\n", S->name, E->message);
+                }
+                if (E->state == State_Init)
+                        return;
+        }
+
+        if (E->state == State_Failed || E->state == State_Changed) {
+                if (E->id != Event_Instance && E->id != Event_Action) { // We are not interested in setting error flag for instance and action events
+                        S->error |= E->id;
+                        /* The error hint provides second dimension for error bitmap and differentiates between failed/changed event states (failed=0, chaged=1) */
+                        if (E->state == State_Changed)
+                                S->error_hint |= E->id;
+                        else
+                                S->error_hint &= ~E->id;
+                }
+                _handleAction(E, E->action->failed);
+        } else {
+                S->error &= ~E->id;
+                _handleAction(E, E->action->succeeded);
+        }
+
+        /* Possible event state change was handled so we will reset the flag. */
+        E->state_changed = false;
+}
 
 
 /* ------------------------------------------------------------------ Public */
@@ -121,237 +379,64 @@ static void Event_queue_update(Event_T, const char *);
  * @param action Description of the event action
  * @param s Optional message describing the event
  */
-void Event_post(Service_T service, long id, short state, EventAction_T action, char *s, ...) {
-  Event_T e;
+void Event_post(Service_T service, long id, State_Type state, EventAction_T action, char *s, ...) {
+        ASSERT(service);
+        ASSERT(action);
+        ASSERT(s);
+        ASSERT(state == State_Failed || state == State_Succeeded || state == State_Changed || state == State_ChangedNot);
 
-  ASSERT(service);
-  ASSERT(action);
-  ASSERT(state == STATE_FAILED || state == STATE_SUCCEEDED || state == STATE_CHANGED || state == STATE_CHANGEDNOT);
-
-  if ((e = service->eventlist) == NULL) {
-    /* Only first failed/changed event can initialize the queue for given event type,
-     * thus succeeded events are ignored until first error. */
-    if (state == STATE_SUCCEEDED || state == STATE_CHANGEDNOT)
-      return;
-
-    /* Initialize event list and add first event. The manadatory informations
-     * are cloned so the event is as standalone as possible and may be saved
-     * to the queue without the dependency on the original service, thus
-     * persistent and managable across monit restarts */
-    NEW(e);
-    e->id = id;
-    gettimeofday(&e->collected, NULL);
-    e->source = Str_dup(service->name);
-    e->mode = service->mode;
-    e->type = service->type;
-    e->state = STATE_INIT;
-    e->state_map = 1;
-    e->action = action;
-    if (s) {
-      va_list ap;
-      va_start(ap, s);
-      e->message = Str_vcat(s, ap);
-      va_end(ap);
-    }
-    service->eventlist = e;
-  } else {
-    /* Try to find the event with the same origin and type identification.
-     * Each service and each test have its own custom actions object, so
-     * we share actions object address to identify event source. */
-    do {
-      if (e->action == action && e->id == id) {
-        gettimeofday(&e->collected, NULL);
-
-        /* Shift the existing event flags to the left
-         * and set the first bit based on actual state */
-        e->state_map <<= 1;
-        e->state_map |= ((state == STATE_SUCCEEDED || state == STATE_CHANGEDNOT) ? 0 : 1);
-
-        /* Update the message */
-        if (s) {
-          va_list ap;
-          FREE(e->message);
-          va_start(ap, s);
-          e->message = Str_vcat(s, ap);
-          va_end(ap);
-        }
-        break;
-      }
-      e = e->next;
-    } while (e);
-
-    if (!e) {
-      /* Only first failed/changed event can initialize the queue for given event type,
-       * thus succeeded events are ignored until first error. */
-      if (state == STATE_SUCCEEDED || state == STATE_CHANGEDNOT)
-        return;
-
-      /* Event was not found in the pending events list, we will add it.
-       * The manadatory informations are cloned so the event is as standalone
-       * as possible and may be saved to the queue without the dependency on
-       * the original service, thus persistent and managable across monit
-       * restarts */
-      NEW(e);
-      e->id = id;
-      gettimeofday(&e->collected, NULL);
-      e->source = Str_dup(service->name);
-      e->mode = service->mode;
-      e->type = service->type;
-      e->state = STATE_INIT;
-      e->state_map = 1;
-      e->action = action;
-      if (s) {
         va_list ap;
         va_start(ap, s);
-        e->message = Str_vcat(s, ap);
+        char *message = Str_vcat(s, ap);
         va_end(ap);
-      }
-      e->next = service->eventlist;
-      service->eventlist = e;
-    }
-  }
 
-  e->state_changed = Event_check_state(e, state);
+        Event_T e = service->eventlist;
+        while (e) {
+                if (e->action == action && e->id == id) {
+                        gettimeofday(&e->collected, NULL);
 
-  /* In the case that the state changed, update it and reset the counter */
-  if (e->state_changed) {
-    e->state = state;
-    e->count = 1;
-  } else
-    e->count++;
+                        /* Shift the existing event flags to the left and set the first bit based on actual state */
+                        e->state_map <<= 1;
+                        e->state_map |= ((state == State_Succeeded || state == State_ChangedNot) ? 0 : 1);
 
-  handle_event(e);
-}
-
-
-/* -------------------------------------------------------------- Properties */
-
-
-/**
- * Get the Service where the event orginated
- * @param E An event object
- * @return The Service where the event orginated
- */
-Service_T Event_get_source(Event_T E) {
-  Service_T s = NULL;
-
-  ASSERT(E);
-
-  if (!(s = Util_getService(E->source)))
-    LogError("Service %s not found in monit configuration\n", E->source);
-
-  return s;
-}
-
-
-/**
- * Get the Service name where the event orginated
- * @param E An event object
- * @return The Service name where the event orginated
- */
-char *Event_get_source_name(Event_T E) {
-  ASSERT(E);
-  return (E->source);
-}
-
-
-/**
- * Get the service type of the service where the event orginated
- * @param E An event object
- * @return The service type of the service where the event orginated
- */
-int Event_get_source_type(Event_T E) {
-  ASSERT(E);
-  return (E->type);
-}
-
-
-/**
- * Get the Event timestamp
- * @param E An event object
- * @return The Event timestamp
- */
-struct timeval *Event_get_collected(Event_T E) {
-  ASSERT(E);
-  return &E->collected;
-}
-
-
-/**
- * Get the Event raw state
- * @param E An event object
- * @return The Event raw state
- */
-short Event_get_state(Event_T E) {
-  ASSERT(E);
-  return E->state;
-}
-
-
-/**
- * Return the actual event state based on event state bitmap
- * and event ratio needed to trigger the state change
- * @param E An event object
- * @param S Actual posted state
- * @return The Event raw state
- */
-short Event_check_state(Event_T E, short S) {
-  int       i;
-  int       count = 0;
-  short     state = (S == STATE_SUCCEEDED || S == STATE_CHANGEDNOT) ? 0 : 1; /* translate to 0/1 class */
-  Action_T  action;
-  Service_T service;
-  long long flag;
-
-  ASSERT(E);
-
-  if (!(service = Event_get_source(E)))
-    return TRUE;
-
-  /* Only true failed/changed state condition can change the initial state */
-  if (!state && E->state == STATE_INIT && !(service->error & E->id))
-    return FALSE;
-
-  action = !state ? E->action->succeeded : E->action->failed;
-
-  /* Compare as many bits as cycles able to trigger the action */
-  for (i = 0; i < action->cycles; i++) {
-    /* Check the state of the particular cycle given by the bit position */
-    flag = (E->state_map >> i) & 0x1;
-
-    /* Count occurences of the posted state */
-    if (flag == state)
-      count++;
-  }
-
-  /* the internal instance and action events are handled as changed any time since we need to deliver alert whenever it occurs */
-  if (E->id == Event_Instance || E->id == Event_Action || (count >= action->count && (S != E->state || S == STATE_CHANGED)))
-    return TRUE;
-
-  return FALSE;
-}
-
-
-/**
- * Get the Event type
- * @param E An event object
- * @return The Event type
- */
-long Event_get_id(Event_T E) {
-  ASSERT(E);
-  return E->id;
-}
-
-
-/**
- * Get the optionally Event message describing why the event was
- * fired.
- * @param E An event object
- * @return The Event message. May be NULL
- */
-const char *Event_get_message(Event_T E) {
-  ASSERT(E);
-  return E->message;
+                        /* Update the message */
+                        FREE(e->message);
+                        e->message = message;
+                        break;
+                }
+                e = e->next;
+        }
+        if (! e) {
+                /* Only first failed/changed event can initialize the queue for given event type, thus succeeded events are ignored until first error. */
+                if (state == State_Succeeded || state == State_ChangedNot) {
+                        DEBUG("'%s' %s\n", service->name, message);
+                        FREE(message);
+                        return;
+                }
+                /* Initialize the event. The mandatory informations are cloned so the event is as standalone as possible and may be saved
+                 * to the queue without the dependency on the original service, thus persistent and managable across monit restarts */
+                NEW(e);
+                e->id = id;
+                gettimeofday(&e->collected, NULL);
+                e->source = service;
+                e->mode = service->mode;
+                e->type = service->type;
+                e->state = State_Init;
+                e->state_map = 1;
+                e->action = action;
+                e->message = message;
+                e->next = service->eventlist;
+                service->eventlist = e;
+        }
+        e->state_changed = _checkState(e, state);
+        /* In the case that the state changed, update it and reset the counter */
+        if (e->state_changed) {
+                e->state = state;
+                e->count = 1;
+        } else {
+                e->count++;
+        }
+        _handleEvent(service, e);
 }
 
 
@@ -362,31 +447,28 @@ const char *Event_get_message(Event_T E) {
  * event type is not found NULL is returned.
  */
 const char *Event_get_description(Event_T E) {
-  EventTable_T *et = Event_Table;
-
-  ASSERT(E);
-
-  while ((*et).id) {
-    if (E->id == (*et).id) {
-      switch (E->state) {
-        case STATE_SUCCEEDED:
-          return (*et).description_succeeded;
-        case STATE_FAILED:
-          return (*et).description_failed;
-        case STATE_INIT:
-          return (*et).description_failed;
-        case STATE_CHANGED:
-          return (*et).description_changed;
-        case STATE_CHANGEDNOT:
-          return (*et).description_changednot;
-        default:
-          break;
-      }
-    }
-    et++;
-  }
-
-  return NULL;
+        ASSERT(E);
+        EventTable_T *et = Event_Table;
+        while ((*et).id) {
+                if (E->id == (*et).id) {
+                        switch (E->state) {
+                                case State_Succeeded:
+                                        return (*et).description_succeeded;
+                                case State_Failed:
+                                        return (*et).description_failed;
+                                case State_Init:
+                                        return (*et).description_failed;
+                                case State_Changed:
+                                        return (*et).description_changed;
+                                case State_ChangedNot:
+                                        return (*et).description_changednot;
+                                default:
+                                        break;
+                        }
+                }
+                et++;
+        }
+        return NULL;
 }
 
 
@@ -395,32 +477,27 @@ const char *Event_get_description(Event_T E) {
  * @param E An event object
  * @return An action id
  */
-short Event_get_action(Event_T E) {
-  Action_T A = NULL;
-
-  ASSERT(E);
-
-  switch (E->state) {
-    case STATE_SUCCEEDED:
-    case STATE_CHANGEDNOT:
-      A = E->action->succeeded;
-      break;
-    case STATE_FAILED:
-    case STATE_CHANGED:
-    case STATE_INIT:
-      A = E->action->failed;
-      break;
-    default:
-      break;
-  }
-
-  if (! A)
-    return ACTION_IGNORE;
-
-  /* In the case of passive mode we replace the description of start, stop
-   * or restart action for alert action, because these actions are passive in
-   * this mode */
-  return (E->mode == MODE_PASSIVE && ((A->id == ACTION_START) || (A->id == ACTION_STOP) || (A->id == ACTION_RESTART))) ? ACTION_ALERT : A->id;
+Action_Type Event_get_action(Event_T E) {
+        ASSERT(E);
+        Action_T A = NULL;
+        switch (E->state) {
+                case State_Succeeded:
+                case State_ChangedNot:
+                        A = E->action->succeeded;
+                        break;
+                case State_Failed:
+                case State_Changed:
+                case State_Init:
+                        A = E->action->failed;
+                        break;
+                default:
+                        LogError("Invalid event state: %d\n", E->state);
+                        return Action_Ignored;
+        }
+        if (! A)
+                return Action_Ignored;
+        /* In the case of passive mode we replace the description of start, stop or restart action for alert action, because these actions are passive in this mode */
+        return (E->mode == Monitor_Passive && ((A->id == Action_Start) || (A->id == Action_Stop) || (A->id == Action_Restart))) ? Action_Alert : A->id;
 }
 
 
@@ -435,8 +512,8 @@ short Event_get_action(Event_T E) {
  * event type is not found NULL is returned.
  */
 const char *Event_get_action_description(Event_T E) {
-  ASSERT(E);
-  return actionnames[Event_get_action(E)];
+        ASSERT(E);
+        return actionnames[Event_get_action(E)];
 }
 
 
@@ -444,413 +521,169 @@ const char *Event_get_action_description(Event_T E) {
  * Reprocess the partially handled event queue
  */
 void Event_queue_process() {
-  DIR           *dir = NULL;
-  FILE          *file = NULL;
-  struct dirent *de = NULL;
-  EventAction_T  ea = NULL;
-  Action_T       a = NULL;
+        /* return in the case that the eventqueue is not enabled or empty */
+        if (! Run.eventlist_dir || (! (Run.flags & Run_HandlerInit) && ! Run.handler_queue[Handler_Alert] && ! Run.handler_queue[Handler_Mmonit]))
+                return;
 
-  /* return in the case that the eventqueue is not enabled or empty */
-  if (! Run.eventlist_dir || (! Run.handler_init && ! Run.handler_queue[HANDLER_ALERT] && ! Run.handler_queue[HANDLER_MMONIT]))
-    return;
-
-  if (! (dir = opendir(Run.eventlist_dir)) ) {
-    if (errno != ENOENT)
-      LogError("Cannot open the directory %s -- %s\n", Run.eventlist_dir, STRERROR);
-    return;
-  }
-
-  if ((de = readdir(dir)))
-    DEBUG("Processing postponed events queue\n");
-
-  NEW(ea);
-  NEW(a);
-
-  while (de) {
-    size_t         size;
-    int            handlers_passed = 0;
-    int           *version = NULL;
-    short         *action = NULL;
-    Event_T        e = NULL;
-    struct stat    st;
-    char           file_name[STRLEN];
-
-    /* In the case that all handlers failed, skip the further processing in
-     * this cycle. Alert handler is currently defined anytime (either
-     * explicitly or localhost by default) */
-    if ( (Run.mmonits && FLAG(Run.handler_flag, HANDLER_MMONIT) && FLAG(Run.handler_flag, HANDLER_ALERT)) || FLAG(Run.handler_flag, HANDLER_ALERT))
-      break;
-
-    snprintf(file_name, STRLEN, "%s/%s", Run.eventlist_dir, de->d_name);
-
-    if (!stat(file_name, &st) && S_ISREG(st.st_mode)) {
-      DEBUG("Processing queued event %s\n", file_name);
-
-      if (! (file = fopen(file_name, "r")) ) {
-        LogError("Queued event processing failed - cannot open the file %s -- %s\n", file_name, STRERROR);
-        goto error1;
-      }
-
-      /* read event structure version */
-      if (!(version = file_readQueue(file, &size))) {
-        LogError("skipping queued event %s - unknown data format\n", file_name);
-        goto error2;
-      }
-      if (size != sizeof(int)) {
-        LogError("Aborting queued event %s - invalid size %d\n", file_name, size);
-        goto error3;
-      }
-      if (*version != EVENT_VERSION) {
-        LogError("Aborting queued event %s - incompatible data format version %d\n", file_name, *version);
-        goto error3;
-      }
-
-      /* read event structure */
-      if (!(e = file_readQueue(file, &size)))
-        goto error3;
-      if (size != sizeof(*e))
-        goto error4;
-
-      /* read source */
-      if (!(e->source = file_readQueue(file, &size)))
-        goto error4;
-
-      /* read message */
-      if (!(e->message = file_readQueue(file, &size)))
-        goto error5;
-
-      /* read event action */
-      if (!(action = file_readQueue(file, &size)))
-        goto error6;
-      if (size != sizeof(short))
-        goto error7;
-      a->id = *action;
-      if (e->state == STATE_FAILED)
-        ea->failed = a;
-      else
-        ea->succeeded = a;
-      e->action = ea;
-
-      /* Retry all remaining handlers */
-
-      /* alert */
-      if (e->flag & HANDLER_ALERT) {
-        if (Run.handler_init)
-          Run.handler_queue[HANDLER_ALERT]++;
-        if ((Run.handler_flag & HANDLER_ALERT) != HANDLER_ALERT) {
-          if ( handle_alert(e) != HANDLER_ALERT ) {
-            e->flag &= ~HANDLER_ALERT;
-            Run.handler_queue[HANDLER_ALERT]--;
-            handlers_passed++;
-          } else {
-            LogError("Alert handler failed, retry scheduled for next cycle\n");
-            Run.handler_flag |= HANDLER_ALERT;
-          }
+        DIR *dir = opendir(Run.eventlist_dir);
+        if (! dir) {
+                if (errno != ENOENT)
+                        LogError("Cannot open the directory %s -- %s\n", Run.eventlist_dir, STRERROR);
+                return;
         }
-      }
 
-      /* mmonit */
-      if (e->flag & HANDLER_MMONIT) {
-        if (Run.handler_init)
-          Run.handler_queue[HANDLER_MMONIT]++;
-        if ((Run.handler_flag & HANDLER_MMONIT) != HANDLER_MMONIT) {
-          if ( handle_mmonit(e) != HANDLER_MMONIT ) {
-            e->flag &= ~HANDLER_MMONIT;
-            Run.handler_queue[HANDLER_MMONIT]--;
-            handlers_passed++;
-          } else {
-            LogError("M/Monit handler failed, retry scheduled for next cycle\n");
-            Run.handler_flag |= HANDLER_MMONIT;
-          }
+        struct dirent *de = readdir(dir);
+        if (de)
+                DEBUG("Processing postponed events queue\n");
+
+        Action_T a;
+        NEW(a);
+
+        EventAction_T ea;
+        NEW(ea);
+
+        while (de) {
+                int handlers_passed = 0;
+
+                /* In the case that all handlers failed, skip the further processing in this cycle. Alert handler is currently defined anytime (either explicitly or localhost by default) */
+                if ( (Run.mmonits && FLAG(Run.handler_flag, Handler_Mmonit) && FLAG(Run.handler_flag, Handler_Alert)) || FLAG(Run.handler_flag, Handler_Alert))
+                        break;
+
+                char file_name[PATH_MAX];
+                snprintf(file_name, sizeof(file_name), "%s/%s", Run.eventlist_dir, de->d_name);
+
+                if (File_isFile(file_name)) {
+                        LogInfo("Processing queued event %s\n", file_name);
+
+                        FILE *file = fopen(file_name, "r");
+                        if (! file) {
+                                LogError("Queued event processing failed - cannot open the file %s -- %s\n", file_name, STRERROR);
+                                goto error1;
+                        }
+
+                        size_t size;
+
+                        /* read event structure version */
+                        int *version = file_readQueue(file, &size);
+                        if (! version) {
+                                DEBUG("Skipping file %s - not an event queue data format\n", file_name);
+                                goto error2;
+                        }
+                        if (size != sizeof(int)) {
+                                LogError("Aborting queued event %s - invalid size %lu\n", file_name, (unsigned long)size);
+                                goto error3;
+                        }
+                        if (*version != EVENT_VERSION) {
+                                LogError("Aborting queued event %s - incompatible data format version %d\n", file_name, *version);
+                                goto error3;
+                        }
+
+                        /* read event structure */
+                        Event_T e = file_readQueue(file, &size);
+                        if (! e)
+                                goto error3;
+                        if (size != sizeof(*e))
+                                goto error4;
+
+                        /* read source */
+                        char *service = file_readQueue(file, &size);
+                        if (! service)
+                                goto error4;
+                        if (! (e->source = Util_getService(service))) {
+                                LogError("Aborting queued event %s - service %s not found in monitor configuration\n", file_name, service);
+                                FREE(service);
+                                goto error4;
+                        }
+                        FREE(service);
+
+                        /* read message */
+                        if (! (e->message = file_readQueue(file, &size)))
+                                goto error4;
+
+                        /* read event action */
+                        Action_Type *action = file_readQueue(file, &size);
+                        if (! action)
+                                goto error5;
+                        if (size != sizeof(Action_Type))
+                                goto error6;
+                        a->id = *action;
+                        switch (e->state) {
+                                case State_Succeeded:
+                                case State_ChangedNot:
+                                        ea->succeeded = a;
+                                        break;
+                                case State_Failed:
+                                case State_Changed:
+                                case State_Init:
+                                        ea->failed = a;
+                                        break;
+                                default:
+                                        LogError("Aborting queue event %s -- invalid state: %d\n", file_name, e->state);
+                                        goto error6;
+                        }
+                        e->action = ea;
+
+                        /* Retry all remaining handlers */
+
+                        /* alert */
+                        if (e->flag & Handler_Alert) {
+                                if (Run.flags & Run_HandlerInit)
+                                        Run.handler_queue[Handler_Alert]++;
+                                if ((Run.handler_flag & Handler_Alert) != Handler_Alert) {
+                                        if ( handle_alert(e) != Handler_Alert ) {
+                                                e->flag &= ~Handler_Alert;
+                                                Run.handler_queue[Handler_Alert]--;
+                                                handlers_passed++;
+                                        } else {
+                                                LogError("Alert handler failed, retry scheduled for next cycle\n");
+                                                Run.handler_flag |= Handler_Alert;
+                                        }
+                                }
+                        }
+
+                        /* mmonit */
+                        if (e->flag & Handler_Mmonit) {
+                                if (Run.flags & Run_HandlerInit)
+                                        Run.handler_queue[Handler_Mmonit]++;
+                                if ((Run.handler_flag & Handler_Mmonit) != Handler_Mmonit) {
+                                        if ( MMonit_send(e) != Handler_Mmonit ) {
+                                                e->flag &= ~Handler_Mmonit;
+                                                Run.handler_queue[Handler_Mmonit]--;
+                                                handlers_passed++;
+                                        } else {
+                                                LogError("M/Monit handler failed, retry scheduled for next cycle\n");
+                                                Run.handler_flag |= Handler_Mmonit;
+                                        }
+                                }
+                        }
+
+                        /* If no error persists, remove it from the queue */
+                        if (e->flag == Handler_Succeeded) {
+                                DEBUG("Removing queued event %s\n", file_name);
+                                if (unlink(file_name) < 0)
+                                        LogError("Failed to remove queued event file '%s' -- %s\n", file_name, STRERROR);
+                        } else if (handlers_passed > 0) {
+                                DEBUG("Updating queued event %s (some handlers passed)\n", file_name);
+                                _queueUpdate(e, file_name);
+                        }
+
+                error6:
+                        FREE(action);
+                error5:
+                        FREE(e->message);
+                error4:
+                        FREE(e);
+                error3:
+                        FREE(version);
+                error2:
+                        fclose(file);
+                }
+        error1:
+                de = readdir(dir);
         }
-      }
-
-      /* If no error persists, remove it from the queue */
-      if (e->flag == HANDLER_SUCCEEDED) {
-        DEBUG("Removing queued event %s\n", file_name);
-        if (unlink(file_name) < 0)
-          LogError("Failed to remove queued event file '%s' -- %s\n", file_name, STRERROR);
-      } else if (handlers_passed > 0) {
-        DEBUG("Updating queued event %s (some handlers passed)\n", file_name);
-        Event_queue_update(e, file_name);
-      }
-
-error7:
-      FREE(action);
-error6:
-      FREE(e->message);
-error5:
-      FREE(e->source);
-error4:
-      FREE(e);
-error3:
-      FREE(version);
-error2:
-      fclose(file);
-    }
-error1:
-    de = readdir(dir);
-  }
-  Run.handler_init = FALSE;
-  closedir(dir);
-  FREE(a);
-  FREE(ea);
-  return;
-}
-
-
-/* ----------------------------------------------------------------- Private */
-
-
-/*
- * Handle the event
- * @param E An event
- */
-static void handle_event(Event_T E) {
-  Service_T S;
-
-  ASSERT(E);
-  ASSERT(E->action);
-  ASSERT(E->action->failed);
-  ASSERT(E->action->succeeded);
-
-  /* We will handle only first succeeded event, recurrent succeeded events
-   * or insufficient succeeded events during failed service state are
-   * ignored. Failed events are handled each time. */
-  if (!E->state_changed && (E->state == STATE_SUCCEEDED || E->state == STATE_CHANGEDNOT || ((E->state_map & 0x1) ^ 0x1)))
-    return;
-
-  S = Event_get_source(E);
-  if (!S) {
-    LogError("Event handling aborted\n");
-    return;
-  }
-
-  if (E->message) {
-    /* In the case that the service state is initializing yet and error
-     * occured, log it and exit. Succeeded events in init state are not
-     * logged. Instance and action events are logged always with priority
-     * info. */
-    if (E->state != STATE_INIT || E->state_map & 0x1) {
-      if (E->state == STATE_SUCCEEDED || E->state == STATE_CHANGEDNOT || E->id == Event_Instance || E->id == Event_Action)
-        LogInfo("'%s' %s\n", S->name, E->message);
-      else
-        LogError("'%s' %s\n", S->name, E->message);
-    }
-    if (E->state == STATE_INIT)
-      return;
-  }
-
-  if (E->state == STATE_FAILED || E->state == STATE_CHANGED) {
-    if (E->id != Event_Instance && E->id != Event_Action) { // We are not interested in setting error flag for instance and action events
-      S->error |= E->id;
-      /* The error hint provides second dimension for error bitmap and differentiates between failed/changed event states (failed=0, chaged=1) */
-      if (E->state == STATE_CHANGED)
-        S->error_hint |= E->id;
-      else
-        S->error_hint &= ~E->id;
-    }
-    handle_action(E, E->action->failed);
-  } else {
-    S->error &= ~E->id;
-    handle_action(E, E->action->succeeded);
-  }
-
-  /* Possible event state change was handled so we will reset the flag. */
-  E->state_changed = FALSE;
-}
-
-
-static void handle_action(Event_T E, Action_T A) {
-  Service_T s;
-
-  ASSERT(E);
-  ASSERT(A);
-
-  E->flag = HANDLER_SUCCEEDED;
-
-  if (A->id == ACTION_IGNORE)
-    return;
-
-  /* Alert and mmonit event notification are common actions */
-  E->flag |= handle_mmonit(E);
-  E->flag |= handle_alert(E);
-
-  /* In the case that some subhandler failed, enqueue the event for
-   * partial reprocessing */
-  if (E->flag != HANDLER_SUCCEEDED) {
-    if (Run.eventlist_dir)
-      Event_queue_add(E);
-    else
-      LogError("Aborting event\n");
-  }
-
-  if (!(s = Event_get_source(E))) {
-    LogError("Event action handling aborted\n");
-    return;
-  }
-
-  /* Action event is handled already. For Instance events
-   * we don't want actions like stop to be executed
-   * to prevent the disabling of system service monitoring */
-  if (A->id == ACTION_ALERT || E->id == Event_Instance) {
-    return;
-  } else if (A->id == ACTION_EXEC) {
-    LogInfo("'%s' exec: %s\n", s->name, A->exec->arg[0]);
-    spawn(s, A->exec, E);
-    return;
-  } else {
-    if (s->actionratelist && (A->id == ACTION_START || A->id == ACTION_RESTART))
-      s->nstart++;
-
-    if (s->mode == MODE_PASSIVE && (A->id == ACTION_START || A->id == ACTION_STOP  || A->id == ACTION_RESTART))
-      return;
-
-    if ((A->id == ACTION_START) || (A->id == ACTION_STOP) || (A->id == ACTION_RESTART)) {
-      // About to restart this service, so reset all its values.
-      E->state_map = 0;
-      E->state = STATE_INIT;
-    }
-
-    control_service(s->name, A->id);
-  }
-}
-
-
-/**
- * Add the partialy handled event to the global queue
- * @param E An event object
- */
-static void Event_queue_add(Event_T E) {
-  FILE        *file = NULL;
-  char         file_name[STRLEN];
-  int          version = EVENT_VERSION;
-  short        action = Event_get_action(E);
-  int          rv = FALSE;
-  mode_t       mask;
-
-  ASSERT(E);
-  ASSERT(E->flag != HANDLER_SUCCEEDED);
-
-  if (!file_checkQueueDirectory(Run.eventlist_dir, 0700)) {
-    LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
-    return;
-  }
-
-  if (!file_checkQueueLimit(Run.eventlist_dir, Run.eventlist_slots)) {
-    LogError("Aborting event - queue over quota\n");
-    return;
-  }
-
-  /* compose the file name of actual timestamp and service name */
-  snprintf(file_name, STRLEN, "%s/%ld_%lx", Run.eventlist_dir, (long int)time(NULL), (long unsigned)E->source);
-
-  DEBUG("Adding event to the queue file %s for later delivery\n", file_name);
-
-  mask = umask(QUEUEMASK);
-  file = fopen(file_name, "w");
-  umask(mask);
-  if (! file) {
-    LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
-    return;
-  }
-
-  /* write event structure version */
-  if (!(rv = file_writeQueue(file, &version, sizeof(int))))
-    goto error;
-
-  /* write event structure */
-  if (!(rv = file_writeQueue(file, E, sizeof(*E))))
-    goto error;
-
-  /* write source */
-  if (!(rv = file_writeQueue(file, E->source, E->source ? strlen(E->source)+1 : 0)))
-    goto error;
-
-  /* write message */
-  if (!(rv = file_writeQueue(file, E->message, E->message ? strlen(E->message)+1 : 0)))
-    goto error;
-
-  /* write event action */
-  if (!(rv = file_writeQueue(file, &action, sizeof(short))))
-    goto error;
-
-  error:
-  fclose(file);
-  if (!rv) {
-    LogError("Aborting event - unable to save event information to %s\n",  file_name);
-    if (unlink(file_name) < 0)
-      LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
-  } else {
-    if (!Run.handler_init && E->flag & HANDLER_ALERT)
-      Run.handler_queue[HANDLER_ALERT]++;
-    if (!Run.handler_init && E->flag & HANDLER_MMONIT)
-      Run.handler_queue[HANDLER_MMONIT]++;
-  }
-
-  return;
-}
-
-
-/**
- * Update the partialy handled event in the global queue
- * @param E An event object
- * @param file_name File name
- */
-static void Event_queue_update(Event_T E, const char *file_name) {
-  FILE        *file = NULL;
-  int          version = EVENT_VERSION;
-  short        action = Event_get_action(E);
-  int          rv = FALSE;
-  mode_t       mask;
-
-  ASSERT(E);
-  ASSERT(E->flag != HANDLER_SUCCEEDED);
-
-  if (!file_checkQueueDirectory(Run.eventlist_dir, 0700)) {
-    LogError("Aborting event - cannot access the directory %s\n", Run.eventlist_dir);
-    return;
-  }
-
-  DEBUG("Updating event in the queue file %s for later delivery\n", file_name);
-
-  mask = umask(QUEUEMASK);
-  file = fopen(file_name, "w");
-  umask(mask);
-  if (! file)
-  {
-    LogError("Aborting event - cannot open the event file %s -- %s\n", file_name, STRERROR);
-    return;
-  }
-
-  /* write event structure version */
-  if (!(rv = file_writeQueue(file, &version, sizeof(int))))
-    goto error;
-
-  /* write event structure */
-  if (!(rv = file_writeQueue(file, E, sizeof(*E))))
-    goto error;
-
-  /* write source */
-  if (!(rv = file_writeQueue(file, E->source, E->source ? strlen(E->source)+1 : 0)))
-    goto error;
-
-  /* write message */
-  if (!(rv = file_writeQueue(file, E->message, E->message ? strlen(E->message)+1 : 0)))
-    goto error;
-
-  /* write event action */
-  if (!(rv = file_writeQueue(file, &action, sizeof(short))))
-    goto error;
-
-  error:
-  fclose(file);
-  if (!rv) {
-    LogError("Aborting event - unable to update event information to %s\n", file_name);
-    if (unlink(file_name) < 0)
-      LogError("Failed to remove event file '%s' -- %s\n", file_name, STRERROR);
-  }
-
-  return;
+        Run.flags &= ~Run_HandlerInit;
+        closedir(dir);
+        FREE(a);
+        FREE(ea);
 }
 

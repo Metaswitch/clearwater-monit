@@ -51,7 +51,7 @@ void file_finalize();
  * @param object A object to stat
  * @param type Requested object's type
  * @return Max of either st_mtime or st_ctime or
- * FALSE if not found or different type of object
+ * 0 if not found or different type of object
  */
 time_t file_getTimestamp(char *object, mode_t type);
 
@@ -68,44 +68,11 @@ char *file_findControlFile();
 
 /**
  * Create a program's pidfile - Such a file is created when in daemon
- * mode. The file is created with mask = MYPIDMASK (usually 644).
+ * mode.
  * @param pidfile The name of the pidfile to create
- * @return TRUE if the file was created, otherwise FALSE.
+ * @return true if the file was created, otherwise false.
  */
-int file_createPidFile(char *pidfile);
-
-
-/**
- * Check if the file is a regular file
- * @param file A path to the file to check
- * @return TRUE if file exist and is a regular file, otherwise FALSE
- */
-int file_isFile(char *file);
-
-
-/**
- * Check if this is a directory.
- * @param dir An absolute  directory path
- * @return TRUE if dir exist and is a regular directory, otherwise
- * FALSE
- */
-int file_isDirectory(char *dir);
-
-
-/**
- * Check if this is a fifo
- * @param fifo A path to the fifo to check
- * @return TRUE if fifo exist, otherwise FALSE
- */
-int file_isFifo(char *fifo);
-
-
-/**
- * Check if the file exist on the system
- * @file A path to the file to check
- * @return TRUE if file exist otherwise FALSE
- */
-int file_exist(char *file);
+boolean_t file_createPidFile(char *pidfile);
 
 
 /**
@@ -116,28 +83,27 @@ int file_exist(char *file);
  * @param filename The filename of the checked file
  * @param description The description of the checked file
  * @param permmask The permission mask for the file
- * @return TRUE if the test succeeded otherwise FALSE
+ * @return true if the test succeeded otherwise false
  */
-int file_checkStat(char *filename, char *description, int permmask);
+boolean_t file_checkStat(char *filename, char *description, int permmask);
 
 
 /**
  * Check whether the specified directory exist or create it using
  * specified mode.
  * @param path The fully qualified path to the directory
- * @param mode The permission for the directory
- * @return TRUE if the succeeded otherwise FALSE
+ * @return true if the succeeded otherwise false
  */
-int file_checkQueueDirectory(char *path, mode_t mode);
+boolean_t file_checkQueueDirectory(char *path);
 
 
 /**
  * Check the queue size limit.
  * @param path The fully qualified path to the directory
  * @param mode The queue limit
- * @return TRUE if the succeeded otherwise FALSE
+ * @return true if the succeeded otherwise false
  */
-int file_checkQueueLimit(char *path, int limit);
+boolean_t file_checkQueueLimit(char *path, int limit);
 
 
 /**
@@ -145,9 +111,9 @@ int file_checkQueueLimit(char *path, int limit);
  * @param file Filedescriptor to write to
  * @param data Data to be written
  * @param size Size of the data to be written
- * @return TRUE if the succeeded otherwise FALSE
+ * @return true if the succeeded otherwise false
  */
-int file_writeQueue(FILE *file, void *data, size_t size);
+boolean_t file_writeQueue(FILE *file, void *data, size_t size);
 
 
 /**
@@ -158,6 +124,18 @@ int file_writeQueue(FILE *file, void *data, size_t size);
  * appropriately.
  */
 void *file_readQueue(FILE *file, size_t *size);
+
+
+/**
+ * Reads an proc filesystem object
+ * @param buf buffer to write to
+ * @param buf_size size of buf
+ * @param name name of proc object
+ * @param pid number of the process or < 0 if main directory
+ * @param bytes_read number of bytes read to buffer
+ * @return true if succeeded otherwise false.
+ */
+boolean_t file_readProc(char *buf, int buf_size, char *name, int pid, int *bytes_read);
 
 
 #endif

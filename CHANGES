@@ -1,6 +1,820 @@
-                     CHANGES version 5.8.1
+                     CHANGES version 5.18.1
 
            This file summarizes changes made since 5.0
+
+Version 5.18.1
+
+New: Issue #380: apache-status protocol test: Added support for 'username' and 'password' options for
+Basic authentication. Example:
+ if failed port 80 protocol apache-status username myuser password 123456
+        loglimit > 10% or
+        dnslimit > 50%
+ then alert
+
+New: Add support for Basic authentication to the HTTP protocol test. Example:
+ if failed port 80 protocol http username myuser password 123456 then alert
+
+Fixed: apache-status protocol test: If the server returned an error (for example because authetication
+is required and no credentials were set), provide the error code rather then confusing error message
+"no scoreboard found".
+
+Fixed: Issue #379: A linux system with lots of interrupts may disable process and system resource
+checks.
+
+Fixed: Issue #388: The service-local alert settings didn't override global "set alert" for the same
+recipient properly.
+
+Fixed: Issue #393: The $HOST in mail alert may be incorrect if FQDN hostname cannot be found.
+
+Fixed: Issue #396: Disable CLI colors if the output is not tty.
+
+Fixed: Issue #400: Clarify network tests documentation.
+
+Fixed: If the resource check is disabled (for example because the user doesn't have privileges to
+read the data), emit just warning on startup.
+
+Fixed: Solaris: Subtract ZFS ARC size from the system memory usage, so monit can display memory used
+by applications (ZFS ARC will return memory to the system when needed).
+
+Fixed: Some linux versions logged "Skipping redundant host 'localhost'" warning in the case that the
+/etc/hosts contained localhost entry for both "127.0.0.1" (IPv4 loopback) and "::1" (IPv6 loopback).
+
+
+Version 5.18
+
+New: The service status, summary and procmatch CLI commands are now colorized and use a
+tabular format. To disable colors and display nontabular output, use a new -B command-line
+option or the "set terminal batch" statement in the monit configuration file.
+
+New: If the service has multiple errors, the service status will describe all errors (originally
+monit displayed only one error)
+
+New: Issue #340: New CLI command for services state overview added:
+    monit report [up | down | initialising | unmonitored | total]
+Output example:
+    $ monit report
+    up:            11 (39.3%)
+    down:          16 (57.1%)
+    initialising:   0 (0.0%)
+    unmonitored:    1 (3.6%)
+    total:         28 services
+
+New: Issue #344: Added MONIT_SERVICE environment variable to a check program context.
+
+New: A new ONREBOOT statement for service startup control on system reboot was added. The following
+modes are available:
+    onreboot start     ... always start the service automatically after reboot (DEFAULT mode)
+    onreboot nostart   ... never start the service automatically after reboot
+    onreboot laststate ... the service state is persistent across reboot (stopped before reboot => stopped after reboot and vice versa)
+
+New: The "mode" statement options are reduced to "active" (automatic service restarts allowed
+on error) and "passive" (no restart allowed on error). The "manual" option is deprecated (but
+still supported for backward compatibility) and replaced by the new "onreboot laststate" statement.
+
+New: The system status shows boot time and uptime in monit CLI and HTTP GUI.
+
+New: Added a system uptime test. Example:
+    check system $HOST
+        if uptime > 180 days then alert
+
+New: Added ">=" and "<=" operators support to comparison tests.
+
+Fixed: Added missing "mode" statement support to system, status and network checks.
+
+Fixed: If the "check program" script or start/stop/restart program timed out, monit killed it,
+but a zombie was left. Thanks to Guillem Jover for patch.
+
+Fixed: Issue #166: HTTP GUI: Added system uptime to the status details of system service and dropped
+the confusing monit's own uptime from the home page header.
+
+Fixed: Issue #335: The send/expect test now provides context of the failed pattern in the error
+message.
+
+Fixed: Issue #336: CHECK PROGRAM timeout parsing issue when run as another user
+
+Fixed: Issue #350: If the "check program" used a custom schedule (based on "every" statement),
+the exit value evaluation and check for program timeout was deferred until the next cycle, which
+matched the schedule. Monit now collects the exit value ASAP (i.e. next cycle) and kills the program
+if timed out.
+
+Fixed: Issue #351: Duplicate "set httpd" statement's "allow" option cause startup to fail
+
+Fixed: Issue #354: If eventqueue directory contains also other files (like monit state file), monit
+will not log error anymore (just warning when debug mode is enabled).
+
+Fixed: Issue #358: Drop the "last started" report for a 'check program'.
+
+Fixed: Issue #360: Improve the include files recursive loop detection (introduced in fix for issue #270,
+which skipped file inclusion if it was included already) to allow to include the file multiple times if
+it doesn't create a loop. It is again possible to move common fragments of service configuration to the
+include file, which is reused in the context of different services.
+
+Fixed: Issue #367: When process is restarted, monit showed the process as Running, but no process info such
+as PID was displayed until the service passed regular validation cycle.
+
+Fixed: Issue #370: IMAP protocol test supports greetings up to 512 characters now.
+
+Fixed: Issue #372: Show full "check program" value in GUI, instead of just first part of the program path.
+
+Fixed: When the pattern based process check finds multiple matching processes, it will select the
+top-most matching parent with highest uptime (oldest). Originally the pattern based process check
+was first-match based only.
+
+Fixed: RPM package template.
+
+
+Version 5.17.1
+
+Fixed: Issue #331: Monit crashed if alert by mail is configured, but no mail-format "from"
+is defined (regression in Monit 5.17).
+
+
+Version 5.17
+
+New: SMTP protocol test: added support for STARTTLS. Thanks to Robert Nelson
+for initial patch. Example:
+    if failed port 25 protocol smtps then alert
+
+New: SMTP protocol test: added support for optional authentication test. Note: when
+authentication is used, SMTPS should be always used to not disclose credentials. Example:
+    if failed
+        port 25
+        protocol smtps
+        username "MYUSER"
+        password "MYPASSWORD"
+    then alert
+
+New: Issue #271: Added support for specifying name in mail format's from and reply-to options.
+For example:
+    set mail-format {
+        from: System monitoring <monit@$HOST>
+    }
+
+New: Issue #330: Added environment variable MONIT_PROGRAM_STATUS to allow exec actions read
+the last program status.
+
+Fixed: Issue #270: The include statement now skips recursive inclusion of files, which were
+included already.
+
+Fixed: Issue #278: Reinitialize supplementary groups in exec action when executing as different
+user.
+
+Fixed: Issue #316: The "if changed checksum" and "if changed timestamp" tests value
+is persistent across monit restart/reload now, so if the checksum changed while monit
+was stopped or reloading, it will catch the change. Thanks to Duke Bartholomew for fix.
+
+Fixed: Save the file size, filesystem flags, file/directory/fifo/filesystem permissions,
+network link speed so the "if changed" tests keep the last value across monit restart/reload.
+
+Fixed: Issue #318: The favicon.ico didn't display when monit was behind a reverse HTTP proxy.
+
+Fixed: Issue #327: The monit CLI action or M/Monit action for group of services larger then ~50
+may fail.
+
+Fixed: Issue #329: The send/expect protocol test returned error if the target server sent more
+data then buffer limit.
+
+Fixed: Issue #356: Monit start or reload can be slow int the case of DNS problem.
+
+Fixed: A 32-bit platform with more then 4GB of RAM reported wrong system memory and
+swap value (regression in Monit 5.16).
+
+Fixed: Save state on exit when monit is executed in non-deamon mode (validate once).
+
+
+Version 5.16
+
+New: The HTTP protocol test uses now HEAD method if no content check is set, so
+the test is faster and saves bandwidth.
+
+New: The exec action is now executed only once, on state change, same way as the alert
+action. The new "repeat" option allows to repeat the exec action after given number of
+cycles if the error persists.  Syntax:
+        if <test> then exec <script> repeat every <x> cycles
+If you want to get the old behaviour, use "repeat every 1 cycle". Example:
+        if failed port 1234 then exec "/usr/bin/myscript.sh" repeat every 5 cycles
+
+New: Issue #205: Added test for threads count to process check. Syntax:
+        if threads > 10 then alert
+
+New: Issue #280: Timestamp test related events report the timestamp value now.
+
+New: Issue #299: Show last output of the program check in monit status CLI.
+
+New: Issue #275: monit -V displays configure options.
+
+New: Issue #276: Allow specific source address for port and ping tests. Example:
+        if failed ping via address "192.168.1.10" then alert
+        if failed port 80 via address "192.168.1.10" then alert
+
+New: Issue #282: Add support for custom server-status path to apache-status protocol
+test.
+
+New: The port/socket test response time has microseconds precision now.
+
+New: Statement for overriding default limits added. The following example lists all
+possible options with their default values:
+ set limits {
+     programOutput:     512 B,    # check program's output truncate limit
+     sendExpectBuffer:  256 B,    # limit for send/expect protocol test
+     fileContentBuffer: 512 B,    # limit for file content test (line)
+     httpContentBuffer: 1 MB,     # limit for HTTP content test (response body)
+     networkTimeout:    5 seconds # timeout for network I/O
+ }
+
+New: The file content test syntax has changed from "IF [NOT] MATCH <pattern>" to
+"IF CONTENT < "=" | "!=" > <pattern>". The old syntax is deprecated, but still
+supported for backward compatibility.
+
+New: Added support for DragonFly BSD. Thanks to Daniel Bilik.
+
+Fixed: Provide process cpu and memory usage statistics on MacOSX 10.11 or newer
+even with System Integrity Protection enabled.
+
+Fixed: If monit daemon is running, the "monit validate" command will now pass the
+command to the daemon instead of running in its own context. The validate also
+respects the service monitoring state now.
+
+Fixed: Support connection parameters preceding send/expect test.
+
+Fixed: Issue #60: The process match check may report false positive.
+
+Fixed: Issue #214: The process match check had high CPU requirements on low power
+systems.
+
+Fixed: Issue #230: The process CPU usage calculation now reflects the number of
+process threads. Originally monit showed process' CPU usage as its fraction of
+all available CPU resources utilization (number of CPU cores). For single-threaded
+applications that was however tricky, as such process may utilize one CPU core only
+and if it was working on its limits, on 8-CPU-cores machine monit showed 12.5% CPU
+utilization (100/8). If you wanted to check that the process is not stuck on 100%,
+you had to adjust the limit reflecting the CPU cores on the machine. Monit now
+calculates the CPU usage based on number of threads vs. available CPU cores. If the
+process has one thread, the 100% CPU usage equals to 100% utilization of one CPU core.
+If it has 2 threads, 100% CPU usage is reported when it uses 2 CPU cores on 100%, etc.
+If the process has more threads then the machine's available CPU cores, then the 100%
+CPU usage corresponds to utilization of all available CPU cores.
+
+Fixed: Issue #279: Monit CLI status displayed file size for timestamp.
+
+Fixed: Issue #283: The monitor and unmonitor action event falsely described
+the monitor/unmonitor action as failed even though it succeeded.
+
+Fixed: Issue #285: Compilation of monit on linux with musl libc library.
+
+Fixed: Issue #288: monit CLI status and summary commands exit value should be 1
+when error occurred.
+
+Fixed: Issue #289: Document the start delay option.
+
+Fixed: Issue #291: Use monit version in manual page footer rather then build date.
+
+Fixed: Issue #293: monit CLI command with service group option will return an error
+if the group doesn't exist.
+
+Fixed: Issue #303: Support more then 511 characters in file content match test. See
+the new "set limits" statement for details.
+
+Fixed: Issue #305: don't set the port in the HTTP Host header for default HTTPS URL
+scheme port (443).
+
+Fixed: Issue #308: Generic protocol cannot handle responses starting with bytes >0x7F.
+Thanks to Robert Nelson for fix.
+
+Fixed: Issue #309: AIX: The check process by pattern was limited to 80 characters.
+
+Fixed: Issue #310: Linux LXC container: the connection test was skipped and port status
+showed a failure.
+
+Fixed: Issue #315: If some file, filesystem, directory or fifo test triggered unmonitor,
+stop or restart, the tests which followed the one which performed that action may fail
+as the collected data were reset to zero during unmonitor/stop/restart action. The status
+also showed wrong values for uid, gid, permission and timestamp during that cycle.
+
+Fixed: If restart action was used with the "if changed checksum" test, the test didn't
+reset the checksum expectation for next cycle properly and failed in every cycle past
+the first detected change.
+
+Fixed: Warn if the monit configuration include pattern didn't match any file or the
+path doesn't exist.
+
+Fixed: Don't wait for process start if the start/restart program execution failed.
+
+Fixed: Possible freeze in the ping test on Raspberry Pi when the target host is down.
+
+Fixed: Use constant time string comparison function for authentication. Thanks to
+Noah Kantrowitz for report.
+
+Fixed: If the port test was skipped (while the process is starting), mark the state
+as init (previously monit status showed connection error).
+
+Fixed: AIX per-process CPU usage statistics.
+
+Warning: The maximum length of password or hash used for Monit HTTP GUI authentication
+is now limited to 64 characters.
+
+Warning: the default limit for program output has been changed from 1kB to 512B, the
+output past the limit will be truncated. You can override the limit using the new
+"set limits" statement.
+
+
+Version 5.15
+
+New: Added support for optional SSL certificates verification(trust and validity).
+As it was not enabled in previous monit versions, it is not enabled by default to not
+trigger potential restarts of services with invalid SSL certificates (for
+example if monit is running on old machine with outdated CA certificates, it won't
+trust the server certificate even though it may be valid if CA certificates are
+updated). The self-signed certificates are not trusted by default and you have to
+explicitly allow them if you want to trust them. See bellow for new ssl options
+statement.
+
+New: Support SSL client certificate authentication for SSL services. See bellow for
+new ssl options statement.
+
+New: To enable the SSL/TLS, you can use "SSL" or "TLS" option instead of former
+"type TCPSSL" (the new syntax is also position independent):
+  Syntax:
+        SSL | TLS
+  Example:
+        if failed port 9999 using ssl then alert
+
+New: Added SSL certificate pre-expiration test, which allows to send a notification that the
+certificate is going to expire in given number of days or less, so you can renew the
+certificate in time. Note: if the above mentioned certificate verification is enabled
+and this pre-expiration statement is not used, the certificate verification will send
+a certificate expiration alert when the certificate is no longer valid.
+  Syntax:
+        CERTIFICATE VALID <number> DAY(S)
+  Example:
+        if failed port 443 protocol https and certificate valid > 30 days then alert
+
+New: Extend the certificate checkum test with SHA1 hash type in addition to existing MD5.
+The checksum statement will automatically determine the cipher to use based on the hash
+string length. You can also add MD5 or SHA1 options explicitly (for example for self-documenting
+configuration reasons). The checksum syntax has changed to be more general (the "certmd5" statement is still
+supported for backward compatibility). You can use "equal" or "=" operator too to make the statement
+more verbose. The certificate checksum is supported also in the "set mmonit" and "set mailserver" context.
+  Syntax:
+        CERTIFICATE CHECKSUM [MD5 | SHA1] <hash>
+  Example:
+        if failed
+                port 443
+                protocol https
+                and certificate checksum equal to "1ED948A6F4258ACAB964227EF4EB19FCC453B0F8"
+        then alert
+
+New: A new statement for setting global or local SSL/TLS options was added ("SSL" or "TLS" as an alias can be used).
+  Syntax:
+        <SSL | TLS> {
+                VERIFY:            <ENABLE | DISABLE>
+                SELFSIGNED:        <ALLOW | REJECT>
+                VERSION:           <AUTO | SSLV2 | SSLV3 | TLSV1 | TLSV11 | TLSV12>
+                CLIENTPEMFILE:     <path>
+                CACERTIFICATEFILE: <path>
+                CACERTIFICATEPATH: <path>
+        }
+The SSL/TLS options can be set either globally (using "SET SSL") or locally (in the context of the port test). The global sets
+default value and can be extended (if global is not set) or overriden locally.
+
+New: Issue #233: The content match test will skip existing content of the file
+the first time the file is added to Monit.
+
+New: Ping test allows to set a data size.
+
+New: RPM build allows to build without PAM and SSL now:
+        rpmbuild -tb monit-5.15.tar.gz --without pam --without ssl
+
+New: The ping test response time has microseconds precision now.
+
+Fixed: Issue #231: Support for OpenSSL 0.9.8
+
+Fixed: Issue #228: The file permission hint was too long (may get trucanted).
+
+Fixed: Issue #241: Add the User-Agent header in the http protocol test only if
+it is not part of custom headers list and allow single quotes for the value.
+
+Fixed: Issue #221: If check host has no tests enabled, provide clear error message.
+
+Fixed: Issue #223: Don't log "Error reading pid from ..." for non-process checks on
+stop/restart.
+
+Fixed: Issue #226: Monit hung during ping test.
+
+Fixed: Issue #248: Don't cascade start action to dependant services if only parent start was
+requested.
+
+Fixed: Issue #249: Implement hard dependency between services. If the service depends on
+some other service, it will not start until parent service check returns no errors.
+
+Fixed: Issue #254: The HTTP protocol test pauses monit for few seconds when content match
+is used and the server sends response using chunked encoding.
+
+Fixed: Issue #255: monit exited when program execution failed.
+
+Fixed: Issue #261: Monit leaked file descriptors of program execution failed.
+
+Fixed: Issue #264: Monit stopped on reload if the configuration file didn't end with
+empty line.
+
+Fixed: Issue #267: Execution of command with timeout > 2147 seconds on 32-bit systems.
+
+Fixed: Compilation with SSL when SSLv3 is disabled in the SSL library.
+
+Fixed: Don't log error if SSL SNI is not supported by server.
+
+Fixed: SSL client certificate authentication for monit's HTTP interface.
+
+Fixed: Access to resources via secondary group membership when executing program as different UID
+
+Fixed: Slow start/stop/restart/monitor/unmonitor actions on FreeBSD
+
+Fixed: Issue #266: On OS X El Capitan, do not call task_for_pid if System
+Integrity Protection is enabled (which is the default) so as to not uncessary
+fill system logs with errors. This means that Monit cannot check a process'
+memory or CPU usage as task_for_pid was needed to get this information.
+
+
+Version 5.14
+
+New: Enable HTTP Strict Transport Security (HSTS) on Monit HTTP interface if
+SSL is enabled.
+
+New: Enable ECDH ciphers for Monit HTTP interface.
+
+New: The SSL IDEA ciphers are disabled now.
+
+New: Added simpler system-wide cpu usage test (total of user%, system%, wait%). Example:
+        if cpu usage > 99% then alert
+
+New: Issue #202: Added support for restricting the command-line "monit status" and "monit summary"
+only to a certain service or service group. For example:
+        monit status apache  # show status of "apache" service
+        monit -g www status  # show status of "www" service group
+
+New: MySQL protocol test now supports authentication (optional). Usage:
+    if failed port 3306 protocol mysql username myuser password mypassword then alert
+
+New: Issue #208: log client address in case of HTTP request error.
+
+New: Issue #206: report monit version in the instance start/stop message.
+
+Fixed: Issue #98: MySQL test might blocked the host because of too many
+connection errors.
+
+
+Version 5.13
+
+New: Issue #187: Added support for free space and free inodes monitoring as an
+alternative to current space/inodes usage monitoring. Both absolute number of
+bytes and percent limit forms are supported. For example to check that the
+filesystem has at minimum 10GB left:
+    if space free < 10 GB then alert
+
+New: Issue #190: Add support for ServerNameIndication TLS extension to support
+name based virtual SSL servers.
+
+New: The SSL/TLS compression is disabled now, as well as RC4 and DES ciphers.
+
+Fixed: Monit doesn't try to check hostnames on start to allow faster
+startup in the case that DNS is not currently available.
+
+Fixed: The filesystem uid, gid and permission report in 'monit status' command.
+
+Fixed: Issue #179: If the CLI command failed, the output may contain HTML footer
+in addition to plaintext error description.
+
+Fixed: Issue #186: RPM should preserve the existing configuration file on update.
+
+Fixed: Issue #188: MacOSX system memory usage statistics included inactive memory
+(free for reuse).
+
+Fixed: FreeBSD, OpenBSD, NetBSD: The system memory usage statistics didn't include
+the "wired" part (kernel memory).
+
+
+Version 5.12.2
+
+Fixed: Issue #169: Monit may hang if error occurred during SSL read or write.
+
+Fixed: Issue #170: If monit was started with no http interface, the CLI commands
+crashed.
+
+Fixed: Signal handling for Monit stop.
+
+Fixed: IP alias monitoring in network check.
+
+
+Version 5.12.1
+
+New: Allow to specify the IPv4 or IPv6 only for port and ping tests. If not specified,
+Monit will test any available address until first success or no options are left. You can
+also combine different IP version tests to make sure the machine is accessible via both IP
+versions - use the indifferent format if you don't care about the IP version.
+Ping examples:
+    if failed ping  then alert        # Use any available IP version
+    if failed ping4 then alert        # Check IPv4 only
+    if failed ping6 then alert        # Check IPv6 only
+Port examples:
+    if failed port 22      then alert # Use any available IP version
+    if failed port 22 ipv4 then alert # Check IPv4 only
+    if failed port 22 ipv6 then alert # Check IPv6 only
+
+Fixed: Issue #154: Upstart script should stop monit early when the system stops [Linux]
+
+Fixed: Issue #155: Monit may crash if the system hostname resolving failed.
+
+Fixed: Issue #157: Hostname based connection test for UDP service on dual-stack host
+(IPv4 and IPv6) may fail if the service listens on IPv4 only.
+
+Fixed: Issue #161: Show only first line of program output in Monit dashboard.
+
+Fixed: Monit skipped the connection tests if no start program was defined.
+
+Fixed: The socket timeout was 1000x higher then requested.
+
+
+Version 5.12
+
+New: Support for testing IPv6 hosts with ping and TCP/UDP connections. Example:
+    check host myhost with address "2001:db8::1234"
+        if failed ping then alert
+        if failed port 80 then alert
+IPv6 is supported also for mailserver and M/Monit with IPv6-enabled.
+Monit HTTP interface listens still on IPv4 only.
+
+New: Support for Monit HTTP interface on unix socket for easier deployment on
+virtualisation platforms which share the IP address for containers, such as Docker.
+Note: Either unixsocket or TCP port can be used - not both at once. Example:
+    set httpd
+        unixsocket /var/run/monit.sock
+        allow myuser:mypassword
+
+New: Support for multiple existence tests (available in the process, file, directory
+and fifo check context):
+    if does not exist then alert
+    if does not exist 3 times in 5 cycles then stop
+
+New: Support for multiple fsflag tests (available in the filesystem check context):
+    if changed fsflags then alert
+    if changed fsflags for 10 cycles then exec "/usr/bin/myscript.sh"
+
+New: Space usage test now tests the free blocks without accounting for reserved
+blocks. Previously Monit computed the space usage by subtracting blocks free for
+non-super user from the total blocks count, which showed the filesystem usage as
+100% as soon as all non-reserved blocks were allocated, whereas there still may be
+some free space available to root user (usually ~ 2-5%). The space test value
+will now match the output of utilities like "df".
+
+New: Space usage test events and status now presents the usage using byte-based unit
+rather then blocks count.
+
+New: Provide more details for HTTP request errors.
+
+New: The permission statement extended by permissions change test. Syntax:
+    if changed permission then <action>
+
+Fixed: If multiple timestamp or size test rules were defined for single object
+and the list of rules included value change test, the list of rules may not
+be fully evaluated.
+
+Fixed: Linux: Issue #142: fix the speed monitoring for 10Gb/s+ interfaces.
+
+Fixed: Issue #147: invalid total (up/down)load values.
+
+Fixed: Linux 32-bit + FreeBSD 32-bit + MaxOSX: Issue #138: handle 32-bit counter wraps.
+
+Fixed: Linux: Support monitoring of bonded network interfaces.
+
+Fixed: Linux: If the link was up while its state was tested, but it went down before
+link speed was tested, monit triggered speed (4294967295 Mb/s) + duplex (half-duplex)
+change events (if corresponding tests were enabled).
+
+Fixed: Higher total upload/download test precision for 'last hour' range.
+
+Fixed: Minor memory leak on monit reload if multiple pid/ppid tests were defined.
+
+Fixed: HTTP GUI: Don't show the implicit existence test for network check (not used).
+
+Fixed: Issue #143: Ping test may block longer then timeout settings and the event description
+in the case of timeout reported value 1000x higher.
+
+Fixed: Issue #144: Websocket protocol test - mask frames per RFC-6455.
+
+Fixed: Issue #146: Monit didn't start if checksum test was set for nonexistent file.
+
+Fixed: Issue #150: Linux: Pattern based process check may not match for command lines longer
+then 1024 characters.
+
+Fixed: Issue #152: fix event queue quota handling.
+
+Fixed: "monit validate" returns exit value 1 only if there were some errors.
+
+Fixed: port test: if the hostname has multiple IP addresses, try each IP address until first success
+or all addresses failed. Originally Monit tried only the first interface in the resolved set, ignoring
+the rest.
+
+Fixed: Show correct Monit uptime if the system time jumped.
+
+Fixed: Don't show link capacity and upload/download rate if the link is down.
+
+Fixed: Show integer number when presenting byte-values with [B] unit (drop ".0" postfix).
+
+Fixed: Support paths up to PATH_MAX in the event queue.
+
+Fixed: Action was reported as "Ignored" for the State_Changed event type if the delivery failed, event
+was stored to the queue and the delivery was retried later.
+
+
+Version 5.11
+
+New: Network tests implemented. You can test the link status (up/down),
+link capacity changes (drops due to damaged ports or cables, signal problems, etc.),
+link saturation, upload/download bandwidth usage and total transfers, number
+of upload/download packets. Example:
+    check network public with interface eth0
+        if failed link then alert
+        if changed link then alert
+        if saturation > 80% then alert
+        if upload > 500 kB/s then alert
+        if download > 1 MB/s then alert
+        if upload > 1000 packets/s then alert
+        if download > 1000 packets/s then alert
+        if total upload > 1 GB in last hour then alert
+        if total download > 100 GB in last 5 hours then alert
+
+New: Sieve protocol test implemented. Usage:
+    if failed port 2000 protocol sieve then alert
+
+New: The PID and PPID change tests are no longer implicit. If you
+want to test the process PID/PPID changes, you have to add this test
+explicitly:
+    if changed pid then alert
+    if changed ppid then alert
+
+New: Multiple PID and PPID tests can be used now. Example:
+    if changed PID then alert
+    if changed PID 3 times in 5 cycles then stop
+
+Fixed: If the "not every <cron>" option matched, the test was
+skipped only once per minute.
+
+Fixed: Issue #114: If the the test is on hold due to the "every" option schedule,
+display last status instead of "Waiting".
+
+Fixed: Issue #115: The CLI/GUI reported port timeout value 1000x higher.
+
+Fixed: If ping is not allowed (insufficient permissions), display value as "N/A"
+instead of negative response time.
+
+Fixed: OpenBSD: don't narrow the 64-bit time_t on 32-bit build (Y2038 problem).
+
+Fixed: Issue #136: "memory kilobytes total" is not in kB-s
+
+
+Version 5.10
+
+New: Simple redis ping protocol test added. Usage:
+    if failed port 6379 protocol redis then alert
+
+New: Simple mongodb ping protocol test added. Usage:
+    if failed port 27017 protocol mongodb then alert
+
+New: Monit HTTP GUI with SSL enabled no longer allows SSLv2 and SSLv3
+methods for security reasons (CVE-2014-3566). Only TLS methods are
+supported.
+
+New: SSL connection tests in SSLAUTO mode (default) no longer allow
+SSLv2 and SSLv3 methods for security reasons (CVE-2014-3566), only
+TLS methods are supported. You can still use SSLv2 or SSLv3 for
+testing old servers but have to explicitly select the vulnerable SSL
+version using "type tcpssl SSLV3" or "type tcpssl SSLV2" option.
+
+Fixed: Issue #104: Keep umask Monit was started with when executing
+start/stop/restart programs, check programs and creating files.
+
+Fixed: Issue #101: Manual-mode monitored services state may not be
+restored if the monitoring state was changed by user right before
+the system died.
+
+Fixed: Issue #107: Support multi-line response in the LMTP protocol
+test.
+
+Fixed: Support TLSv1.1 and TLSv1.2 when FIPS is enabled.
+
+
+Version 5.9
+
+New: Automatically reload Monit if ID was reset using -r CLI
+option.
+
+New: Use human friendly units for memory, swap and space usage
+values.
+
+Fixed: If Monit ID file is missing on stop, don't create it
+again with current runtime ID (allows to reset ID without
+stopping Monit first => intuitive file removal followed by
+Monit reload works now).
+
+Fixed: MySQL protocol test anonymous login.
+
+Fixed: Support TLSv1.1 and TLSv1.2 in "set mailserver".
+
+Fixed: Sporadic "PPID changed from 0 to ..." alert after process
+restart.
+
+Fixed: Subtract SLAB reclaimable memory from the system memory
+usage on Linux.
+
+Fixed: Some systems with upstart (e.g. RHEL/CentOS) had problems
+with restart action which consisted of stop+start sequence - the pidfile
+disappeared after stop+start sequence and Monit though the process is not
+running, as the pidfile was missing due to upstart's synchronization
+problems. Monit now waits not just for process exit, but for stop/start program
+finish too.
+
+Fixed: "PID/PPID changed" events were sometimes triggered after restart
+program.
+
+New: Log output from start/stop/restart programs. In the case of success
+the output is logged only in debug mode.
+
+Fixed: Linux: filesystem space usage on some network based filesystems such
+as sshfs.
+
+Fixed: large filesystems monitoring on 32-bit platforms.
+
+New: support monitoring of filesystems by generic device strings such as
+sshfs on Linux or ZFS filesystems on Solaris. Example usage:
+    check filesystem mydata with path "myuser@192.168.1.10:mydata"
+
+New: Max value for expect buffer is 100 KB.
+
+New: You can now test for '\0' in an expect string. We escape '\0'
+as "\0", that is, a '\' followed by the ascii value for 0. For
+instance, here is how to test for an expect string that starts with
+zero followed by any number of characters: expect "^[\\]0.*". Closes
+issue #84
+
+Fixed: Issue #55: Only run cron style checks once per minute. Minute is
+the lowest resolution in the cron string, but if poll-cycle time is lower
+than one minute the check could run several times in a minute.
+
+Fixed: Issue #78: Include open slots in Apache status check calculations.
+
+New: Send HTTP headers with a HTTP protocol test. The syntax is
+ http headers [name:value, name:value,..]
+where each name:value pair is separated with ','. The statement
+must come before the request statement. This statement can be used
+to send any HTTP header, for instance, a cookie or a host header. In
+a check host context, use of this statement might look like
+  check host mmonit.com with address mmonit.com
+    if failed
+       port 80 protocol http
+       with http headers [host: mmonit.com, Cache-Control: no-cache,
+           Cookie: csrftoken=nj1bI3CnMCaiNv4beqo8ZaCfAQQvpgLH]
+       and request /monit/ with content = "Monit [0-9.]+"
+    then alert
+This statement deprecate the old hostheader statement, which was
+used to only set the HTTP host header.
+
+New: Program check supports exit status change monitoring now. Syntax:
+  check program foobar with path /usr/local/myscript.sh
+    if changed status then alert
+
+New: Option to run 'check program' as a different user and/or
+group. To change uid or gid, Monit must run as root. Config
+example:
+
+  check program ls with path "/bin/ls -lrt /tmp" as uid "www"
+       ...
+
+New: Changed name of ICMP ECHO statement to ping which is the
+more common name used for a network ping. This deprecate the
+ICMP echo name in the config file. The ping test now is written as
+  if failed ping then alert
+or with all options
+  if failed ping count 5 with timeout 3 seconds then alert
+
+Fixed: Improved speed of send/expect protocol test
+
+Fixed: SMTP protocol test: check the response code.
+
+New: Simplified protocol test with SSL. Instead of writing:
+  if failed
+     port 443 with type TCPSSL tlsv1 protocol http
+  then alert
+You can now write the following instead
+  if failed
+     port 443 with protocol https
+  then alert
+The SSL version is auto-detected. The old version can still be
+used if SSL version needs to be specified. The same short version
+is also provided for SMTP:
+  if failed
+     port 465 with protocol smtps
+  then alert
+
 
 Version 5.8.1
 
@@ -35,7 +849,7 @@ New: Add command line option to reset Monit ID (-r/--resetid)
 
 New: Add client support for using TLS version 1.1 and 1.2. A recent
 1.x version of OpenSSL is required and of course that the server
-speaks this TLS version. At this time, not many does. Example: 
+speaks this TLS version. At this time, not many does. Example:
 if failed port 443 with type TCPSSL tlsv11 protocol http  then alert
 
 New: Process UID, EUID and GID tests. Allows to test if the
@@ -47,7 +861,7 @@ process is running as a given user. Example:
 
 New: Add WebSocket protocol test support for port check. Example:
     check host websocket.org with address "echo.websocket.org"
-        if failed 
+        if failed
            port 80 protocol websocket
            host "echo.websocket.org"
            request "/"
@@ -55,32 +869,32 @@ New: Add WebSocket protocol test support for port check. Example:
            version 13
         then alert
 
-New: Simplified HTTP protocol test to allow testing content without 
+New: Simplified HTTP protocol test to allow testing content without
 creating an URL object. It is now possible to say in a more natural way,
  check host mmonit.com with address mmonit.com
-       if failed 
+       if failed
           port 80 protocol http
           and request /monit/ with content = "Monit 5.7"
        then alert
 meaning that if the page mmonit.com/monit does not contain the text
 "Monit 5.7" then the test will fail. To reverse the test, i.e. to test
-that the page should not contain a specific string simply use '!=' 
+that the page should not contain a specific string simply use '!='
 instead, like,
-    if failed 
+    if failed
        port 80 protocol http
-       with content != "Nagios" 
+       with content != "Nagios"
     then alert
 Remember also that the string to test can be a regular expression
 
 New: The HTTP protocol test now support testing the HTTP status code
 returned by the server by using "status <operator> <number>".
 Backward compatible defaults (return error if status >= 400):
-    if failed 
+    if failed
        port 80 protocol http
        and status < 400
     then alert
 Return error if a page DOES exist (for success 404 is expected):
-    if failed 
+    if failed
        port 80 protocol http
        request "/non/existent.php"
        status = 404
@@ -90,8 +904,8 @@ Fixed: Unix Socket test now use the communication type (TCP or UDP)
 specified in port statement. Previously TCP was always used.
 
 Fixed: Improved test to check if a socket was connected. Since we use
-non-blocking connect, we now poll a few ms to avoid "connection failed, 
-XXX is not ready for i|o" errors which could occur, especially on high 
+non-blocking connect, we now poll a few ms to avoid "connection failed,
+XXX is not ready for i|o" errors which could occur, especially on high
 latency networks or long distance connect.
 
 Fixed: Simplified if-statements reported in UI
@@ -123,13 +937,13 @@ program registered with the service and then the start program.
 Now, if a restart program is registred with the service, this
 will be called instead, otherwise Monit fall back to its old
 behaviour. Example:
-     
+
   check process apache with pidfile /var/run/httpd.pid
         start   = "/usr/sbin/apachectl start"
         stop    = "/usr/sbin/apachectl stop"
         restart = "/usr/sbin/apachectl restart" <- New
 
-New: Improved communication with M/Monit. Thanks to Hippo Lin. For 
+New: Improved communication with M/Monit. Thanks to Hippo Lin. For
 scalability purpose, this Monit version should only be used with
 M/Monit version 3.1 or later.
 
@@ -173,7 +987,7 @@ BUGFIXES:
 
 * Escape XML messages properly.
 
-* Compilation: fix the configure script to support default compiler 
+* Compilation: fix the configure script to support default compiler
   paths when searching for OpenSSL (fixes library search on multi-
   architecture  platforms like Debian and Ubuntu).
 
@@ -416,7 +1230,7 @@ Version 5.3
   be enabled using -vv option.
 
 * Improve how fast Monit check if a program was started or stopped.
-  Thanks to Michael Renner for patch. 
+  Thanks to Michael Renner for patch.
 
 * Fix the monitoring state presentation during service restart which
   temporarily displayed "Not monitored", whereas the monitoring was
@@ -548,7 +1362,7 @@ NEW FEATURES AND FUNCTIONS:
   process name with arguments as provided by the 'ps' utility. If the
   pattern matches multiple processes, the first match is used.
   Example:
-      check process debian 
+      check process debian
             matching "/usr/lib/vmware/bin/vmware-vmx .*deb.vmx"
 
 * Added support for swap monitoring. Example:
@@ -621,7 +1435,7 @@ BUGFIXES:
      - fixed handling of the service names which contain "/" in the
        name in Monit web interface. Thanks to Artyom Khafizov for
        patch.
-  
+
 * When 'check system' is not defined, monit adds it automatically
   using hostname for service name. If existing service was defined
   with the same service name (matching hostname), monit didn't added
@@ -697,8 +1511,8 @@ NEW FEATURES AND FUNCTIONS:
     check process radiusd with pidfile /var/run/radiusd.pid
        start program = "/etc/init.d/freeradius start"
        stop program = "/etc/init.d/freeradius stop"
-       if failed 
-          host 127.0.0.1 port 2000 type udp protocol radius secret testing1234 
+       if failed
+          host 127.0.0.1 port 2000 type udp protocol radius secret testing1234
        then alert
        if 5 restarts within 5 cycles then timeout
 
@@ -743,8 +1557,8 @@ BUGFIXES:
 * Fixed content match check which reported only first
   match during the same cycle. Thanks to Pavel Shevaev for
   report.
-  
-* Allow for the use of complete SSL certificate chains. 
+
+* Allow for the use of complete SSL certificate chains.
   Thanks to Lawrence Tan for patch.
 
 * Added support for multiline greetings to FTP protocol test.
@@ -788,7 +1602,7 @@ BUGFIXES:
 
 * Removed the configure --without-resource option. If the user
   who is running Monit doesn't have permissions to check the
-  processes state, the related checks are disabled dynamically. 
+  processes state, the related checks are disabled dynamically.
 
 
 
@@ -827,7 +1641,7 @@ NEW FEATURES AND FUNCTIONS:
 
 * Support use of symbolic links in filesystem check. Thanks to
   Aleksander Kamenik for suggestion. Example:
-    check filesystem rootfs path 
+    check filesystem rootfs path
          /dev/disk/by-uuid/4ef973f7-67d1-4bb0-8223-cb1c692b72e4
       if space usage > 95% then alert
       if inode usage > 95% then alert
@@ -852,7 +1666,7 @@ NEW FEATURES AND FUNCTIONS:
   either CHANGED or MATCH event in your alert filters, no change
   is necessary (alerts are delivered as usual, the tests just use
   different types internally).
-  
+
 * Monit now generates a unique id on first start and store the id
   in a permanent file. This id is used in protocol communication
   between Monit and M/Monit to pair a Monit instance with it's
@@ -925,11 +1739,11 @@ NEW FEATURES AND FUNCTIONS:
 * Added a protocol test for testing the SIP protocol which is
   used by popular communication servers such as Asterisk and
   FreeSWITCH. We received two patches for this protocol and have
-  taken code from both and merged them. Many thanks to Bret 
+  taken code from both and merged them. Many thanks to Bret
   McDanel and to Pierrick Grasland for supplying the patches.
 
 * Added MONIT_DESCRIPTION to the list of environment variables
-  available to programs started by monit. Thanks to Morten 
+  available to programs started by monit. Thanks to Morten
   Bressendorff Schmidt for patch.
 
 * If a service group is specified for Monit CLI action,
@@ -1072,7 +1886,7 @@ BUGFIXES:
   Linux which reports number of CPUs as 0. Thanks to Marius
   Schmidt for report.
 
-* Cleanup event states during a service stop/unmonitor so old 
+* Cleanup event states during a service stop/unmonitor so old
   events are not sent when the service is started/monitored again.
 
 * Fixed #21989: Monit could start two instances of the process
@@ -1091,7 +1905,7 @@ BUGFIXES:
   SMTP authentication.
 
 * Fixed #22191 and #19823: If the file content test does not match
-  anymore, reset the service error state. (Previous versions did 
+  anymore, reset the service error state. (Previous versions did
   not clear the error state and kept showing a match in the status
   listing and in the http interface).
 

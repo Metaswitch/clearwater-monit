@@ -20,6 +20,9 @@
  */
 
 
+boolean_t timeout_called = false;
+
+
 static void onExec(Process_T P) {
         assert(P);
         char buf[STRLEN];
@@ -101,7 +104,7 @@ int main(void) {
         }
         printf("=> Test1: OK\n\n");
 
-        printf("=> Test2: set and get uid/gid\n");
+        printf("=> Test2: set and get uid/gid/umask\n");
         {
                 Command_T c = Command_new("/bin/sh", "-c", "ps -aef|grep monit", NULL);
                 assert(c);
@@ -164,6 +167,11 @@ int main(void) {
                 assert(Str_isEqual(Command_getEnv(c, "SHELL"), ""));
                 // Unknown variable should result in NULL
                 assert(Command_getEnv(c, "UKNOWNVARIABLE") == NULL);
+                // vSetEnv
+                Command_vSetEnv(c, "PID", "%ld", (long)getpid());
+                assert(Str_parseLLong(Command_getEnv(c, "PID")) > 1);
+                Command_vSetEnv(c, "ZERO", NULL);
+                assert(Str_isEqual(Command_getEnv(c, "ZERO"), ""));
                 Command_free(&c);
                 assert(!c);
         }
@@ -255,8 +263,8 @@ int main(void) {
         }
         printf("=> Test11: OK\n\n");
         
-#if ! defined(OPENBSD)
-        /* FIXME: MONIT-35: OpenBSD vfork() doesn't share memory, so the current implementation of Command_execute() cannot pass the execve() error to parent. Disable the unit test on OpenBSD for now. */
+#if ! defined(OPENBSD) && ! defined(AIX)
+        /* FIXME: MONIT-35: OpenBSD and AIX vfork() doesn't share memory, so the current implementation of Command_execute() cannot pass the execve() error to parent. Disable the unit test on OpenBSD and AIX for now. */
         printf("=> Test12: on execute error\n");
         {
                 // Try executing a directory should produce an error

@@ -30,6 +30,9 @@
 
 #include "protocol.h"
 
+// libmonit
+#include "exceptions/IOException.h"
+
 /**
  *  Simple LDAPv3 protocol test.
  *
@@ -45,98 +48,85 @@
  *
  *  @file
  */
-int check_ldap3(Socket_T socket) {
+void check_ldap3(Socket_T socket) {
 
-  unsigned char buf[STRLEN];
+        unsigned char buf[STRLEN];
 
-  unsigned char request[14] = {
-    0x30,                         /** Universal Sequence TAG */
-    0x0c,               /** Length of the packet's data part */
+        unsigned char request[14] = {
+                0x30,                         /** Universal Sequence TAG */
+                0x0c,               /** Length of the packet's data part */
 
-    0x02,                          /** Universal Integer TAG */
-    0x01,                                    /** Integer length */
-    0x00,                                         /** MessageID */
+                0x02,                          /** Universal Integer TAG */
+                0x01,                                    /** Integer length */
+                0x00,                                         /** MessageID */
 
-    0x60,                    /** Application BindRequest TAG */
-    0x07,                        /** Length of the data part */
+                0x60,                    /** Application BindRequest TAG */
+                0x07,                        /** Length of the data part */
 
-    0x02,                         /** Universal Integer TAG */
-    0x01,                                 /** Integer length */
-    0x03,                               /** Protocol version */
+                0x02,                         /** Universal Integer TAG */
+                0x01,                                 /** Integer length */
+                0x03,                               /** Protocol version */
 
-    0x04,                    /** Universal Octet string TAG */
-    0x00,                                  /** Octet string length */
-    /* NULL */                                 /** Anonymous BindDN */
+                0x04,                    /** Universal Octet string TAG */
+                0x00,                                  /** Octet string length */
+                /* NULL */                                 /** Anonymous BindDN */
 
-    0x80,                /** Context specific SimpleAuth TAG */
-    0x00                    /** SimpleAuth (octet string) length */
-    /* NULL */                            /** Anonymous Credentials */
-  };
+                0x80,                /** Context specific SimpleAuth TAG */
+                0x00                    /** SimpleAuth (octet string) length */
+                /* NULL */                            /** Anonymous Credentials */
+        };
 
-  unsigned char response[14] = {
-    0x30,                         /** Universal Sequence TAG */
-    0x0c,               /** Length of the packet's data part */
+        unsigned char response[14] = {
+                0x30,                         /** Universal Sequence TAG */
+                0x0c,               /** Length of the packet's data part */
 
-    0x02,                          /** Universal Integer TAG */
-    0x01,                                    /** Integer length */
-    0x00,                                         /** MessageID */
+                0x02,                          /** Universal Integer TAG */
+                0x01,                                    /** Integer length */
+                0x00,                                         /** MessageID */
 
-    0x61,                   /** Application BindResponse TAG */
-    0x07,                        /** Length of the data part */
+                0x61,                   /** Application BindResponse TAG */
+                0x07,                        /** Length of the data part */
 
-    0x0a,                      /** Universal Enumerated TAG */
-    0x01,                              /** Enumerated length */
-    0x00,                                        /** Success */
+                0x0a,                      /** Universal Enumerated TAG */
+                0x01,                              /** Enumerated length */
+                0x00,                                        /** Success */
 
-    0x04,                    /** Universal Octet string TAG */
-    0x00,                                  /** Octet string length */
-    /* NULL */                                        /** MatchedDN */
+                0x04,                    /** Universal Octet string TAG */
+                0x00,                                  /** Octet string length */
+                /* NULL */                                        /** MatchedDN */
 
-    0x04,                    /** Universal Octet string TAG */
-    0x00                                  /** Octet string length */
-    /* NULL */                                     /** ErrorMessage */
-  };
+                0x04,                    /** Universal Octet string TAG */
+                0x00                                  /** Octet string length */
+                /* NULL */                                     /** ErrorMessage */
+        };
 
-  unsigned char unbind[7] = {
-    0x30,                         /** Universal Sequence TAG */
-    0x05,               /** Length of the packet's data part */
+        unsigned char unbind[7] = {
+                0x30,                         /** Universal Sequence TAG */
+                0x05,               /** Length of the packet's data part */
 
-    0x02,                          /** Universal Integer TAG */
-    0x01,                                    /** Integer length */
-    0x01,                                         /** MessageID */
+                0x02,                          /** Universal Integer TAG */
+                0x01,                                    /** Integer length */
+                0x01,                                         /** MessageID */
 
-    0x42,                  /** Application UnbindRequest TAG */
-    0x00                        /** Length of the data part */
-    /* NULL */
+                0x42,                  /** Application UnbindRequest TAG */
+                0x00                        /** Length of the data part */
+                /* NULL */
 
-  };
+        };
 
-  ASSERT(socket);
+        ASSERT(socket);
 
 
-  if(socket_write(socket, (unsigned char *)request, sizeof(request)) < 0) {
-    socket_setError(socket, "LDAP: error sending data -- %s", STRERROR);
-    return FALSE;
-  }
+        if (Socket_write(socket, (unsigned char *)request, sizeof(request)) < 0)
+                THROW(IOException, "LDAP: error sending data -- %s", STRERROR);
 
-  if(socket_read(socket, (unsigned char *)buf, sizeof(response)) <= 0) {
-    socket_setError(socket, "LDAP: error receiving data -- %s", STRERROR);
-    return FALSE;
-  }
+        if (Socket_read(socket, (unsigned char *)buf, sizeof(response)) <= 0)
+                THROW(IOException, "LDAP: error receiving data -- %s", STRERROR);
 
-  if(memcmp((unsigned char *)buf,
-            (unsigned char *)response,
-            sizeof(response))) {
-    socket_setError(socket, "LDAP: anonymous bind failed");
-    return FALSE;
-  }
+        if (memcmp((unsigned char *)buf, (unsigned char *)response, sizeof(response)))
+                THROW(IOException, "LDAP: anonymous bind failed");
 
-  if(socket_write(socket, (unsigned char *)unbind, sizeof(unbind)) < 0) {
-    socket_setError(socket, "LDAP: error sending data -- %s", STRERROR);
-    return FALSE;
-  }
-
-  return TRUE;
-
+        if (Socket_write(socket, (unsigned char *)unbind, sizeof(unbind)) < 0)
+                THROW(IOException, "LDAP: error sending data -- %s", STRERROR);
 }
 
