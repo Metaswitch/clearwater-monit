@@ -469,22 +469,30 @@ boolean_t control_service(const char *S, Action_Type A) {
 
                 case Action_Restart:
                         LogInfo("'%s' trying to restart\n", s->name);
-                        // Restart this service only if all children that depend on it were stopped
+                        // Restart this service. Try to unmonitor/stop any dependent services,
+                        // but continue the restart even if it fails.
                         _doDepend(s, Action_Unmonitor, false);
                         _doDepend(s, Action_Stop, false);
                         if (s->restart) {
                                 if ((rv = _doRestart(s))) {
-                                        _doDepend(s, Action_Start, false); // Start children only if we successfully restarted
+                                        // Start children only if we successfully restarted
+                                        _doDepend(s, Action_Start, false);
                                         _doDepend(s, Action_Monitor, false);
                                 }
                         } else {
                                 if (_doStop(s, false)) {
-                                        if ((rv = _doStart(s))) { // Only start if we successfully stopped
-                                                _doDepend(s, Action_Start, false); // Start children only if we successfully started
+                                        // Only start if we successfully stopped
+                                        if ((rv = _doStart(s))) {
+                                                // Start children only if we successfully started
+                                                _doDepend(s, Action_Start, false);
                                                 _doDepend(s, Action_Monitor, false);
+                                        }
+                                        else {
+                                                LogError("'%s' failed to start successfully\n", s->name);
                                         }
                                 } else {
                                         /* enable monitoring of this service again to allow the restart retry in the next cycle up to timeout limit */
+                                        LogError("'%s' failed to stop successfully\n", s->name);
                                         Util_monitorSet(s);
                                 }
                         }
