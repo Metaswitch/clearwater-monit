@@ -624,6 +624,9 @@ static void handle_options(int argc, char **argv) {
                 {0}
         };
 
+        // We disable the colours and tables on the monit summary/status calls
+        // as we can't rely on them displaying correctly. You can turn them on
+        // by adding the -B flag
         Run.flags |= Run_Batch;
         
         while ((opt = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1)
