@@ -623,6 +623,9 @@ static void handle_options(int argc, char **argv) {
                 {"version",     no_argument,            NULL,   'V'},
                 {0}
         };
+
+        Run.flags |= Run_Batch;
+        
         while ((opt = getopt_long(argc, argv, shortopts, longopts, NULL)) != -1)
 #else
                 while ((opt = getopt(argc, argv, shortopts)) != -1)
@@ -725,7 +728,7 @@ static void handle_options(int argc, char **argv) {
                                 }
                                 case 'B':
                                 {
-                                        Run.flags |= Run_Batch;
+                                        Run.flags &= ~Run_Batch;
                                         break;
                                 }
                                 case '?':
@@ -804,7 +807,7 @@ static void help() {
                " -I            Do not run in background (needed for run from init)\n"
                " --id          Print Monit's unique ID\n"
                " --resetid     Reset Monit's unique ID. Use with caution\n"
-               " -B            Batch command line mode (do not output tables or colors)\n"
+               " -B            Turn off batch command line mode (output tables and colors)\n"
                " -t            Run syntax check for the control file\n"
                " -v            Verbose mode, work noisy (diagnostic output)\n"
                " -vv           Very verbose mode, same as -v plus log stacktrace on error\n"
