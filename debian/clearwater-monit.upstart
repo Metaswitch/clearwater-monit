@@ -25,9 +25,9 @@ script
     . /etc/default/clearwater-monit
     [ "$START" = "yes" ] || { stop; exit 0; }
 
-    exec /usr/bin/monit -I -c /etc/monit/monitrc $MONIT_OPTS    
+    /usr/share/clearwater/bin/issue-alarm "upstart" "4500.6"
 
-    exec /usr/share/clearwater/bin/issue-alarm "upstart" "4500.6"
+    exec /usr/bin/monit -I -c /etc/monit/monitrc $MONIT_OPTS
 end script
 
 pre-stop exec /usr/bin/monit -c /etc/monit/monitrc quit
