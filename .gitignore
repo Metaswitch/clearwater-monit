@@ -35,3 +35,7 @@ src/y.output
 src/y.tab.c
 system/startup/monit.service
 system/startup/monit.upstart
+
+libmonit/src/xconfig.h.in~
+src/config.h.in~
+
