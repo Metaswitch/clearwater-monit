@@ -316,6 +316,7 @@ pid_t ProcessTree_findProcess(Service_T s) {
         if (s->inf->priv.process.pid > 0) {
                 errno = 0;
                 if (getpgid(s->inf->priv.process.pid) > -1 || errno == EPERM)
+                        DEBUG("getpid returned >-1 for pid %d, or errno==EPERM; errno was %d", s->inf->priv.process.pid, errno);
                         return s->inf->priv.process.pid;
         }
         // If the cached PID is not running, scan for the process again
