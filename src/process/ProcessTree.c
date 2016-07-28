@@ -317,9 +317,9 @@ pid_t ProcessTree_findProcess(Service_T s) {
                 errno = 0;
                 if (getpgid(s->inf->priv.process.pid) > -1 || errno == EPERM) {
                         if (errno == EPERM) {
-                                LogError("getpid returned errno == EPERM");
+                                LogError("getpgid returned errno == EPERM");
                         }
-                        DEBUG("getpid returned > -1 for pid %d; errno was %d", s->inf->priv.process.pid, errno);
+                        DEBUG("getpgid returned > -1 for pid %d; errno was %d", s->inf->priv.process.pid, errno);
                         return s->inf->priv.process.pid;
                 }
         }
