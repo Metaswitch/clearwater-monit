@@ -6,6 +6,7 @@ Description=Clearwater-monit service manager
 [Service]
 ExecStartPre=/usr/share/clearwater/bin/issue-alarm "systemd" "4500.6"
 ExecStart=/usr/bin/monit -I -c /etc/monit/monitrc
+ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=5s
 LimitCORE=infinity
