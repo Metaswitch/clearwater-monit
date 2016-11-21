@@ -4,6 +4,8 @@ set -e
 
 case "$1" in
   upgrade|failed-upgrade|abort-install|abort-upgrade|remove|disappear)
+    # Remove the old mmonit file
+    rm -f /etc/monit/conf.d/mmonit.monit
     ;;
   purge)
     # Remove logfile:
