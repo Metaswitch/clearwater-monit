@@ -1132,6 +1132,9 @@ State_Type check_process(Service_T s) {
                 } else {
                         LogError("'%s' failed to get service data\n", s->name);
                         rv = State_Failed;
+                        // We may have fallen into this state from a window condition where our PID was overtaken by a different process
+                        // To ensure we re-check our pidfile, and take appropriate action, we clear the cached pid.
+                        s->inf->priv.process.pid = 0;
                 }
         }
         for (Port_T pp = s->portlist; pp; pp = pp->next) {
