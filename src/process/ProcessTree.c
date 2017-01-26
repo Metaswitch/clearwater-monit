@@ -312,6 +312,11 @@ time_t ProcessTree_getProcessUptime(pid_t pid) {
 
 pid_t ProcessTree_findProcess(Service_T s) {
         ASSERT(s);
+        /* Monit never checks if the cached PID is valid while it thinks the process is running.
+           If our process dies, and another takes it's place with the same PID, we fall into
+           a condition where we never attempt to restart the process. To avoid this, just
+           check the pidfile every cycle
+
         // Test the cached PID first
         if (s->inf->priv.process.pid > 0) {
                 errno = 0;
@@ -322,7 +327,8 @@ pid_t ProcessTree_findProcess(Service_T s) {
                         DEBUG("getpgid returned > -1 for pid %d; errno was %d", s->inf->priv.process.pid, errno);
                         return s->inf->priv.process.pid;
                 }
-        }
+        }*/
+
         // If the cached PID is not running, scan for the process again
         if (s->matchlist) {
                 // Update the process tree including command line
