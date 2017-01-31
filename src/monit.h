@@ -261,10 +261,11 @@ typedef enum {
 
 
 typedef enum {
-        Monitor_Not     = 0x0,
-        Monitor_Yes     = 0x1,
-        Monitor_Init    = 0x2,
-        Monitor_Waiting = 0x4
+        Monitor_Not        = 0x0,
+        Monitor_Yes        = 0x1,
+        Monitor_Init       = 0x2,
+        Monitor_Waiting    = 0x4,
+        Monitor_WaitParent = 0x8,
 } __attribute__((__packed__)) Monitor_State;
 
 
