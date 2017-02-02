@@ -312,7 +312,7 @@ static boolean_t _doStop(Service_T s, boolean_t unmonitor) {
                 Util_monitorUnset(s);
         } else {
                 Util_resetInfo(s);
-                s->monitor = Monitor_Init | (s->monitor & Monitor_WaitParent);
+                s->monitor = Monitor_Init;
         }
         return rv;
 }
