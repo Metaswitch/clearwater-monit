@@ -1,0 +1,13 @@
+This project contains source code cloned from the original Monit project
+(https://bitbucket.org/tildeslash/monit), with modifications made by the
+Project Clearwater (http://www.projectclearwater.org/) team.
+
+All source code, including modifications, is freely available and hosted
+in the clearwater-monit github repository
+(https://github.com/Metaswitch/clearwater-monit).
+
+All modifications made to the original project can be seen in the commit history
+of the clearwater-monit project in the github repository linked above.
+
+This project is provided under the original Monit license terms, as found in
+the COPYING file (https://github.com/Metaswitch/clearwater-monit/blob/master/COPYING).
