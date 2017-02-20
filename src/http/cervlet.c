@@ -2384,6 +2384,11 @@ static char *get_monitoring_status(Output_Type type, Service_T s, char *buf, int
                         snprintf(buf, buflen, "<span>Waiting</span>");
                 else
                         snprintf(buf, buflen, Color_white("Waiting"));
+        } else if (s->monitor & Monitor_WaitParent) {
+                if (type == HTML)
+                        snprintf(buf, buflen, "<span class='gray-text'>Wait parent</span>");
+                else
+                        snprintf(buf, buflen, Color_lightYellow("Wait parent"));
         } else if (s->monitor & Monitor_Init) {
                 if (type == HTML)
                         snprintf(buf, buflen, "<span class='blue-text'>Initializing</span>");
