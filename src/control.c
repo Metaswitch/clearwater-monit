@@ -398,9 +398,15 @@ static boolean_t _doDepend(Service_T s, Action_Type action, boolean_t unmonitor)
                                                 rv = false;
                                         } else {
                                                 // Stop this service only if all children stopped
-                                                if (action == Action_Stop && child->monitor != Monitor_Not) {
-                                                        if (! _doStop(child, unmonitor))
+                                                if ((action == Action_Stop) && (child->monitor != Monitor_Not)) {
+                                                        if (_doStop(child, unmonitor)) {
+                                                                // If we're still monitoring, set the flag to say we're waiting on our parent.
+                                                                if (!unmonitor) {
+                                                                        child->monitor |= Monitor_WaitParent;
+                                                                }
+                                                        } else {
                                                                 rv = false;
+                                                        }
                                                 } else if (action == Action_Unmonitor) {
                                                         _doUnmonitor(child);
                                                 }
@@ -469,15 +475,13 @@ boolean_t control_service(const char *S, Action_Type A) {
 
                 case Action_Restart:
                         LogInfo("'%s' trying to restart\n", s->name);
-                        // Restart this service. Try to unmonitor/stop any dependent services,
-                        // but continue the restart even if it fails.
-                        _doDepend(s, Action_Unmonitor, false);
+                        // Restart this service. Try to stop any dependent services, and make them
+                        // wait for their parent, but continue the restart even if it fails.
                         _doDepend(s, Action_Stop, false);
                         if (s->restart) {
                                 if ((rv = _doRestart(s))) {
                                         // Start children only if we successfully restarted
                                         _doDepend(s, Action_Start, false);
-                                        _doDepend(s, Action_Monitor, false);
                                 }
                         } else {
                                 if (_doStop(s, false)) {
@@ -485,7 +489,6 @@ boolean_t control_service(const char *S, Action_Type A) {
                                         if ((rv = _doStart(s))) {
                                                 // Start children only if we successfully started
                                                 _doDepend(s, Action_Start, false);
-                                                _doDepend(s, Action_Monitor, false);
                                         }
                                         else {
                                                 LogError("'%s' failed to start successfully\n", s->name);

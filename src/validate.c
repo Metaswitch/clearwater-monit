@@ -993,33 +993,41 @@ static boolean_t _incron(Service_T s, time_t now) {
  */
 static boolean_t _checkSkip(Service_T s) {
         ASSERT(s);
-        time_t now = Time_now();
-        if (s->every.type == Every_SkipCycles) {
-                s->every.spec.cycle.counter++;
-                if (s->every.spec.cycle.counter < s->every.spec.cycle.number) {
-                        s->monitor |= Monitor_Waiting;
-                        DEBUG("'%s' test skipped as current cycle (%d) < every cycle (%d) \n", s->name, s->every.spec.cycle.counter, s->every.spec.cycle.number);
-                        return true;
-                }
-                s->every.spec.cycle.counter = 0;
-        } else if (s->every.type == Every_Cron && ! _incron(s, now)) {
-                s->monitor |= Monitor_Waiting;
-                DEBUG("'%s' test skipped as current time (%lld) does not match every's cron spec \"%s\"\n", s->name, (long long)now, s->every.spec.cron);
-                return true;
-        } else if (s->every.type == Every_NotInCron && Time_incron(s->every.spec.cron, now)) {
-                s->monitor |= Monitor_Waiting;
-                DEBUG("'%s' test skipped as current time (%lld) matches every's cron spec \"not %s\"\n", s->name, (long long)now, s->every.spec.cron);
-                return true;
-        }
-        s->monitor &= ~Monitor_Waiting;
+        s->monitor &= ~(Monitor_Waiting | Monitor_WaitParent);
         // Skip if parent is not initialized
         for (Dependant_T d = s->dependantlist; d; d = d->next ) {
                 Service_T parent = Util_getService(d->dependant);
                 if (parent->monitor != Monitor_Yes) {
                         DEBUG("'%s' test skipped as required service '%s' is %s\n", s->name, parent->name, parent->monitor == Monitor_Init ? "initializing" : "not monitored");
+                        s->monitor |= Monitor_WaitParent;
+                        s->every.spec.cycle.number = 0;
                         return true;
                 } else if (parent->error) {
                         DEBUG("'%s' test skipped as required service '%s' has errors\n", s->name, parent->name);
+                        s->monitor |= Monitor_WaitParent;
+                        s->every.spec.cycle.number = 0;
+                        return true;
+                }
+        }
+        time_t now = Time_now();
+        // Programs can't be skipped due to cycle counts, so only check for
+        // other types.
+        if (s->type != Service_Program) {
+                if (s->every.type == Every_SkipCycles) {
+                        s->every.spec.cycle.counter++;
+                        if (s->every.spec.cycle.counter < s->every.spec.cycle.number) {
+                                s->monitor |= Monitor_Waiting;
+                                DEBUG("'%s' test skipped as current cycle (%d) < every cycle (%d) \n", s->name, s->every.spec.cycle.counter, s->every.spec.cycle.number);
+                                return true;
+                        }
+                        s->every.spec.cycle.counter = 0;
+                } else if (s->every.type == Every_Cron && ! _incron(s, now)) {
+                        s->monitor |= Monitor_Waiting;
+                        DEBUG("'%s' test skipped as current time (%lld) does not match every's cron spec \"%s\"\n", s->name, (long long)now, s->every.spec.cron);
+                        return true;
+                } else if (s->every.type == Every_NotInCron && Time_incron(s->every.spec.cron, now)) {
+                        s->monitor |= Monitor_Waiting;
+                        DEBUG("'%s' test skipped as current time (%lld) matches every's cron spec \"not %s\"\n", s->name, (long long)now, s->every.spec.cron);
                         return true;
                 }
         }
@@ -1071,7 +1079,7 @@ int validate() {
                 if (Run.flags & Run_Stopped)
                         break;
                 // FIXME: The Service_Program must collect the exit value from last run, even if the program start should be skipped in this cycle => let check program always run the test (to be refactored with new scheduler)
-                if (! _doScheduledAction(s) && s->monitor && (s->type == Service_Program || ! _checkSkip(s))) {
+                if (! _doScheduledAction(s) && s->monitor && (! _checkSkip(s))) {
                         _checkTimeout(s); // Can disable monitoring => need to check s->monitor again
                         if (s->monitor) {
                                 State_Type state = s->check(s);

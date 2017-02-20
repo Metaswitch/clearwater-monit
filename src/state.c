@@ -438,7 +438,7 @@ void State_save() {
                         memset(&state, 0, sizeof(state));
                         snprintf(state.name, sizeof(state.name), "%s", service->name);
                         state.type = service->type;
-                        state.monitor = service->monitor & ~Monitor_Waiting;
+                        state.monitor = service->monitor & ~(Monitor_Waiting | Monitor_WaitParent);
                         state.nstart = service->nstart;
                         state.ncycle = service->ncycle;
                         switch (service->type) {
