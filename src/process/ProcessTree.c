@@ -346,9 +346,14 @@ pid_t ProcessTree_findProcess(Service_T s) {
                 pid_t pid = Util_getPid(s->path);
                 if (pid > 0) {
                         errno = 0;
-                        if (getpgid(pid) > -1 || errno == EPERM)
+                        if (getpgid(pid) > -1 || errno == EPERM){
+                                if (errno == EPERM) {
+                                        LogError("getpgid returned errno == EPERM for pid %d", pid);
+                                }
                                 return pid;
-                        DEBUG("'%s' process test failed [pid=%d] -- %s\n", s->name, pid, STRERROR);
+                        } else {
+                                DEBUG("'%s' process test failed [pid=%d] -- %s\n", s->name, pid, STRERROR);
+                        }
                 }
         }
         Util_resetInfo(s);
