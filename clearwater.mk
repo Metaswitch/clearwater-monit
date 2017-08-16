@@ -1,3 +1,4 @@
+ROOT ?= $(PWD)
 PKG_COMPONENT := clearwater-monit
 PKG_MAJOR_VERSION := 5.18${DEB_VERSION_QUALIFIER}
 PKG_NAMES := clearwater-monit
