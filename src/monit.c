@@ -21,7 +21,6 @@
  * You must obey the GNU Affero General Public License in all respects
  * for all of the code used other than OpenSSL.
  */
-#include <fcntl.h>
 
 #include "config.h"
 #include <locale.h>
@@ -407,7 +406,7 @@ static void do_action(char **args) {
                    IS(action, "stop")      ||
                    IS(action, "monitor")   ||
                    IS(action, "unmonitor") ||
-                   IS(action, "restart")) {           
+                   IS(action, "restart")) {
                 char *service = args[++optind];
                 if (Run.mygroup || service) {
                         int errors = 0;
