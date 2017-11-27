@@ -21,7 +21,7 @@
  * You must obey the GNU Affero General Public License in all respects
  * for all of the code used other than OpenSSL.
  */
-
+#include <fcntl.h>
 
 #include "config.h"
 #include <locale.h>
@@ -407,7 +407,7 @@ static void do_action(char **args) {
                    IS(action, "stop")      ||
                    IS(action, "monitor")   ||
                    IS(action, "unmonitor") ||
-                   IS(action, "restart")) {
+                   IS(action, "restart")) {           
                 char *service = args[++optind];
                 if (Run.mygroup || service) {
                         int errors = 0;
@@ -431,6 +431,7 @@ static void do_action(char **args) {
                                 for (Service_T s = servicelist; s; s = s->next)
                                         List_append(services, s->name);
                         } else {
+                                LogWarning("\nWARNING: 'monit %s <process>' only %ss the process specified. Related poll scripts will NOT be affected. Use 'monit %s -g <process group>' to be sure of %sing all related processes.\n\n", action, action, action, action);
                                 List_append(services, service);
                         }
                         errors = exist_daemon() ? (HttpClient_action(action, services) ? 0 : 1) : control_service_string(services, action);
