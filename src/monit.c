@@ -431,6 +431,7 @@ static void do_action(char **args) {
                                 for (Service_T s = servicelist; s; s = s->next)
                                         List_append(services, s->name);
                         } else {
+                                LogWarning("\nWARNING: 'monit %s <process>' only %ss the process specified. Related poll scripts will NOT be affected. Use 'monit %s -g <process group>' to be sure of %sing all related processes.\n\n", action, action, action, action);
                                 List_append(services, service);
                         }
                         errors = exist_daemon() ? (HttpClient_action(action, services) ? 0 : 1) : control_service_string(services, action);
