@@ -27,7 +27,7 @@ script
 
     /usr/share/clearwater/bin/issue-alarm "upstart" "4500.6"
 
-    exec /usr/bin/monit -v -I -c /etc/monit/monitrc $MONIT_OPTS
+    exec /usr/bin/monit -I -c /etc/monit/monitrc $MONIT_OPTS
 end script
 
 pre-stop exec /usr/bin/monit -c /etc/monit/monitrc quit
