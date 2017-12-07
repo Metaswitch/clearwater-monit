@@ -37,5 +37,12 @@
 check process ntp_process
    matching "ntp" 
    group ntp
-   start program = "/bin/bash -c 'if [ -x /etc/init.d/ntp ]; then /etc/init.d/ntp start; else systemctl enable ntpd && systemctl start ntpd; fi'"
-   stop program = "/bin/bash -c 'if [ -x /etc/init.d/ntp ]; then /etc/init.d/ntp stop; else systemctl disable ntpd && systemctl stop ntpd; fi'"
+   start program = "/bin/bash -c 'if [ -x /etc/init.d/ntp ]; then /usr/share/clearwater/bin/issue-alarm monit 5000; /etc/init.d/ntp start; else systemctl enable ntpd && systemctl start ntpd; fi'"
+   stop program = "/bin/bash -c 'if [ -x /etc/init.d/ntp ]; then /usr/share/clearwater/bin/issue-alarm monit 5000; /etc/init.d/ntp stop; else systemctl disable ntpd && systemctl stop ntpd; fi'"
+
+# clear any alarms if the process has been running long enough.
+check program rogers_uptime with path /usr/share/clearwater/infrastructure/monit_uptime/check-ntp-uptime
+  group ntp
+  depends on ntp_process
+  every 3 cycles
+  if status != 0 then alert
