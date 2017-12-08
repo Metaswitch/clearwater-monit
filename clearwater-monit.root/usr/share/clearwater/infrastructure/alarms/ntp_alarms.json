@@ -1,7 +1,7 @@
 {
     "alarms": [
         {
-            "index": 5000,
+            "index": 13500,
             "cause": "SOFTWARE_ERROR",
             "name": "NTP_PROCESS_FAIL",
             "levels": [
