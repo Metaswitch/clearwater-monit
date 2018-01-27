@@ -1,0 +1,6 @@
+# @file monit_diags
+
+# This script is executed in the context of the clearwater_diags_monitor script
+# (in the clearwater-infrastructure project).
+
+copy_to_dump "/var/lib/monit"
